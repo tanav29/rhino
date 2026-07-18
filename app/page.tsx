@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { Terminal, useTerminal } from "@wterm/react";
 import type { WTerm, TerminalCore } from "@wterm/dom";
 import { GhosttyCore } from "@wterm/ghostty";
@@ -101,7 +101,10 @@ function SessionView({
       }
 
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${proto}//${window.location.host}/api/terminal?session=${session.id}`;
+      const shellQuery = session.shell
+        ? `&shell=${encodeURIComponent(session.shell)}`
+        : "";
+      const wsUrl = `${proto}//${window.location.host}/api/terminal?session=${session.id}${shellQuery}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       sessionSockets.set(session.id, ws);
@@ -131,7 +134,7 @@ function SessionView({
         }
       };
     },
-    [onTitle, session.id, write],
+    [onTitle, session.id, session.shell, write],
   );
 
   const handleData = useCallback((data: string) => {
@@ -200,15 +203,28 @@ export default function LocalTerminal() {
       new URLSearchParams(window.location.search).has("debug"),
   );
 
-  const [sessions, setSessions] = useState<SessionTab[]>(() => loadSessions());
-  const [activeId, setActiveId] = useState<string>(() => sessions[0]?.id ?? "");
+  // Keep the first render identical on the server and client. localStorage is
+  // restored in an effect below so it cannot change the hydration markup.
+  const [sessions, setSessions] = useState<SessionTab[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    saveSessions(sessions);
-  }, [sessions]);
+    const loaded = loadSessions();
+    const initial = loaded.length > 0 ? loaded : [nextSession()];
+    startTransition(() => {
+      setSessions(initial);
+      setActiveId(initial[0].id);
+      setHydrated(true);
+    });
+  }, []);
 
-  const addSession = useCallback(() => {
-    const session = nextSession();
+  useEffect(() => {
+    if (hydrated) saveSessions(sessions);
+  }, [hydrated, sessions]);
+
+  const addSession = useCallback((shell?: string) => {
+    const session = { ...nextSession(), shell };
     setSessions((prev) => [...prev, session]);
     setActiveId(session.id);
   }, []);

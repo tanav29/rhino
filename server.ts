@@ -3,6 +3,7 @@ import { parse } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
+import { getAvailableShells } from "./utils/shells";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOST || "127.0.0.1";
@@ -19,7 +20,16 @@ function cleanEnv(): Record<string, string> {
   return env;
 }
 
-function getShell(): { shell: string; args: string[] } {
+function getShell(shellValue?: string): { shell: string; args: string[] } {
+  if (shellValue) {
+    const selectedShell = getAvailableShells().find(
+      (availableShell) => availableShell.value === shellValue,
+    );
+    if (selectedShell) {
+      return { shell: selectedShell.value, args: selectedShell.args };
+    }
+  }
+
   if (process.platform === "win32") {
     const shell = process.env.ComSpec || "C:\\Windows\\System32\\cmd.exe";
     return { shell, args: [] };
@@ -126,11 +136,12 @@ function getOrCreateSession(
   id: string,
   cols: number,
   rows: number,
+  shellValue?: string,
 ): SessionPTY {
   let session = sessions.get(id);
   if (session) return session;
 
-  const { shell, args } = getShell();
+  const { shell, args } = getShell(shellValue);
   const ptyProcess = pty.spawn(shell, args, {
     name: "xterm-256color",
     cols,
@@ -177,7 +188,11 @@ function getOrCreateSession(
   return session;
 }
 
-function handlePTYConnection(ws: WebSocket, sessionId?: string) {
+function handlePTYConnection(
+  ws: WebSocket,
+  sessionId?: string,
+  shellValue?: string,
+) {
   const id = sessionId || "default";
   let session: SessionPTY | null = null;
   let initialized = false;
@@ -201,7 +216,7 @@ function handlePTYConnection(ws: WebSocket, sessionId?: string) {
         const cols = parseInt(match[1], 10);
         const rows = parseInt(match[2], 10);
         if (!session) {
-          session = getOrCreateSession(id, cols, rows);
+          session = getOrCreateSession(id, cols, rows, shellValue);
           attach(session);
         } else {
           session.pty.resize(cols, rows);
@@ -243,6 +258,12 @@ app.prepare().then(() => {
       return;
     }
 
+    if (parsedUrl.pathname === "/api/shells") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(getAvailableShells()));
+      return;
+    }
+
     handle(req, res, parsedUrl);
   });
 
@@ -255,7 +276,9 @@ app.prepare().then(() => {
       const sessionId =
         typeof query.session === "string" ? query.session : undefined;
       wss.handleUpgrade(req, socket, head, (ws) => {
-        handlePTYConnection(ws, sessionId);
+        const shellValue =
+          typeof query.shell === "string" ? query.shell : undefined;
+        handlePTYConnection(ws, sessionId, shellValue);
       });
     } else if (pathname === "/api/debug") {
       wss.handleUpgrade(req, socket, head, (ws) => {
