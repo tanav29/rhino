@@ -223,6 +223,13 @@ export default function LocalTerminal() {
     if (hydrated) saveSessions(sessions);
   }, [hydrated, sessions]);
 
+  const activeSession = sessions.find((s) => s.id === activeId);
+  useEffect(() => {
+    if (hydrated && activeSession) {
+      document.title = `${activeSession.title} — wterm`;
+    }
+  }, [hydrated, activeSession]);
+
   const addSession = useCallback((shell?: string) => {
     const session = { ...nextSession(), shell };
     setSessions((prev) => [...prev, session]);
@@ -257,6 +264,17 @@ export default function LocalTerminal() {
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        addSession();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [addSession]);
 
   return (
     <div className="flex h-screen overflow-hidden">
