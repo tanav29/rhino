@@ -10,9 +10,24 @@
   --foreground: #ededed;
 }
 
+html,
+body {
+  min-width: 0;
+  min-height: 100%;
+}
+
 @layer base {
   body {
     @apply bg-background text-foreground;
   }
 }
 
+/* Keep the terminal viewport fixed while its scrollback grows above it. */
+.wterm {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}

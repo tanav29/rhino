@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
+import { Geist_Mono, Geist } from "next/font/google";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -7,8 +7,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const geistSans = Geist({
+  variable: "--font-sans",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "wterm — Local Shell",
+  title: "wterm",
   description: "Browser-based local terminal powered by wterm",
 };
 
@@ -18,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={geistMono.variable}>
+    <html lang="en" className={`${geistMono.variable} ${geistSans.variable}`}>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
