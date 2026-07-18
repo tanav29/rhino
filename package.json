@@ -1,0 +1,36 @@
+{
+  "name": "local",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx tsx server.ts",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@wterm/dom": "^0.3.0",
+    "@wterm/ghostty": "^0.3.0",
+    "@wterm/react": "^0.3.0",
+    "lucide-react": "^1.8.0",
+    "next": "16.2.3",
+    "node-pty": "^1.0.0",
+    "postcss": "^8.5.9",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "tailwindcss": "^4.2.2",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "16.2.3",
+    "tsx": "^4.19.4",
+    "typescript": "^6.0.2"
+  }
+}
