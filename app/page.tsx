@@ -21,6 +21,7 @@ function nextSession(): SessionTab {
 }
 
 const STORAGE_KEY = "wterm.sessions";
+const DEFAULT_SHELL_STORAGE_KEY = "wterm.default-shell";
 
 function loadSessions(): SessionTab[] {
   if (typeof window === "undefined") return [];
@@ -40,6 +41,24 @@ function saveSessions(sessions: SessionTab[]) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+function loadDefaultShell(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    return window.localStorage.getItem(DEFAULT_SHELL_STORAGE_KEY) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveDefaultShell(shell: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DEFAULT_SHELL_STORAGE_KEY, shell);
   } catch {
     // ignore quota errors
   }
@@ -71,24 +90,24 @@ function SessionView({
   onTitle: (id: string, title: string) => void;
 }) {
   const { ref, write } = useTerminal();
-  const [core, setCore] = useState<TerminalCore | null>(null);
+  // const [core, setCore] = useState<TerminalCore | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const coreLoadRef = useRef<Promise<TerminalCore> | null>(null);
+  // const coreLoadRef = useRef<Promise<TerminalCore> | null>(null);
 
-  useEffect(() => {
-    // React Strict Mode can run effects twice. Keep one load per view so a
-    // second core cannot replace the terminal while its first socket lives.
-    if (!coreLoadRef.current) {
-      coreLoadRef.current = GhosttyCore.load({ wasmPath: "/ghostty-vt.wasm" });
-    }
-    let cancelled = false;
-    coreLoadRef.current.then((loadedCore) => {
-      if (!cancelled) setCore(loadedCore);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // useEffect(() => {
+  //   // React Strict Mode can run effects twice. Keep one load per view so a
+  //   // second core cannot replace the terminal while its first socket lives.
+  //   if (!coreLoadRef.current) {
+  //     coreLoadRef.current = GhosttyCore.load({ wasmPath: "/ghostty-vt.wasm" });
+  //   }
+  //   let cancelled = false;
+  //   coreLoadRef.current.then((loadedCore) => {
+  //     if (!cancelled) setCore(loadedCore);
+  //   });
+  //   return () => {
+  //     cancelled = true;
+  //   };
+  // }, []);
 
   const handleReady = useCallback(
     (wt: WTerm) => {
@@ -164,7 +183,7 @@ function SessionView({
     };
   }, [session.id]);
 
-  if (!core) return null;
+  // if (!core) return null;
 
   return (
     <Terminal
@@ -173,8 +192,8 @@ function SessionView({
       rows={24}
       autoResize
       debug={debugEnabled}
-      core={core}
-      wasmUrl="/wterm.wasm"
+      // core={core}
+      // wasmUrl="/wterm.wasm"
       onReady={handleReady}
       onData={handleData}
       onResize={handleResize}
@@ -207,6 +226,7 @@ export default function LocalTerminal() {
   // restored in an effect below so it cannot change the hydration markup.
   const [sessions, setSessions] = useState<SessionTab[]>([]);
   const [activeId, setActiveId] = useState("");
+  const [defaultShell, setDefaultShell] = useState<string | undefined>();
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -215,6 +235,7 @@ export default function LocalTerminal() {
     startTransition(() => {
       setSessions(initial);
       setActiveId(initial[0].id);
+      setDefaultShell(loadDefaultShell());
       setHydrated(true);
     });
   }, []);
@@ -231,10 +252,15 @@ export default function LocalTerminal() {
   }, [hydrated, activeSession]);
 
   const addSession = useCallback((shell?: string) => {
-    const session = { ...nextSession(), shell };
+    const selectedShell = shell ?? defaultShell;
+    if (shell) {
+      setDefaultShell(shell);
+      saveDefaultShell(shell);
+    }
+    const session = { ...nextSession(), shell: selectedShell };
     setSessions((prev) => [...prev, session]);
     setActiveId(session.id);
-  }, []);
+  }, [defaultShell]);
 
   const updateTitle = useCallback((id: string, title: string) => {
     setSessions((prev) =>

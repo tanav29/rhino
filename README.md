@@ -2,6 +2,17 @@
 
 Full local terminal in the browser, connected to your machine's shell via WebSocket and [node-pty](https://github.com/microsoft/node-pty).
 
+## Run as a package
+
+After publishing, run the optimized production server directly with Bun:
+
+```bash
+bunx @10xdevs/term
+bunx @10xdevs/term --port 8080
+```
+
+The default port is `4242`. The package builds once on first run when no production build is present, then starts the small custom HTTP + WebSocket server (not the Next development server).
+
 ## Setup
 
 From the monorepo root:

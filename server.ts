@@ -7,7 +7,7 @@ import { getAvailableShells } from "./utils/shells";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOST || "127.0.0.1";
-const port = parseInt(process.env.PORT || "3000", 10);
+const port = parseInt(process.env.PORT || "4242", 10);
 
 const app = next({ dev, hostname, port, turbopack: dev });
 const handle = app.getRequestHandler();

@@ -50,7 +50,6 @@ export function SessionTabs({
     fetch("/api/shells")
       .then((response) => response.json())
       .then((availableShells: ShellOption[]) => {
-        console.log(availableShells)
         setShells(availableShells);
       })
       .catch(() => setShells([]));
@@ -108,25 +107,28 @@ export function SessionTabs({
             <div
               key={session.id}
               onClick={() => onSelect(session.id)}
-              className={`group flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm ${
+              className={`group flex flex-col items-center justify-between gap-2 rounded-md px-2 py-2 text-sm ${
                 isActive
                   ? "bg-white/10 text-white"
                   : "text-white/50 hover:bg-white/5 hover:text-white/80"
               }`}
             >
-              <span className="truncate text-xs line-clamp-2">
+              <div className="w-full overflow-clip items-center justify-between flex">
+                <span className="truncate text-xs line-clamp-2"><Terminal size={13} /></span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose(session.id);
+                  }}
+                  title="Close session"
+                  className="shrink-0 items-center justify-center rounded text-white/40 hover:text-white"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+              <span className="w-full truncate text-xs line-clamp-2">
                 {session.title}
               </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose(session.id);
-                }}
-                title="Close session"
-                className="hidden shrink-0 items-center justify-center rounded text-white/40 hover:text-white group-hover:flex"
-              >
-                <X size={13} />
-              </button>
             </div>
           );
         })}

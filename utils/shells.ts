@@ -17,9 +17,10 @@ export function getAvailableShells() {
 
     // Git Bash (very common)
     try {
-      execSync('where bash.exe', { stdio: 'ignore' });
-      shells.push({ name: 'Git Bash', value: 'bash.exe', args: ['--login'] });
+      execSync('where git-bash.exe', { stdio: 'ignore' });
+      shells.push({ name: 'Git Bash', value: 'git-bash.exe', args: [] });
     } catch {}
+
 
     // WSL (if installed)
     try {
