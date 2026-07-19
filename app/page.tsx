@@ -20,8 +20,8 @@ function nextSession(): SessionTab {
   return { id: uuid(), title: `Terminal ${counter}` };
 }
 
-const STORAGE_KEY = "wterm.sessions";
-const DEFAULT_SHELL_STORAGE_KEY = "wterm.default-shell";
+const STORAGE_KEY = "term.sessions";
+const DEFAULT_SHELL_STORAGE_KEY = "term.default-shell";
 
 function loadSessions(): SessionTab[] {
   if (typeof window === "undefined") return [];
@@ -247,7 +247,7 @@ export default function LocalTerminal() {
   const activeSession = sessions.find((s) => s.id === activeId);
   useEffect(() => {
     if (hydrated && activeSession) {
-      document.title = `${activeSession.title} — wterm`;
+      document.title = activeSession.title;
     }
   }, [hydrated, activeSession]);
 

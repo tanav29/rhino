@@ -15,7 +15,7 @@ function readPort() {
   if (!inline && index === -1) return process.env.PORT || "4242";
 
   if (!value || !/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 65535) {
-    console.error("wterm: --port must be a number between 1 and 65535");
+    console.error("term: --port must be a number between 1 and 65535");
     process.exit(1);
   }
   return value;
@@ -30,7 +30,7 @@ function run(command, commandArgs) {
     });
     child.on("error", reject);
     child.on("exit", (code, signal) => {
-      if (signal) reject(new Error(`wterm stopped by ${signal}`));
+      if (signal) reject(new Error(`term stopped by ${signal}`));
       else resolvePromise(code ?? 1);
     });
   });
@@ -41,7 +41,7 @@ process.env.PORT = port;
 process.env.NODE_ENV = "production";
 
 if (!existsSync(resolve(root, ".next", "BUILD_ID"))) {
-  console.log("wterm: production build not found; building once...");
+  console.log("term: production build not found; building once...");
   const nextBin = resolve(root, "node_modules", "next", "dist", "bin", "next");
   const code = await run(nextBin, ["build"]);
   if (code !== 0) process.exit(code);
