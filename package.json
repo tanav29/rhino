@@ -12,7 +12,6 @@
     "lib",
     "public",
     "utils",
-    ".next",
     "server.ts",
     "next.config.mjs",
     "tsconfig.json"

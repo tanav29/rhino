@@ -1,0 +1,27 @@
+# caches & build output
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# dependencies
+node_modules/
+
+# env & secrets
+.env*
+
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# misc
+.DS_Store
+*.pem
+.vercel
+.todo
+AGENTS.md
+CLAUDE.md
