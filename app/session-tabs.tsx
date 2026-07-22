@@ -16,6 +16,9 @@ import {
   Terminal,
   ChevronDown,
 } from "lucide-react";
+import { VscTerminalBash, VscTerminalCmd, VscTerminalGitBash, VscTerminalPowershell, VscTerminalUbuntu } from "react-icons/vsc";
+import { SiOpencode } from "react-icons/si";
+
 
 interface ShellOption {
   name: string;
@@ -106,7 +109,15 @@ export function SessionTabs({
               }`}
             >
               <div className="w-full overflow-clip items-center justify-between flex">
-                <span className="truncate text-xs line-clamp-2"><Terminal size={13} /></span>
+                <span className="truncate text-xs line-clamp-2">
+                  {session.shell === "cmd.exe" ? <VscTerminalCmd /> :
+                   session.shell === "wsl.exe" ? <VscTerminalUbuntu /> :
+                   session.shell === "bash.exe" ? <VscTerminalBash /> :
+                   session.shell === "powershell.exe" ? <VscTerminalPowershell /> :
+                   session.shell === "git-bash.exe" ? <VscTerminalGitBash /> :
+                   <Terminal size={13} />}
+                  {/*{session.title == "Opencode" ? <SiOpencode /> : }*/}
+                </span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -118,6 +129,9 @@ export function SessionTabs({
                   <X size={13} />
                 </button>
               </div>
+              {/*<span className="w-full truncate text-xs line-clamp-2 cursor-default">
+                {session.shell}
+              </span>*/}
               <span className="w-full truncate text-xs line-clamp-2 cursor-default">
                 {session.title}
               </span>

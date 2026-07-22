@@ -1,10 +1,7 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { Terminal } from "@xterm/xterm";
-import { FitAddon } from "@xterm/addon-fit";
-import { WebLinksAddon } from "@xterm/addon-web-links";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { init, Terminal, FitAddon } from "ghostty-web";
 import type { SessionTab } from "./session-tabs";
 import { sessionSockets } from "./session-sockets";
-import "@xterm/xterm/css/xterm.css";
 
 type TitleMessage = {
   type: "title";
@@ -20,6 +17,8 @@ function isTitleMessage(value: unknown): value is TitleMessage {
   );
 }
 
+const termInit = init();
+
 export function SessionView({
   session,
   onTitle,
@@ -27,6 +26,7 @@ export function SessionView({
   session: SessionTab;
   onTitle: (id: string, title: string) => void;
 }) {
+  const [ready, setReady] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -36,30 +36,35 @@ export function SessionView({
     onTitleRef.current = onTitle;
   }, [onTitle]);
 
+  useEffect(() => {
+    let cancelled = false;
+    termInit.then(() => {
+      if (!cancelled) setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useLayoutEffect(() => {
+    if (!ready) return;
     const container = containerRef.current;
     if (!container) return;
 
     const term = new Terminal({
-      // cols: 80,
-      // rows: 24,
-      fontSize: 14,
-      theme: {
-        background: '#1a1b26',
-        foreground: '#a9b1d6',
-      },
+      // fontSize: 14,
+      // theme: {
+      //   background: '#1a1b26',
+      //   foreground: '#a9b1d6',
+      // },
       fontFamily: "Cascadia Mono",
     });
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
-    term.loadAddon(new WebLinksAddon());
     term.open(container);
 
     fitAddon.fit();
 
-    // Prefer the GPU renderer for crisp glyphs; load it dynamically so its
-    // browser-only module never runs during SSR. Falls back to the DOM
-    // renderer automatically if WebGL is unavailable or its context is lost.
     let disposed = false;
 
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -134,12 +139,12 @@ export function SessionView({
       if (ws.readyState !== WebSocket.CLOSED) ws.close();
       term.dispose();
     };
-  }, [session.id, session.shell]);
+  }, [ready, session.id, session.shell]);
 
   return (
     <div
       ref={containerRef}
-      className="term-surface h-full min-h-0 scrollbar-none"
+      className="term-surface h-full min-h-0 scrollbar-none bg-background"
       style={{
         height: "100%",
         padding: 0,
