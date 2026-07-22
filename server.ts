@@ -1,6 +1,6 @@
 import { createServer } from "http";
-import { parse } from "url";
-import next from "next";
+import { readFile } from "fs/promises";
+import { resolve } from "path";
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import { getAvailableShells } from "./utils/shells";
@@ -8,9 +8,7 @@ import { getAvailableShells } from "./utils/shells";
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOST || "127.0.0.1";
 const port = parseInt(process.env.PORT || "4242", 10);
-
-const app = next({ dev, hostname, port, turbopack: dev });
-const handle = app.getRequestHandler();
+const vitePort = 5173;
 
 function cleanEnv(): Record<string, string> {
   const env: Record<string, string> = {};
@@ -46,7 +44,6 @@ interface SessionPTY {
 }
 
 const sessions = new Map<string, SessionPTY>();
-
 const debugClients = new Set<WebSocket>();
 
 function sendMessage(ws: WebSocket, payload: unknown) {
@@ -241,43 +238,69 @@ function handlePTYConnection(
   });
 }
 
-app.prepare().then(() => {
-  const server = createServer((req, res) => {
-    const parsedUrl = parse(req.url || "/", true);
+function writeJson(res: any, status: number, data: unknown) {
+  const json = JSON.stringify(data);
+  res.writeHead(status, {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": dev ? `http://localhost:${vitePort}` : undefined,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    Vary: "Origin",
+  });
+  res.end(json);
+}
 
-    if (parsedUrl.pathname === "/api/sessions") {
-      const now = Date.now();
-      const list = Array.from(sessions.entries()).map(([id, s]) => ({
-        id,
-        title: s.title,
-        clients: s.clients.size,
-        createdAt: (s as any).createdAt ?? now,
-      }));
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ count: sessions.size, sessions: list }));
+async function start() {
+  const server = createServer(async (req, res) => {
+    const reqUrl = new URL(req.url || "/", "http://localhost");
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": `http://localhost:${vitePort}`,
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      });
+      res.end();
       return;
     }
 
-    if (parsedUrl.pathname === "/api/shells") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(getAvailableShells()));
+    if (reqUrl.pathname === "/api/sessions") {
+      writeJson(res, 200, sessionsSnapshot());
       return;
     }
 
-    handle(req, res, parsedUrl);
+    if (reqUrl.pathname === "/api/shells") {
+      writeJson(res, 200, getAvailableShells());
+      return;
+    }
+
+    if (dev) {
+      res.writeHead(404);
+      res.end("Not found");
+      return;
+    }
+
+    const pathname = reqUrl.pathname === "/" ? "/index.html" : reqUrl.pathname || "/index.html";
+    try {
+      const file = await readFile(resolve(process.cwd(), "dist", `.${pathname}`));
+      res.writeHead(200, { "Content-Type": pathname.endsWith(".html") ? "text/html" : "application/octet-stream" });
+      res.end(file);
+    } catch {
+      const file = await readFile(resolve(process.cwd(), "dist", "index.html"));
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end(file);
+    }
   });
 
   const wss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", (req, socket, head) => {
-    const { pathname, query } = parse(req.url || "/", true);
+    const upUrl = new URL(req.url || "/", "http://localhost");
+    const pathname = upUrl.pathname;
 
     if (pathname === "/api/terminal") {
-      const sessionId =
-        typeof query.session === "string" ? query.session : undefined;
+      const sessionId = upUrl.searchParams.get("session") ?? undefined;
       wss.handleUpgrade(req, socket, head, (ws) => {
-        const shellValue =
-          typeof query.shell === "string" ? query.shell : undefined;
+        const shellValue = upUrl.searchParams.get("shell") ?? undefined;
         handlePTYConnection(ws, sessionId, shellValue);
       });
     } else if (pathname === "/api/debug") {
@@ -289,11 +312,21 @@ app.prepare().then(() => {
         });
       });
     } else {
-      app.getUpgradeHandler()(req, socket, head);
+      socket.destroy();
     }
   });
 
   server.listen(port, hostname, () => {
-    console.log(`> Local Terminal ready on http://${hostname}:${port}`);
+    if (dev) {
+      console.log(`> Backend server running on http://${hostname}:${port}`);
+      console.log(`> Vite dev server running on http://localhost:${vitePort}`);
+    } else {
+      console.log(`> Local Terminal ready on http://${hostname}:${port}`);
+    }
   });
+}
+
+start().catch((error) => {
+  console.error(error);
+  process.exit(1);
 });

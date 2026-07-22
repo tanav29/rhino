@@ -7,33 +7,35 @@
   },
   "files": [
     "app",
+    "dist",
     "bin",
     "components",
     "lib",
     "public",
     "utils",
     "server.ts",
-    "next.config.mjs",
+    "vite.config.ts",
     "tsconfig.json"
   ],
   "scripts": {
-    "dev": "npx tsx server.ts",
-    "build": "next build",
+    "dev": "tsx server.ts & vite",
+    "dev:server": "tsx server.ts",
+    "dev:vite": "vite",
+    "build": "vite build",
     "start": "node ./bin/term.mjs",
-    "prepack": "next build",
+    "prepack": "vite build",
     "lint": "eslint",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@tailwindcss/postcss": "^4.2.2",
-    "@wterm/dom": "^0.3.0",
-    "@wterm/ghostty": "^0.3.0",
-    "@wterm/react": "^0.3.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/xterm": "^5.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.8.0",
-    "next": "16.2.3",
     "node-pty": "^1.0.0",
     "postcss": "^8.5.9",
     "react": "19.2.5",
@@ -41,17 +43,18 @@
     "shadcn": "^4.13.1",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.2.2",
+    "tsx": "^4.19.4",
     "tw-animate-css": "^1.4.0",
-    "ws": "^8.18.2",
-    "tsx": "^4.19.4"
+    "vite": "^7.0.0",
+    "ws": "^8.18.2"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^4.0.0",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.2.3",
     "typescript": "^6.0.2"
   }
 }

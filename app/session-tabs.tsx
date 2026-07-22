@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +14,7 @@ import {
   X,
   MoreHorizontalIcon,
   Terminal,
+  ChevronDown,
 } from "lucide-react";
 
 interface ShellOption {
@@ -61,30 +60,23 @@ export function SessionTabs({
         <span className="text-xs font-medium tracking-wide text-white/40">
           SESSIONS
         </span>
-        {/*<button
-          onClick={onNew}
-          title="New session"
-          className="flex h-6 w-6 items-center justify-center rounded-md text-white/50 hover:bg-white/10 hover:text-white">
-          <Plus size={16} />
-        </button>*/}
-
         <ButtonGroup>
-          <Button variant={"outline"} size={"icon-sm"} onClick={() => onNew()}>
+          <Button variant={"ghost"} size={"icon-sm"} onClick={() => onNew()}>
             <Plus size={16} />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon-sm"
                   aria-label="More Options"
                 >
-                  <MoreHorizontalIcon />
+                  <ChevronDown />
                 </Button>
               }
             />
-            <DropdownMenuContent align="start" className="w-40">
+            <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuGroup>
                 {shells.map((shell) => (
                   <DropdownMenuItem
@@ -126,7 +118,7 @@ export function SessionTabs({
                   <X size={13} />
                 </button>
               </div>
-              <span className="w-full truncate text-xs line-clamp-2">
+              <span className="w-full truncate text-xs line-clamp-2 cursor-default">
                 {session.title}
               </span>
             </div>

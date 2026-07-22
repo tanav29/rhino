@@ -9,18 +9,13 @@ export function getAvailableShells() {
     shells.push({ name: 'Command Prompt', value: 'cmd.exe', args: ['/k'] });
     shells.push({ name: 'PowerShell', value: 'powershell.exe', args: [] });
 
-    // PowerShell 7+ (if installed)
+    // PowerShell 7+ and Git Bash (if installed)
     try {
       execSync('where pwsh.exe', { stdio: 'ignore' });
       shells.push({ name: 'PowerShell 7+', value: 'pwsh.exe', args: [] });
-    } catch {}
-
-    // Git Bash (very common)
-    try {
       execSync('where git-bash.exe', { stdio: 'ignore' });
       shells.push({ name: 'Git Bash', value: 'git-bash.exe', args: [] });
     } catch {}
-
 
     // WSL (if installed)
     try {

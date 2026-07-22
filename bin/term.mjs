@@ -40,10 +40,10 @@ const port = readPort();
 process.env.PORT = port;
 process.env.NODE_ENV = "production";
 
-if (!existsSync(resolve(root, ".next", "BUILD_ID"))) {
+if (!existsSync(resolve(root, "dist", "index.html"))) {
   console.log("term: production build not found; building once...");
-  const nextBin = resolve(root, "node_modules", "next", "dist", "bin", "next");
-  const code = await run(nextBin, ["build"]);
+  const viteBin = resolve(root, "node_modules", "vite", "bin", "vite.js");
+  const code = await run(viteBin, ["build"]);
   if (code !== 0) process.exit(code);
 }
 
