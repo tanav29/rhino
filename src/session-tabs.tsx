@@ -61,7 +61,7 @@ export function SessionTabs({
     <div className="flex w-52 flex-col border-r border-white/10 bg-white/3">
       <div className="flex items-center justify-between px-3 py-2">
         <span className="text-xs font-medium tracking-wide text-white/40">
-          SESSIONS
+          SESSIONZ
         </span>
         <ButtonGroup>
           <Button variant={"ghost"} size={"icon-sm"} onClick={() => onNew()}>

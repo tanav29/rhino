@@ -54,6 +54,20 @@ body {
   min-height: 100%;
 }
 
+.term-surface {
+  position: relative;
+}
+
+.term-surface .xterm-helper-textarea {
+  position: absolute !important;
+  top: 0 !important;
+  left: -9999em !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  z-index: -1 !important;
+}
+
 @layer base {
   body {
     @apply bg-background text-foreground;
@@ -66,12 +80,6 @@ body {
   }
 }
 
-/* Terminal surface: soft padding and a matching backdrop so glyphs never
-   touch the edges and the panel blends into the app chrome. */
-.term-surface {
-  background: #11111b;
-  padding: 12px 14px;
-}
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

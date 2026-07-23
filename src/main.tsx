@@ -1,10 +1,5 @@
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import LocalTerminal from "../app/page";
-import "../app/globals.css";
+import App from "./App";
+import "./globals.css";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <LocalTerminal />
-  </StrictMode>,
-);
+createRoot(document.getElementById("root")!).render(<App />);

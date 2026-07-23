@@ -2,7 +2,6 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 import { SessionTabs, type SessionTab } from "./session-tabs";
 import { DebugToolbar } from "./debug-toolbar";
 import { closeSessionSocket } from "./session-sockets";
-
 import { SessionView } from "./session-view";
 
 let counter = 0;
@@ -61,7 +60,7 @@ function saveDefaultShell(shell: string) {
   }
 }
 
-export default function LocalTerminal() {
+export default function App() {
   const [debugEnabled] = useState(
     () =>
       typeof window !== "undefined" &&

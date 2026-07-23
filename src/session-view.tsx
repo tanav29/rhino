@@ -1,7 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { init, Terminal, FitAddon } from "ghostty-web";
+import { use, useEffect, useLayoutEffect, useRef } from "react";
+import { Terminal } from "xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { WebglAddon } from "@xterm/addon-webgl";
 import type { SessionTab } from "./session-tabs";
 import { sessionSockets } from "./session-sockets";
+import "xterm/css/xterm.css";
 
 type TitleMessage = {
   type: "title";
@@ -17,8 +20,6 @@ function isTitleMessage(value: unknown): value is TitleMessage {
   );
 }
 
-const termInit = init();
-
 export function SessionView({
   session,
   onTitle,
@@ -26,7 +27,6 @@ export function SessionView({
   session: SessionTab;
   onTitle: (id: string, title: string) => void;
 }) {
-  const [ready, setReady] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -36,33 +36,26 @@ export function SessionView({
     onTitleRef.current = onTitle;
   }, [onTitle]);
 
-  useEffect(() => {
-    let cancelled = false;
-    termInit.then(() => {
-      if (!cancelled) setReady(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   useLayoutEffect(() => {
-    if (!ready) return;
     const container = containerRef.current;
     if (!container) return;
 
     const term = new Terminal({
-      // fontSize: 14,
-      // theme: {
-      //   background: '#1a1b26',
-      //   foreground: '#a9b1d6',
-      // },
+      fontSize: 14,
+      theme: {
+        background: '#1a1b26',
+        foreground: '#a9b1d6',
+      },
       fontFamily: "Cascadia Mono",
     });
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(container);
-
+    try {
+      term.loadAddon(new WebglAddon());
+    } catch {
+      // fall back to canvas renderer
+    }
     fitAddon.fit();
 
     let disposed = false;
@@ -139,14 +132,13 @@ export function SessionView({
       if (ws.readyState !== WebSocket.CLOSED) ws.close();
       term.dispose();
     };
-  }, [ready, session.id, session.shell]);
+  }, [session.id, session.shell]);
 
   return (
     <div
       ref={containerRef}
-      className="term-surface h-full min-h-0 scrollbar-none bg-background"
+      className="term-surface h-screen min-h-0 scrollbar-none bg-background"
       style={{
-        height: "100%",
         padding: 0,
         minHeight: 0,
         minWidth: 0,

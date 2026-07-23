@@ -5,9 +5,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import { getAvailableShells } from "./utils/shells";
 
-const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOST || "127.0.0.1";
-const port = parseInt(process.env.PORT || "4242", 10);
 const vitePort = 5173;
 
 function cleanEnv(): Record<string, string> {
@@ -143,6 +141,7 @@ function getOrCreateSession(
     name: "xterm-256color",
     cols,
     rows,
+    useConptyDll: true,
     cwd:
       process.platform === "win32"
         ? process.env.USERPROFILE || "C:\\"
@@ -238,18 +237,27 @@ function handlePTYConnection(
   });
 }
 
-function writeJson(res: any, status: number, data: unknown) {
+function writeJson(res: any, status: number, data: unknown, development: boolean) {
   const json = JSON.stringify(data);
   res.writeHead(status, {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": dev ? `http://localhost:${vitePort}` : undefined,
+    "Access-Control-Allow-Origin": development ? `http://localhost:${vitePort}` : undefined,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     Vary: "Origin",
   });
   res.end(json);
 }
 
-async function start() {
+export async function startServer(options: {
+  hostname?: string;
+  port?: number;
+  staticDir?: string;
+  development?: boolean;
+} = {}) {
+  const serverHostname = options.hostname ?? hostname;
+  const serverPort = options.port ?? parseInt(process.env.PORT || "4242", 10);
+  const dev = options.development ?? process.env.NODE_ENV !== "production";
+  const staticDir = options.staticDir ?? resolve(process.cwd(), "dist");
   const server = createServer(async (req, res) => {
     const reqUrl = new URL(req.url || "/", "http://localhost");
 
@@ -264,12 +272,12 @@ async function start() {
     }
 
     if (reqUrl.pathname === "/api/sessions") {
-      writeJson(res, 200, sessionsSnapshot());
+      writeJson(res, 200, sessionsSnapshot(), dev);
       return;
     }
 
     if (reqUrl.pathname === "/api/shells") {
-      writeJson(res, 200, getAvailableShells());
+      writeJson(res, 200, getAvailableShells(), dev);
       return;
     }
 
@@ -281,11 +289,11 @@ async function start() {
 
     const pathname = reqUrl.pathname === "/" ? "/index.html" : reqUrl.pathname || "/index.html";
     try {
-      const file = await readFile(resolve(process.cwd(), "dist", `.${pathname}`));
+      const file = await readFile(resolve(staticDir, `.${pathname}`));
       res.writeHead(200, { "Content-Type": pathname.endsWith(".html") ? "text/html" : "application/octet-stream" });
       res.end(file);
     } catch {
-      const file = await readFile(resolve(process.cwd(), "dist", "index.html"));
+      const file = await readFile(resolve(staticDir, "index.html"));
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end(file);
     }
@@ -316,17 +324,25 @@ async function start() {
     }
   });
 
-  server.listen(port, hostname, () => {
-    if (dev) {
-      console.log(`> Backend server running on http://${hostname}:${port}`);
-      console.log(`> Vite dev server running on http://localhost:${vitePort}`);
-    } else {
-      console.log(`> Local Terminal ready on http://${hostname}:${port}`);
-    }
+  await new Promise<void>((resolveListen, rejectListen) => {
+    server.once("error", rejectListen);
+    server.listen(serverPort, serverHostname, () => resolveListen());
   });
+
+  server.on("close", () => {
+    for (const session of sessions.values()) session.pty.kill();
+    sessions.clear();
+  });
+
+  const address = server.address();
+  const actualPort = typeof address === "object" && address ? address.port : serverPort;
+  console.log(`> Local Terminal ready on http://${serverHostname}:${actualPort}`);
+  return { server, port: actualPort };
 }
 
-start().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (process.argv[1]?.endsWith("server.ts")) {
+  startServer().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
