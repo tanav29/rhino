@@ -29,6 +29,7 @@ export interface SessionTab {
   id: string;
   title: string;
   shell?: string;
+  cwd?: string;
 }
 
 interface SessionTabsProps {
@@ -90,6 +91,15 @@ export function SessionTabs({
                     {shell.name}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuItem
+                  onClick={() => {
+                    const target = window.prompt("SSH target (user@host or user@host:port)");
+                    if (target?.trim()) onNew(`ssh:${target.trim()}`);
+                  }}
+                >
+                  <Terminal size={14} />
+                  SSH connection…
+                </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -99,7 +109,7 @@ export function SessionTabs({
         {sessions.map((session) => {
           const isActive = session.id === activeId;
           return (
-            <div
+          <div
               key={session.id}
               onClick={() => onSelect(session.id)}
               className={`group flex flex-col items-center justify-between gap-2 rounded-md px-2 py-2 text-sm ${

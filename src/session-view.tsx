@@ -64,7 +64,8 @@ export function SessionView({
     const shellQuery = session.shell
       ? `&shell=${encodeURIComponent(session.shell)}`
       : "";
-    const wsUrl = `${proto}//${window.location.host}/api/terminal?session=${session.id}${shellQuery}`;
+    const cwdQuery = session.cwd ? `&cwd=${encodeURIComponent(session.cwd)}` : "";
+    const wsUrl = `${proto}//${window.location.host}/api/terminal?session=${session.id}${shellQuery}${cwdQuery}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     sessionSockets.set(session.id, ws);

@@ -4,9 +4,12 @@ import { resolve } from "path";
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import { getAvailableShells } from "./utils/shells";
+import { execFile } from "child_process";
+import { promisify } from "util";
 
 const hostname = process.env.HOST || "127.0.0.1";
 const vitePort = 5173;
+const execFileAsync = promisify(execFile);
 
 function cleanEnv(): Record<string, string> {
   const env: Record<string, string> = {};
@@ -17,6 +20,14 @@ function cleanEnv(): Record<string, string> {
 }
 
 function getShell(shellValue?: string): { shell: string; args: string[] } {
+  if (shellValue?.startsWith("ssh:")) {
+    const target = shellValue.slice(4).trim();
+    const portMatch = target.match(/^(.*):(\d+)$/);
+    return {
+      shell: process.platform === "win32" ? "ssh.exe" : "ssh",
+      args: portMatch ? ["-p", portMatch[2], portMatch[1]] : [target],
+    };
+  }
   if (shellValue) {
     const selectedShell = getAvailableShells().find(
       (availableShell) => availableShell.value === shellValue,
@@ -132,6 +143,7 @@ function getOrCreateSession(
   cols: number,
   rows: number,
   shellValue?: string,
+  cwd?: string,
 ): SessionPTY {
   let session = sessions.get(id);
   if (session) return session;
@@ -142,10 +154,11 @@ function getOrCreateSession(
     cols,
     rows,
     useConptyDll: true,
-    cwd:
-      process.platform === "win32"
+    cwd: shellValue?.startsWith("ssh:")
+      ? undefined
+      : cwd || (process.platform === "win32"
         ? process.env.USERPROFILE || "C:\\"
-        : process.env.HOME || "/",
+        : process.env.HOME || "/"),
     env: cleanEnv(),
   });
 
@@ -188,6 +201,7 @@ function handlePTYConnection(
   ws: WebSocket,
   sessionId?: string,
   shellValue?: string,
+  cwd?: string,
 ) {
   const id = sessionId || "default";
   let session: SessionPTY | null = null;
@@ -212,7 +226,7 @@ function handlePTYConnection(
         const cols = parseInt(match[1], 10);
         const rows = parseInt(match[2], 10);
         if (!session) {
-          session = getOrCreateSession(id, cols, rows, shellValue);
+          session = getOrCreateSession(id, cols, rows, shellValue, cwd);
           attach(session);
         } else {
           session.pty.resize(cols, rows);
@@ -281,6 +295,19 @@ export async function startServer(options: {
       return;
     }
 
+    if (reqUrl.pathname === "/api/git/status") {
+      try {
+        const cwd = reqUrl.searchParams.get("cwd") || process.cwd();
+        const result = await execFileAsync("git", ["-C", cwd, "status", "--short", "--branch"], { windowsHide: true });
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(result.stdout || "Working tree clean");
+      } catch (error) {
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(error instanceof Error ? error.message : "Git unavailable");
+      }
+      return;
+    }
+
     if (dev) {
       res.writeHead(404);
       res.end("Not found");
@@ -309,7 +336,7 @@ export async function startServer(options: {
       const sessionId = upUrl.searchParams.get("session") ?? undefined;
       wss.handleUpgrade(req, socket, head, (ws) => {
         const shellValue = upUrl.searchParams.get("shell") ?? undefined;
-        handlePTYConnection(ws, sessionId, shellValue);
+        handlePTYConnection(ws, sessionId, shellValue, upUrl.searchParams.get("cwd") ?? undefined);
       });
     } else if (pathname === "/api/debug") {
       wss.handleUpgrade(req, socket, head, (ws) => {
