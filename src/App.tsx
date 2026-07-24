@@ -1,9 +1,11 @@
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
-import { GitCommit, Plus, Search, TerminalSquare, Trash2, X } from "lucide-react";
+import { Plus, Search, TerminalSquare, Trash2, X } from "lucide-react";
 import { SessionTabs, type SessionTab } from "./session-tabs";
 import { DebugToolbar } from "./debug-toolbar";
 import { closeSessionSocket } from "./session-sockets";
 import { SessionView } from "./session-view";
+import { FilesPanel } from "./file-tree-panel";
+import { GitPanel } from "./git-panel";
 
 export interface Project { id: string; name: string; path: string; sessions: SessionTab[] }
 interface Pane { id: string; direction?: "row" | "column" }
@@ -194,6 +196,18 @@ function CommandPalette({ commands, onClose }: { commands: { label: string; acti
 }
 
 function WorkspacePanel({ type, project, onClose }: { type: "files" | "git" | "info"; project?: Project; onClose: () => void }) {
-  return <aside className="w-80 shrink-0 overflow-auto border-l border-border bg-sidebar p-4 text-sm text-sidebar-foreground"><div className="mb-4 flex items-center justify-between"><span className="font-medium">{type === "files" ? "Files" : type === "git" ? "Git" : "Session info"}</span><button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors"><X size={15} /></button></div>{type === "files" && <p className="text-sidebar-foreground/60">Working tree: {project?.path}<br />Use the terminal to open and edit files.</p>}{type === "git" && <GitPanel cwd={project?.path} />}{type === "info" && <p className="text-sidebar-foreground/60">Processes and listening TCP ports are available from the active shell with <code>tasklist</code> or <code>netstat -ano</code>.</p>}</aside>;
+  const wide = type === "files" || type === "git";
+  return (
+    <aside className={`flex ${wide ? "w-104" : "w-80"} shrink-0 flex-col overflow-hidden border-l border-border bg-sidebar text-sm text-sidebar-foreground`}>
+      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        <span className="font-medium">{type === "files" ? "Files" : type === "git" ? "Git" : "Session info"}</span>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors"><X size={15} /></button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {type === "files" && (project ? <FilesPanel cwd={project.path} /> : <p className="p-4 text-sidebar-foreground/60">No project selected.</p>)}
+        {type === "git" && <GitPanel cwd={project?.path} />}
+        {type === "info" && <p className="p-4 text-sidebar-foreground/60">Processes and listening TCP ports are available from the active shell with <code>tasklist</code> or <code>netstat -ano</code>.</p>}
+      </div>
+    </aside>
+  );
 }
-function GitPanel({ cwd }: { cwd?: string }) { const [status, setStatus] = useState<string>("Loading…"); useEffect(() => { fetch(`/api/git/status?cwd=${encodeURIComponent(cwd ?? ".")}`).then((r) => r.text()).then(setStatus).catch(() => setStatus("Git unavailable")); }, [cwd]); return <><div className="mb-2 flex items-center gap-2 text-muted-foreground"><GitCommit size={14} />Changes</div><pre className="whitespace-pre-wrap text-xs text-muted-foreground">{status}</pre></>; }
