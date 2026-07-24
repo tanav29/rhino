@@ -1,6 +1,6 @@
 import { createServer } from "http";
-import { readFile } from "fs/promises";
-import { resolve } from "path";
+import { readFile, readdir } from "fs/promises";
+import { dirname, join, resolve } from "path";
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import { getAvailableShells } from "./utils/shells";
@@ -292,6 +292,24 @@ export async function startServer(options: {
 
     if (reqUrl.pathname === "/api/shells") {
       writeJson(res, 200, getAvailableShells(), dev);
+      return;
+    }
+
+    if (reqUrl.pathname === "/api/browse") {
+      const requested = reqUrl.searchParams.get("path")?.trim();
+      const home = process.platform === "win32" ? process.env.USERPROFILE || "C:\\" : process.env.HOME || "/";
+      const resolved = resolve(requested || home);
+      try {
+        const dirents = await readdir(resolved, { withFileTypes: true });
+        const entries = dirents
+          .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+          .map((entry) => ({ name: entry.name, path: join(resolved, entry.name) }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        const parent = dirname(resolved);
+        writeJson(res, 200, { path: resolved, parent: parent === resolved ? null : parent, entries }, dev);
+      } catch (error) {
+        writeJson(res, 200, { path: resolved, parent: null, entries: [], error: error instanceof Error ? error.message : "Unable to read directory" }, dev);
+      }
       return;
     }
 

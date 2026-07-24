@@ -1,24 +1,2 @@
-[ ] add support for ssh
-Features
-projects & sessions
-Projects, not windows
-each repo is a project in the sidebar — Cmd+1–9 switches, Cmd+N adds one
-Sessions per project
-open as many terminal tabs as a project needs with Cmd+T, each with its own directory and scrollback
-Split panes
-Cmd+D splits right, Cmd+Shift+D splits down, Opt+Cmd+arrows moves focus between panes
-Restored on relaunch
-quit and reopen: projects, tabs, and pane layout come back, each shell fresh beneath its previous scrollback
-Command palette
-Cmd+P to jump to any project or session, or run any command
-review & ship
-Git panel
-stage, unstage, discard, and commit — amend included — beside the shell that made the changes
-Inline diffs
-click a changed file to read its diff in place, without leaving the window
-Branch work
-switch or create a branch, fetch, fast-forward pull, push, publish a new upstream, or stash
-Files panel
-browse the working tree, open a file, edit it with tree-sitter highlighting, Cmd+S to save
-Session info
-the processes running under a session and the TCP ports they are listening on
+[ ] add file tree support with https://trees.software/
+[ ] add diff and file viewer with https://diffs.com/
