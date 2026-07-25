@@ -27,7 +27,7 @@ interface BrowseResult {
   error?: string;
 }
 
-export function NewTerminalDialog({
+export function NewSessionDialog({
   open,
   onOpenChange,
   shells,

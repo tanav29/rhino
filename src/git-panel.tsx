@@ -94,7 +94,7 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
         ) : diff.kind === "added" ? (
           <CodeFile file={{ name: path, contents: diff.contents }} options={{ themeType: "dark" }} className="h-full w-full" />
         ) : diff.kind === "diff" ? (
-          <PatchDiff patch={diff.patch} options={{ themeType: "dark" }} className="h-full w-full" />
+          <PatchDiff patch={diff.patch} options={{ themeType: "dark", diffStyle: "unified" }} className="h-full w-full" />
         ) : (
           <p className="p-3 text-xs text-sidebar-foreground/60">No changes to display.</p>
         )}

@@ -48,7 +48,7 @@ function FilesTreeBody({ cwd, paths, gitStatus }: { cwd: string; paths: string[]
   const { model } = useFileTree({
     paths,
     gitStatus,
-    icons: "standard",
+    icons: "complete",
     search: true,
     density: "compact",
     initialExpansion: "closed",
@@ -57,8 +57,8 @@ function FilesTreeBody({ cwd, paths, gitStatus }: { cwd: string; paths: string[]
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className={selectedFile ? "h-1/2 min-h-0 overflow-hidden border-b border-border" : "min-h-0 flex-1 overflow-hidden"}>
-        <FileTree model={model} className="h-full w-full" />
+      <div className={selectedFile ? "min-h-0 overflow-hidden border-b border-border" : "min-h-0 flex-1 overflow-hidden"}>
+        <FileTree model={model} />
       </div>
       {selectedFile && <FileViewer key={selectedFile} cwd={cwd} path={selectedFile} onClose={() => setSelectedFile(null)} />}
     </div>
@@ -79,7 +79,7 @@ function FileViewer({ cwd, path, onClose }: { cwd: string; path: string; onClose
   }, [cwd, path]);
 
   return (
-    <div className="flex h-1/2 min-h-0 flex-col">
+    <div className="flex h-full w-full flex-col">
       <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <span className="truncate text-xs text-sidebar-foreground/70">{path}</span>
         <button onClick={onClose} className="shrink-0 text-sidebar-foreground/40 transition-colors hover:text-sidebar-foreground"><X size={13} /></button>

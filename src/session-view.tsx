@@ -49,10 +49,6 @@ export function SessionView({
 
     const term = new Terminal({
       fontSize: 14,
-      theme: {
-        background: '#1a1b26',
-        foreground: '#a9b1d6',
-      },
       fontFamily: "Cascadia Mono",
     });
     termRef.current = term;
