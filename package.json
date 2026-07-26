@@ -13,7 +13,6 @@
     "lib",
     "public",
     "utils",
-    "server.ts",
     "vite.config.ts",
     "tsconfig.json"
   ],

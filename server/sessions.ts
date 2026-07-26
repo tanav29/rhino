@@ -1,50 +1,19 @@
-import { readFile, readdir, stat } from "fs/promises";
-import { dirname, isAbsolute, join, relative, resolve } from "path";
-import { WebSocket, WebSocketServer } from "ws";
+import { execFileAsync } from "../lib/server-commands";
+import { readdir } from "fs/promises";
+import { isAbsolute, join, relative, resolve } from "path";
+import { WebSocket } from "ws";
 import * as pty from "node-pty";
 import { getAvailableShells } from "../utils/shells";
-import { execFileAsync } from "../lib/server-commands";
-import { randomBytes } from "crypto";
-import { SessionPTY } from "./types";
+
+interface SessionPTY {
+  pty: import("node-pty").IPty;
+  clients: Set<WebSocket>;
+  title: string;
+  titleBuffer: string;
+  createdAt: number;
+}
 
 const sessions = new Map<string, SessionPTY>();
-const debugClients = new Set<WebSocket>();
-let csrfToken = randomBytes(32).toString("hex");
-let allowedOrigins: Set<string> | null = null;
-let _dev = false;
-
-export function getSessions() {
-  return sessions;
-}
-export function getDebugClients() {
-  return debugClients;
-}
-export function getCsrfToken() {
-  return csrfToken;
-}
-export function setAllowedOrigins(o: Set<string>) {
-  allowedOrigins = o;
-}
-export function getAllowedOrigins(): Set<string> {
-  if (!allowedOrigins) {
-    const p = parseInt(process.env.PORT || "4242", 10);
-    allowedOrigins = new Set([
-      `http://127.0.0.1:${p}`,
-      `http://localhost:5173`,
-      `http://127.0.0.1:5173`,
-    ]);
-  }
-  return allowedOrigins;
-}
-export function setDevMode(d: boolean) {
-  _dev = d;
-}
-export function isDevMode() {
-  return _dev;
-}
-export function resetCsrfToken() {
-  csrfToken = randomBytes(32).toString("hex");
-}
 
 function sendMessage(ws: WebSocket, payload: unknown) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
@@ -61,11 +30,6 @@ export function sessionsSnapshot() {
       createdAt: s.createdAt ?? now,
     })),
   };
-}
-
-export function broadcastDebug() {
-  const snap = sessionsSnapshot();
-  for (const c of debugClients) sendMessage(c, snap);
 }
 
 export function broadcastTitle(session: SessionPTY, title: string) {
@@ -170,7 +134,6 @@ function getOrCreateSession(
     createdAt: Date.now(),
   };
   sessions.set(id, session);
-  broadcastDebug();
   ptyProcess.onData((data) => {
     const titles = captureTitleChanges(session!, data);
     for (const c of session!.clients) {
@@ -178,7 +141,6 @@ function getOrCreateSession(
     }
     if (titles.length > 0) {
       broadcastTitle(session!, titles[titles.length - 1]);
-      broadcastDebug();
     }
   });
   ptyProcess.onExit(() => {
@@ -187,7 +149,6 @@ function getOrCreateSession(
     }
     session!.clients.clear();
     sessions.delete(id);
-    broadcastDebug();
   });
   return session;
 }
@@ -236,7 +197,7 @@ async function listFilesFallback(root: string): Promise<string[]> {
   return results;
 }
 
-async function listProjectFiles(cwd: string): Promise<string[]> {
+export async function listProjectFiles(cwd: string): Promise<string[]> {
   try {
     const result = await execFileAsync(
       "git",
@@ -258,103 +219,15 @@ async function listProjectFiles(cwd: string): Promise<string[]> {
   return listFilesFallback(cwd);
 }
 
+export function getSessions() {
+  return sessions;
+}
+
 export function resolveWithinCwd(cwd: string, relPath: string): string | null {
   const resolved = resolve(cwd, relPath);
   const rel = relative(cwd, resolved);
   if (rel.startsWith("..") || isAbsolute(rel)) return null;
   return resolved;
-}
-
-export async function handleFileBrowse(requested: string | null) {
-  const home =
-    process.platform === "win32" ? process.env.USERPROFILE || "C:\\" : process.env.HOME || "/";
-  const resolved = resolve(requested || home);
-  try {
-    const dirents = await readdir(resolved, { withFileTypes: true });
-    const entries = dirents
-      .reduce<{ name: string; path: string }[]>((r, e) => {
-        if (e.isDirectory() && !e.name.startsWith("."))
-          r.push({ name: e.name, path: join(resolved, e.name) });
-        return r;
-      }, [])
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const parent = dirname(resolved);
-    return { path: resolved, parent: parent === resolved ? null : parent, entries };
-  } catch (error) {
-    return {
-      path: resolved,
-      parent: null,
-      entries: [],
-      error: error instanceof Error ? error.message : "Unable to read directory",
-    };
-  }
-}
-
-export async function handleGitStatus(cwd: string): Promise<string> {
-  const result = await execFileAsync("git", ["-C", cwd, "status", "--short", "--branch"], {
-    windowsHide: true,
-  });
-  return result.stdout || "Working tree clean";
-}
-
-export async function handleListFiles(cwd: string) {
-  const paths = await listProjectFiles(cwd);
-  return { paths };
-}
-
-export async function handleReadFile(cwd: string, relPath: string) {
-  const resolved = resolveWithinCwd(cwd, relPath);
-  if (!resolved) return { error: "Invalid path" };
-  try {
-    const stats = await stat(resolved);
-    if (!stats.isFile()) throw new Error("Not a file");
-    if (stats.size > 2_000_000) return { error: "File is too large to preview" };
-    const buffer = await readFile(resolved);
-    if (buffer.subarray(0, 8000).includes(0)) return { error: "Binary file cannot be previewed" };
-    return { contents: buffer.toString("utf-8") };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to read file" };
-  }
-}
-
-export async function handleGitDiff(cwd: string, relPath: string) {
-  const resolved = resolveWithinCwd(cwd, relPath);
-  if (!resolved) return { error: "Invalid path" };
-  try {
-    const statusResult = await execFileAsync(
-      "git",
-      ["-C", cwd, "status", "--porcelain=1", "--untracked-files=all", "--", relPath],
-      { windowsHide: true },
-    );
-    const statusLine = statusResult.stdout.split("\n").find(Boolean) ?? "";
-    if (statusLine.startsWith("??")) {
-      const contents = await readFile(resolved, "utf-8");
-      return { kind: "added", contents };
-    }
-    let patch = "";
-    for (const args of [
-      ["diff", "HEAD", "--", relPath],
-      ["diff", "--cached", "--", relPath],
-      ["diff", "--", relPath],
-    ]) {
-      try {
-        const result = await execFileAsync("git", ["-C", cwd, ...args], {
-          windowsHide: true,
-          maxBuffer: 20 * 1024 * 1024,
-        });
-        if (result.stdout.trim()) {
-          patch = result.stdout;
-          break;
-        }
-      } catch {
-        /* try next */
-      }
-    }
-    if (!patch) return { kind: "empty" };
-    return { kind: "diff", patch };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to diff file" };
-  }
 }
 
 export function handlePTYConnection(
@@ -405,13 +278,5 @@ export function handlePTYConnection(
 
   ws.on("close", () => {
     if (session) session.clients.delete(ws);
-  });
-}
-
-export function attachDebugClient(ws: WebSocket) {
-  debugClients.add(ws);
-  sendMessage(ws, sessionsSnapshot());
-  ws.on("close", () => {
-    debugClients.delete(ws);
   });
 }

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "./api";
 import { GitCommit, Loader2 } from "lucide-react";
 import { File as CodeFile, PatchDiff } from "@pierre/diffs/react";
 import { parseGitStatus, type GitChangedFile } from "./git-status";
@@ -30,7 +29,7 @@ export function GitPanel({ cwd }: { cwd?: string }) {
     setFiles(null);
     setError(null);
     setSelected(null);
-    apiFetch(`/api/git/status?cwd=${encodeURIComponent(cwd ?? ".")}`)
+    fetch(`/api/git/status?cwd=${encodeURIComponent(cwd ?? ".")}`)
       .then(async (r) => {
         if (!r.ok) throw new Error();
         return r.text();
@@ -96,7 +95,7 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
   useEffect(() => {
     let cancelled = false;
     setDiff(null);
-    apiFetch(`/api/git/diff?cwd=${encodeURIComponent(cwd ?? ".")}&path=${encodeURIComponent(path)}`)
+    fetch(`/api/git/diff?cwd=${encodeURIComponent(cwd ?? ".")}&path=${encodeURIComponent(path)}`)
       .then(async (r) => {
         if (!r.ok) throw new Error();
         return r.json();

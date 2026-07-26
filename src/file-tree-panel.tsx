@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "./api";
 import { Loader2, X } from "lucide-react";
 import { FileTree, useFileTree } from "@pierre/trees/react";
 import type { GitStatusEntry } from "@pierre/trees";
@@ -20,11 +19,11 @@ export function FilesPanel({ cwd }: { cwd: string }) {
     setData(null);
     setError(null);
     Promise.all([
-      apiFetch(`/api/files?cwd=${encodeURIComponent(cwd)}`).then(async (r) => {
+      fetch(`/api/files?cwd=${encodeURIComponent(cwd)}`).then(async (r) => {
         if (!r.ok) throw new Error();
         return r.json();
       }),
-      apiFetch(`/api/git/status?cwd=${encodeURIComponent(cwd)}`)
+      fetch(`/api/git/status?cwd=${encodeURIComponent(cwd)}`)
         .then(async (r) => {
           if (!r.ok) throw new Error();
           return r.text();
@@ -112,7 +111,7 @@ function FileViewer({ cwd, path, onClose }: { cwd: string; path: string; onClose
   useEffect(() => {
     let cancelled = false;
     setState(null);
-    apiFetch(`/api/file?cwd=${encodeURIComponent(cwd)}&path=${encodeURIComponent(path)}`)
+    fetch(`/api/file?cwd=${encodeURIComponent(cwd)}&path=${encodeURIComponent(path)}`)
       .then(async (r) => {
         if (!r.ok) throw new Error();
         return r.json();

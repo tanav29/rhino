@@ -1,8 +1,6 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { apiFetch } from "./api";
 import { Plus, TerminalSquare, Trash2, X } from "lucide-react";
 import { SessionTabs, type SessionTab } from "./session-tabs";
-import { DebugToolbar } from "./debug-toolbar";
 import { closeSessionSocket } from "./session-sockets";
 import { SessionView } from "./session-view";
 import { FilesPanel } from "./file-tree-panel";
@@ -208,7 +206,7 @@ export default function App() {
   }, [addSession, projects, project, activeSession]);
 
   useEffect(() => {
-    apiFetch("/api/shells")
+    fetch("/api/shells")
       .then((response) => response.json())
       .then(setShells)
       .catch(() => setShells([]));
@@ -345,7 +343,6 @@ export default function App() {
           setPanes([{ id: uuid() }]);
         }}
       />
-      {new URLSearchParams(window.location.search).has("debug") && <DebugToolbar />}
     </div>
   );
 }

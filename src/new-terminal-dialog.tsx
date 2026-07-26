@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "./api";
 import { ChevronUp, Folder, Loader2, TerminalSquare } from "lucide-react";
 import {
   Dialog,
@@ -49,7 +48,7 @@ export function NewSessionDialog({
   const loadPath = async (path: string) => {
     setLoading(true);
     try {
-      const response = await apiFetch(`/api/browse?path=${encodeURIComponent(path)}`);
+      const response = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
       if (!response.ok) throw new Error("Unable to browse");
       const data = (await response.json()) as BrowseResult;
       setBrowse(data);
