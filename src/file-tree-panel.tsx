@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "./api";
 import { Loader2, X } from "lucide-react";
 import { FileTree, useFileTree } from "@pierre/trees/react";
 import type { GitStatusEntry } from "@pierre/trees";
@@ -19,8 +20,8 @@ export function FilesPanel({ cwd }: { cwd: string }) {
     setData(null);
     setError(null);
     Promise.all([
-      fetch(`/api/files?cwd=${encodeURIComponent(cwd)}`).then((r) => r.json()),
-      fetch(`/api/git/status?cwd=${encodeURIComponent(cwd)}`).then((r) => r.text()).catch(() => ""),
+      apiFetch(`/api/files?cwd=${encodeURIComponent(cwd)}`).then(async (r) => { if (!r.ok) throw new Error(); return r.json(); }),
+      apiFetch(`/api/git/status?cwd=${encodeURIComponent(cwd)}`).then(async (r) => { if (!r.ok) throw new Error(); return r.text(); }).catch(() => ""),
     ])
       .then(([filesRes, statusText]) => {
         if (cancelled) return;
@@ -71,8 +72,8 @@ function FileViewer({ cwd, path, onClose }: { cwd: string; path: string; onClose
   useEffect(() => {
     let cancelled = false;
     setState(null);
-    fetch(`/api/file?cwd=${encodeURIComponent(cwd)}&path=${encodeURIComponent(path)}`)
-      .then((r) => r.json())
+    apiFetch(`/api/file?cwd=${encodeURIComponent(cwd)}&path=${encodeURIComponent(path)}`)
+      .then(async (r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data) => { if (!cancelled) setState(data); })
       .catch(() => { if (!cancelled) setState({ error: "Unable to read file" }); });
     return () => { cancelled = true; };
@@ -82,7 +83,7 @@ function FileViewer({ cwd, path, onClose }: { cwd: string; path: string; onClose
     <div className="flex h-full w-full flex-col">
       <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <span className="truncate text-xs text-sidebar-foreground/70">{path}</span>
-        <button onClick={onClose} className="shrink-0 text-sidebar-foreground/40 transition-colors hover:text-sidebar-foreground"><X size={13} /></button>
+        <button type="button" aria-label="Close file preview" onClick={onClose} className="shrink-0 text-sidebar-foreground/40 transition-colors hover:text-sidebar-foreground"><X size={13} /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
         {!state ? (

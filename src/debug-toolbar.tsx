@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "./api";
 
 interface ServerSession {
   id: string;
@@ -21,7 +22,11 @@ export function DebugToolbar() {
     const connect = () => {
       if (cancelled) return;
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      ws = new WebSocket(`${proto}//${window.location.host}/api/debug`);
+      void apiFetch("/api/csrf")
+        .then((response) => response.json() as Promise<{ token: string }>)
+        .then(({ token }) => {
+          if (cancelled) return;
+          ws = new WebSocket(`${proto}//${window.location.host}/api/debug?csrf=${encodeURIComponent(token)}`);
       ws.onmessage = (event: MessageEvent) => {
         try {
           setData(JSON.parse(event.data as string));
@@ -29,9 +34,10 @@ export function DebugToolbar() {
           // ignore malformed messages
         }
       };
-      ws.onclose = () => {
-        if (!cancelled) retry = setTimeout(connect, 2000);
-      };
+          ws.onclose = () => {
+            if (!cancelled) retry = setTimeout(connect, 2000);
+          };
+        });
     };
     connect();
 
@@ -53,6 +59,8 @@ export function DebugToolbar() {
         <span className="font-semibold">sessions:</span>
         <span className="tabular-nums">{data.count}</span>
         <button
+          type="button"
+          aria-label="Toggle session details"
           onClick={() => setOpen((o) => !o)}
           className="ml-1 rounded px-1 text-white/40 hover:bg-white/10 hover:text-white"
           title="Toggle details">

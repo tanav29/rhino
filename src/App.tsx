@@ -1,4 +1,5 @@
-import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch } from "./api";
 import { Check, Plus, Search, TerminalSquare, Trash2, X } from "lucide-react";
 import { SessionTabs, type SessionTab } from "./session-tabs";
 import { DebugToolbar } from "./debug-toolbar";
@@ -10,7 +11,7 @@ import { NewSessionDialog } from "./new-terminal-dialog";
 
 export interface Project { id: string; name: string; path: string; sessions: SessionTab[] }
 interface Pane { id: string; direction?: "row" | "column" }
-const STORAGE_KEY = "term.workspace";
+const STORAGE_KEY = "term.workspace:v1";
 const DEFAULT_SHELL_STORAGE_KEY = "term.default-shell";
 let counter = 0;
 const uuid = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -31,7 +32,7 @@ export default function App() {
   const [activeProjectId, setActiveProjectId] = useState("");
   const [activeSessionId, setActiveSessionId] = useState("");
   const [panes, setPanes] = useState<Pane[]>([]);
-  const [palette, setPalette] = useState(false);
+  const palette = useRef(false);
   const [panel, setPanel] = useState<"files" | "git" | "info" | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [defaultShell, setDefaultShell] = useState<string>();
@@ -99,7 +100,7 @@ export default function App() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey;
-      if (mod && event.key.toLowerCase() === "p") { event.preventDefault(); setPalette((value) => !value); }
+      if (mod && event.key.toLowerCase() === "p") { event.preventDefault(); palette.current = !palette.current; }
       if (mod && event.key.toLowerCase() === "t") { event.preventDefault(); addSession(); }
       if (mod && event.key.toLowerCase() === "d") { event.preventDefault(); split(event.shiftKey ? "column" : "row"); }
       if (mod && event.key.toLowerCase() === "n") { event.preventDefault(); addProject(); }
@@ -109,7 +110,7 @@ export default function App() {
   }, [addSession, projects, project, activeSession]);
 
   useEffect(() => {
-    fetch("/api/shells")
+    apiFetch("/api/shells")
       .then((response) => response.json())
       .then(setShells)
       .catch(() => setShells([]));
@@ -128,6 +129,9 @@ export default function App() {
           <div
             key={p.id}
             onClick={() => selectProject(p.id)}
+            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") selectProject(p.id); }}
+            role="button"
+            tabIndex={0}
             className={`group flex w-full flex-col items-start gap-0.5 rounded-md px-2.5 py-2 text-left text-sm cursor-pointer ${
               p.id === activeProjectId
                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -137,6 +141,8 @@ export default function App() {
             <div className="flex w-full items-center gap-2">
               <span className="truncate text-xs font-medium">{p.name}</span>
               <button
+                type="button"
+                aria-label={`Delete workspace ${p.name}`}
                 onClick={(e) => { e.stopPropagation(); removeProject(p.id); }}
                 title="Delete workspace"
                 className="ml-auto flex size-5 shrink-0 items-center justify-center rounded text-sidebar-foreground/40 opacity-0 hover:text-destructive group-hover:opacity-100"
@@ -148,6 +154,8 @@ export default function App() {
           </div>
         ))}
         <button
+          type="button"
+          aria-label="New project"
           onClick={addProject}
           className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         >
@@ -199,7 +207,7 @@ function WorkspacePanel({ type, project, onClose }: { type: "files" | "git" | "i
     <aside className={`flex ${wide ? "w-80" : "w-64"} shrink-0 flex-col overflow-hidden border-l border-border bg-background text-sm text-sidebar-foreground`}>
       <div className="flex items-center justify-between border-b border-border px-3 h-8">
         <span className="font-medium">{type === "files" ? "Files" : type === "git" ? "Git" : "Session info"}</span>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={15} /></button>
+        <button type="button" aria-label="Close workspace panel" onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={15} /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         {type === "files" && (project ? <FilesPanel cwd={project.path} /> : <p className="p-4 text-sidebar-foreground/60">No project selected.</p>)}

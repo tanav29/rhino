@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "./api";
 import { GitCommit, Loader2 } from "lucide-react";
 import { File as CodeFile, PatchDiff } from "@pierre/diffs/react";
 import { parseGitStatus, type GitChangedFile } from "./git-status";
@@ -24,8 +25,8 @@ export function GitPanel({ cwd }: { cwd?: string }) {
     setFiles(null);
     setError(null);
     setSelected(null);
-    fetch(`/api/git/status?cwd=${encodeURIComponent(cwd ?? ".")}`)
-      .then((r) => r.text())
+    apiFetch(`/api/git/status?cwd=${encodeURIComponent(cwd ?? ".")}`)
+      .then(async (r) => { if (!r.ok) throw new Error(); return r.text(); })
       .then((text) => {
         if (cancelled) return;
         const branchLine = text.split("\n").find((l) => l.startsWith("##"));
@@ -53,6 +54,8 @@ export function GitPanel({ cwd }: { cwd?: string }) {
         <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
           {files.map((f) => (
             <button
+              type="button"
+              aria-label={`View changes for ${f.path}`}
               key={f.path}
               onClick={() => setSelected(f.path)}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
@@ -73,8 +76,8 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
   useEffect(() => {
     let cancelled = false;
     setDiff(null);
-    fetch(`/api/git/diff?cwd=${encodeURIComponent(cwd ?? ".")}&path=${encodeURIComponent(path)}`)
-      .then((r) => r.json())
+    apiFetch(`/api/git/diff?cwd=${encodeURIComponent(cwd ?? ".")}&path=${encodeURIComponent(path)}`)
+      .then(async (r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data) => { if (!cancelled) setDiff(data); })
       .catch(() => { if (!cancelled) setDiff({ error: "Unable to load diff" }); });
     return () => { cancelled = true; };

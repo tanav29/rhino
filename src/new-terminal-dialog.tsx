@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "./api";
 import { ChevronUp, Folder, Loader2, TerminalSquare } from "lucide-react";
 import {
   Dialog,
@@ -48,7 +49,8 @@ export function NewSessionDialog({
   const loadPath = async (path: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
+    const response = await apiFetch(`/api/browse?path=${encodeURIComponent(path)}`);
+      if (!response.ok) throw new Error("Unable to browse");
       const data = (await response.json()) as BrowseResult;
       setBrowse(data);
       setPathInput(data.path);
@@ -115,7 +117,7 @@ export function NewSessionDialog({
               ) : (
                 <>
                   {browse?.parent && (
-                    <button
+                    <button type="button" aria-label="Go to parent directory"
                       onClick={() => loadPath(browse.parent!)}
                       className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     >
@@ -127,7 +129,7 @@ export function NewSessionDialog({
                     <p className="p-3 text-xs text-muted-foreground">No subfolders</p>
                   )}
                   {browse?.entries.map((entry) => (
-                    <button
+                    <button type="button" aria-label={`Open ${entry.name}`}
                       key={entry.path}
                       onClick={() => loadPath(entry.path)}
                       className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-foreground"
@@ -143,8 +145,8 @@ export function NewSessionDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => { onCreate(shell || undefined, browse?.path ?? pathInput); onOpenChange(false); }}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button type="button" onClick={() => { onCreate(shell || undefined, browse?.path ?? pathInput); onOpenChange(false); }}>
             <TerminalSquare size={14} />
             Create terminal
           </Button>

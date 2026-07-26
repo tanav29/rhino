@@ -4,12 +4,11 @@ import { dirname, isAbsolute, join, relative, resolve } from "path";
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import { getAvailableShells } from "./utils/shells";
-import { execFile } from "child_process";
-import { promisify } from "util";
+import { randomBytes } from "crypto";
+import { execFileAsync } from "./lib/server-commands";
 
 const hostname = process.env.HOST || "127.0.0.1";
 const vitePort = 5173;
-const execFileAsync = promisify(execFile);
 const MAX_PREVIEW_FILE_SIZE = 2_000_000;
 const MAX_LISTED_FILES = 20000;
 const IGNORED_DIR_NAMES = new Set([
@@ -27,17 +26,15 @@ async function listFilesFallback(root: string): Promise<string[]> {
     } catch {
       return;
     }
-    for (const entry of entries) {
-      if (results.length >= MAX_LISTED_FILES) return;
-      if (entry.name === ".git") continue;
+    await Promise.all(entries.map(async (entry) => {
+      if (results.length >= MAX_LISTED_FILES || entry.name === ".git") return;
       const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
-        if (IGNORED_DIR_NAMES.has(entry.name)) continue;
-        await walk(join(dir, entry.name), relPath);
-      } else if (entry.isFile()) {
+        if (!IGNORED_DIR_NAMES.has(entry.name)) await walk(join(dir, entry.name), relPath);
+      } else if (entry.isFile() && results.length < MAX_LISTED_FILES) {
         results.push(relPath);
       }
-    }
+    }));
   }
   await walk(root, "");
   return results;
@@ -319,6 +316,21 @@ function writeJson(res: any, status: number, data: unknown, development: boolean
   res.end(json);
 }
 
+function getRequestOrigin(req: import("http").IncomingMessage): string | null {
+  const origin = req.headers.origin;
+  if (typeof origin !== "string") return null;
+  try {
+    const parsed = new URL(origin);
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+function createCsrfToken() {
+  return randomBytes(32).toString("hex");
+}
+
 export async function startServer(options: {
   hostname?: string;
   port?: number;
@@ -329,17 +341,45 @@ export async function startServer(options: {
   const serverPort = options.port ?? parseInt(process.env.PORT || "4242", 10);
   const dev = options.development ?? process.env.NODE_ENV !== "production";
   const staticDir = options.staticDir ?? resolve(process.cwd(), "dist");
+  const csrfToken = createCsrfToken();
+  const allowedOrigins = new Set([
+    `http://${serverHostname}:${serverPort}`,
+    `http://localhost:${vitePort}`,
+    `http://127.0.0.1:${vitePort}`,
+  ]);
   const server = createServer(async (req, res) => {
-    const reqUrl = new URL(req.url || "/", "http://localhost");
+    const reqUrl = new URL(req.url || "/", `http://${req.headers.host ?? `${serverHostname}:${serverPort}`}`);
+
+    if (reqUrl.pathname === "/api/csrf" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      res.end(JSON.stringify({ token: csrfToken }));
+      return;
+    }
 
     if (req.method === "OPTIONS") {
+      const origin = getRequestOrigin(req);
+      if (!origin || !allowedOrigins.has(origin)) {
+        res.writeHead(403);
+        res.end();
+        return;
+      }
       res.writeHead(204, {
-        "Access-Control-Allow-Origin": `http://localhost:${vitePort}`,
+        "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, X-Wterm-CSRF",
+        Vary: "Origin",
       });
       res.end();
       return;
+    }
+
+    if (reqUrl.pathname.startsWith("/api/")) {
+      const origin = getRequestOrigin(req);
+      if (!origin || !allowedOrigins.has(origin) || req.headers["x-wterm-csrf"] !== csrfToken) {
+        res.writeHead(403, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Forbidden" }));
+        return;
+      }
     }
 
     if (reqUrl.pathname === "/api/sessions") {
@@ -358,10 +398,12 @@ export async function startServer(options: {
       const resolved = resolve(requested || home);
       try {
         const dirents = await readdir(resolved, { withFileTypes: true });
-        const entries = dirents
-          .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
-          .map((entry) => ({ name: entry.name, path: join(resolved, entry.name) }))
-          .sort((a, b) => a.name.localeCompare(b.name));
+        const entries = dirents.reduce<{ name: string; path: string }[]>((result, entry) => {
+          if (entry.isDirectory() && !entry.name.startsWith(".")) {
+            result.push({ name: entry.name, path: join(resolved, entry.name) });
+          }
+          return result;
+        }, []).sort((a, b) => a.name.localeCompare(b.name));
         const parent = dirname(resolved);
         writeJson(res, 200, { path: resolved, parent: parent === resolved ? null : parent, entries }, dev);
       } catch (error) {
@@ -478,7 +520,12 @@ export async function startServer(options: {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", (req, socket, head) => {
-    const upUrl = new URL(req.url || "/", "http://localhost");
+    const upUrl = new URL(req.url || "/", `http://${req.headers.host ?? `${serverHostname}:${serverPort}`}`);
+    const origin = getRequestOrigin(req);
+    if (!origin || !allowedOrigins.has(origin) || (req.headers["x-wterm-csrf"] !== csrfToken && upUrl.searchParams.get("csrf") !== csrfToken)) {
+      socket.destroy();
+      return;
+    }
     const pathname = upUrl.pathname;
 
     if (pathname === "/api/terminal") {

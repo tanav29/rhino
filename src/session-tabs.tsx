@@ -72,11 +72,16 @@ export function SessionTabs({
             <div
               key={session.id}
               onClick={() => onSelect(session.id)}
+              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onSelect(session.id); }}
+              role="button"
+              tabIndex={0}
               className={`group flex h-full cursor-pointer items-center gap-1.5 px-2 text-xs border-r hover:bg-accent/20`}
             >
               <ShellIcon shell={session.shell} />
               <span className="max-w-28 truncate">{session.title}</span>
               <button
+                type="button"
+                aria-label={`Close ${session.title}`}
                 onClick={(e) => { e.stopPropagation(); onClose(session.id); }}
                 className="ml-0.5 flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 hover:bg-accent hover:text-foreground group-hover:opacity-100"
               >
@@ -88,6 +93,8 @@ export function SessionTabs({
       </div>
       <div className="flex items-center gap-0.5 px-1">
         <button
+          type="button"
+          aria-label="New terminal"
           onClick={() => onNew()}
           className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
         >
@@ -96,7 +103,7 @@ export function SessionTabs({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <button className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground">
+              <button type="button" aria-label="Choose shell" className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground">
                 <ChevronDown size={12} />
               </button>
             }
@@ -116,10 +123,10 @@ export function SessionTabs({
       <div className="ml-auto flex items-center gap-1 px-2 text-xs text-muted-foreground">
         <span className="truncate text-muted-foreground/80">{projectName}</span>
         <Separator orientation="vertical" className="mx-1 h-8" />
-        <button onClick={() => onPanelToggle?.(panel === "files" ? null : "files")} className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "files" ? "bg-accent text-foreground" : ""}`} title="Files">
+        <button type="button" aria-label="Toggle files panel" onClick={() => onPanelToggle?.(panel === "files" ? null : "files")} className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "files" ? "bg-accent text-foreground" : ""}`} title="Files">
           <Folder size={13} />
         </button>
-        <button onClick={() => onPanelToggle?.(panel === "git" ? null : "git")} className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "git" ? "bg-accent text-foreground" : ""}`} title="Git">
+        <button type="button" aria-label="Toggle git panel" onClick={() => onPanelToggle?.(panel === "git" ? null : "git")} className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "git" ? "bg-accent text-foreground" : ""}`} title="Git">
           <GitBranch size={13} />
         </button>
       </div>
