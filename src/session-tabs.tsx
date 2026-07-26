@@ -7,17 +7,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Plus, X, Terminal, ChevronDown, Folder, GitBranch } from "lucide-react";
 import {
-  Plus,
-  X,
-  Terminal,
-  ChevronDown,
-  Folder,
-  FolderCog,
-  GitBranch,
-  Settings2,
-} from "lucide-react";
-import { VscTerminalBash, VscTerminalCmd, VscTerminalGitBash, VscTerminalPowershell, VscTerminalUbuntu } from "react-icons/vsc";
+  VscTerminalBash,
+  VscTerminalCmd,
+  VscTerminalGitBash,
+  VscTerminalPowershell,
+  VscTerminalUbuntu,
+} from "react-icons/vsc";
 import { Separator } from "@/components/ui/separator";
 
 export interface SessionTab {
@@ -72,7 +69,9 @@ export function SessionTabs({
             <div
               key={session.id}
               onClick={() => onSelect(session.id)}
-              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onSelect(session.id); }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") onSelect(session.id);
+              }}
               role="button"
               tabIndex={0}
               className={`group flex h-full cursor-pointer items-center gap-1.5 px-2 text-xs border-r hover:bg-accent/20`}
@@ -82,7 +81,10 @@ export function SessionTabs({
               <button
                 type="button"
                 aria-label={`Close ${session.title}`}
-                onClick={(e) => { e.stopPropagation(); onClose(session.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose(session.id);
+                }}
                 className="ml-0.5 flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 hover:bg-accent hover:text-foreground group-hover:opacity-100"
               >
                 <X size={11} />
@@ -103,7 +105,11 @@ export function SessionTabs({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <button type="button" aria-label="Choose shell" className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground">
+              <button
+                type="button"
+                aria-label="Choose shell"
+                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
                 <ChevronDown size={12} />
               </button>
             }
@@ -123,10 +129,22 @@ export function SessionTabs({
       <div className="ml-auto flex items-center gap-1 px-2 text-xs text-muted-foreground">
         <span className="truncate text-muted-foreground/80">{projectName}</span>
         <Separator orientation="vertical" className="mx-1 h-8" />
-        <button type="button" aria-label="Toggle files panel" onClick={() => onPanelToggle?.(panel === "files" ? null : "files")} className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "files" ? "bg-accent text-foreground" : ""}`} title="Files">
+        <button
+          type="button"
+          aria-label="Toggle files panel"
+          onClick={() => onPanelToggle?.(panel === "files" ? null : "files")}
+          className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "files" ? "bg-accent text-foreground" : ""}`}
+          title="Files"
+        >
           <Folder size={13} />
         </button>
-        <button type="button" aria-label="Toggle git panel" onClick={() => onPanelToggle?.(panel === "git" ? null : "git")} className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "git" ? "bg-accent text-foreground" : ""}`} title="Git">
+        <button
+          type="button"
+          aria-label="Toggle git panel"
+          onClick={() => onPanelToggle?.(panel === "git" ? null : "git")}
+          className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "git" ? "bg-accent text-foreground" : ""}`}
+          title="Git"
+        >
           <GitBranch size={13} />
         </button>
       </div>

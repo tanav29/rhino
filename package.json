@@ -9,6 +9,7 @@
     "dist",
     "bin",
     "components",
+    "server",
     "lib",
     "public",
     "utils",
@@ -17,17 +18,18 @@
     "tsconfig.json"
   ],
   "scripts": {
-    "dev": "concurrently \"tsx server.ts\" \"vite\"",
-    "dev:server": "tsx server.ts",
-    "dev:vite": "vite",
-    "build": "vite build",
-    "start": "node ./bin/term.mjs",
-    "prepack": "vite build",
-    "lint": "eslint",
+    "dev": "concurrently \"tsx server/index.ts\" \"vite\"",
+    "build": "concurrently \"tsc -p server\" \"vite\"",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@hono/node-server": "^2.0.12",
     "@pierre/diffs": "^1.2.12",
     "@pierre/trees": "^1.0.0-beta.5",
     "@tailwindcss/postcss": "^4.2.2",
@@ -35,6 +37,7 @@
     "@xterm/addon-webgl": "^0.19.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "hono": "^4.12.32",
     "lucide-react": "^1.8.0",
     "node-pty": "^1.0.0",
     "postcss": "^8.5.9",
@@ -51,16 +54,16 @@
     "xterm": "^5.3.0"
   },
   "devDependencies": {
-    "@babel/core": "7.28.4",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.0.0",
     "concurrently": "^10.0.3",
-    "esbuild": "^0.25.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
     "typescript": "^6.0.2"
   }
 }

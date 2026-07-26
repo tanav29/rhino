@@ -9,9 +9,10 @@ interface ServerSession {
 }
 
 export function DebugToolbar() {
-  const [data, setData] = useState<{ count: number; sessions: ServerSession[] }>(
-    { count: 0, sessions: [] },
-  );
+  const [data, setData] = useState<{ count: number; sessions: ServerSession[] }>({
+    count: 0,
+    sessions: [],
+  });
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -26,14 +27,16 @@ export function DebugToolbar() {
         .then((response) => response.json() as Promise<{ token: string }>)
         .then(({ token }) => {
           if (cancelled) return;
-          ws = new WebSocket(`${proto}//${window.location.host}/api/debug?csrf=${encodeURIComponent(token)}`);
-      ws.onmessage = (event: MessageEvent) => {
-        try {
-          setData(JSON.parse(event.data as string));
-        } catch {
-          // ignore malformed messages
-        }
-      };
+          ws = new WebSocket(
+            `${proto}//${window.location.host}/api/debug?csrf=${encodeURIComponent(token)}`,
+          );
+          ws.onmessage = (event: MessageEvent) => {
+            try {
+              setData(JSON.parse(event.data as string));
+            } catch {
+              // ignore malformed messages
+            }
+          };
           ws.onclose = () => {
             if (!cancelled) retry = setTimeout(connect, 2000);
           };
@@ -63,7 +66,8 @@ export function DebugToolbar() {
           aria-label="Toggle session details"
           onClick={() => setOpen((o) => !o)}
           className="ml-1 rounded px-1 text-white/40 hover:bg-white/10 hover:text-white"
-          title="Toggle details">
+          title="Toggle details"
+        >
           {open ? "▾" : "▸"}
         </button>
       </div>
@@ -72,11 +76,10 @@ export function DebugToolbar() {
           {data.sessions.map((s) => (
             <div
               key={s.id}
-              className="flex items-center justify-between gap-2 border-b border-white/5 py-1 last:border-0">
+              className="flex items-center justify-between gap-2 border-b border-white/5 py-1 last:border-0"
+            >
               <span className="truncate text-white/80">{s.title}</span>
-              <span className="shrink-0 text-white/40">
-                {s.clients} cl
-              </span>
+              <span className="shrink-0 text-white/40">{s.clients} cl</span>
             </div>
           ))}
         </div>

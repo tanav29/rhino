@@ -1,4 +1,4 @@
-import { use, useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { apiFetch } from "./api";
 import { Terminal } from "xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -66,47 +66,48 @@ export function SessionView({
     let disposed = false;
 
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const shellQuery = session.shell
-      ? `&shell=${encodeURIComponent(session.shell)}`
-      : "";
+    const shellQuery = session.shell ? `&shell=${encodeURIComponent(session.shell)}` : "";
     const cwdQuery = session.cwd ? `&cwd=${encodeURIComponent(session.cwd)}` : "";
     let ws: WebSocket | null = null;
-    void apiFetch("/api/csrf").then((response) => response.json() as Promise<{ token: string }>).then(({ token }) => {
-      if (disposed) return;
-      const wsUrl = `${proto}//${window.location.host}/api/terminal?session=${session.id}&csrf=${encodeURIComponent(token)}${shellQuery}${cwdQuery}`;
-      ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-      sessionSockets.set(session.id, ws);
-
-      ws.onopen = () => {
+    void apiFetch("/api/csrf")
+      .then((response) => response.json() as Promise<{ token: string }>)
+      .then(({ token }) => {
         if (disposed) return;
-        ws?.send(`\x1b[RESIZE:${term.cols};${term.rows}]`);
-      };
+        const wsUrl = `${proto}//${window.location.host}/api/terminal?session=${session.id}&csrf=${encodeURIComponent(token)}${shellQuery}${cwdQuery}`;
+        ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+        sessionSockets.set(session.id, ws);
 
-      ws.onmessage = (event: MessageEvent) => {
-        if (disposed) return;
-        const data = event.data as string;
-        try {
-          const parsed = JSON.parse(data) as unknown;
-          if (isTitleMessage(parsed)) {
-            onTitleRef.current(session.id, parsed.title);
-            return;
+        ws.onopen = () => {
+          if (disposed) return;
+          ws?.send(`\x1b[RESIZE:${term.cols};${term.rows}]`);
+        };
+
+        ws.onmessage = (event: MessageEvent) => {
+          if (disposed) return;
+          const data = event.data as string;
+          try {
+            const parsed = JSON.parse(data) as unknown;
+            if (isTitleMessage(parsed)) {
+              onTitleRef.current(session.id, parsed.title);
+              return;
+            }
+          } catch {
+            // fall through to raw write
           }
-        } catch {
-          // fall through to raw write
-        }
-        term.write(data);
-      };
+          term.write(data);
+        };
 
-      ws.onclose = () => {
-        if (!disposed && wsRef.current === ws) {
-          wsRef.current = null;
-          term.write("\r\n\x1b[90m[session ended]\x1b[0m\r\n");
-        }
-      };
-    }).catch(() => {
-      if (!disposed) term.write("\r\n\x1b[31m[unable to connect]\x1b[0m\r\n");
-    });
+        ws.onclose = () => {
+          if (!disposed && wsRef.current === ws) {
+            wsRef.current = null;
+            term.write("\r\n\x1b[90m[session ended]\x1b[0m\r\n");
+          }
+        };
+      })
+      .catch(() => {
+        if (!disposed) term.write("\r\n\x1b[31m[unable to connect]\x1b[0m\r\n");
+      });
 
     const dataDisposable = term.onData((data) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {

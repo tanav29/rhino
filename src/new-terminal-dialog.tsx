@@ -49,7 +49,7 @@ export function NewSessionDialog({
   const loadPath = async (path: string) => {
     setLoading(true);
     try {
-    const response = await apiFetch(`/api/browse?path=${encodeURIComponent(path)}`);
+      const response = await apiFetch(`/api/browse?path=${encodeURIComponent(path)}`);
       if (!response.ok) throw new Error("Unable to browse");
       const data = (await response.json()) as BrowseResult;
       setBrowse(data);
@@ -88,7 +88,9 @@ export function NewSessionDialog({
             >
               <option value="">Default shell</option>
               {shells.map((option) => (
-                <option key={option.value} value={option.value}>{option.name}</option>
+                <option key={option.value} value={option.value}>
+                  {option.name}
+                </option>
               ))}
             </select>
           </label>
@@ -96,7 +98,10 @@ export function NewSessionDialog({
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-muted-foreground">Directory</span>
             <form
-              onSubmit={(event) => { event.preventDefault(); loadPath(pathInput); }}
+              onSubmit={(event) => {
+                event.preventDefault();
+                loadPath(pathInput);
+              }}
               className="flex items-center gap-1.5"
             >
               <input
@@ -105,7 +110,9 @@ export function NewSessionDialog({
                 spellCheck={false}
                 className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               />
-              <Button type="submit" variant="outline" size="sm">Go</Button>
+              <Button type="submit" variant="outline" size="sm">
+                Go
+              </Button>
             </form>
             <div className="h-48 overflow-y-auto rounded-md border border-border">
               {loading ? (
@@ -117,7 +124,9 @@ export function NewSessionDialog({
               ) : (
                 <>
                   {browse?.parent && (
-                    <button type="button" aria-label="Go to parent directory"
+                    <button
+                      type="button"
+                      aria-label="Go to parent directory"
                       onClick={() => loadPath(browse.parent!)}
                       className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     >
@@ -129,7 +138,9 @@ export function NewSessionDialog({
                     <p className="p-3 text-xs text-muted-foreground">No subfolders</p>
                   )}
                   {browse?.entries.map((entry) => (
-                    <button type="button" aria-label={`Open ${entry.name}`}
+                    <button
+                      type="button"
+                      aria-label={`Open ${entry.name}`}
                       key={entry.path}
                       onClick={() => loadPath(entry.path)}
                       className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-foreground"
@@ -145,8 +156,16 @@ export function NewSessionDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="button" onClick={() => { onCreate(shell || undefined, browse?.path ?? pathInput); onOpenChange(false); }}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              onCreate(shell || undefined, browse?.path ?? pathInput);
+              onOpenChange(false);
+            }}
+          >
             <TerminalSquare size={14} />
             Create terminal
           </Button>
