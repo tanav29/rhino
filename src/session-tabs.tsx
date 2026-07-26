@@ -1,7 +1,5 @@
 import * as React from "react";
 
-import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,23 +10,21 @@ import {
 import {
   Plus,
   X,
-  MoreHorizontalIcon,
   Terminal,
   ChevronDown,
+  Folder,
+  FolderCog,
+  GitBranch,
+  Settings2,
 } from "lucide-react";
 import { VscTerminalBash, VscTerminalCmd, VscTerminalGitBash, VscTerminalPowershell, VscTerminalUbuntu } from "react-icons/vsc";
-import { SiOpencode } from "react-icons/si";
-
-
-interface ShellOption {
-  name: string;
-  value: string;
-}
+import { Separator } from "@/components/ui/separator";
 
 export interface SessionTab {
   id: string;
   title: string;
   shell?: string;
+  cwd?: string;
 }
 
 interface SessionTabsProps {
@@ -36,8 +32,22 @@ interface SessionTabsProps {
   activeId: string;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
-  onNew: (shell?: string) => void;
+  onNew: (shell?: string, cwd?: string) => void;
+  shells: { name: string; value: string }[];
+  projectName?: string;
+  projectPath?: string;
+  panel?: "files" | "git" | "info" | null;
+  onPanelToggle?: (panel: "files" | "git" | "info" | null) => void;
 }
+
+const ShellIcon = ({ shell }: { shell?: string }) => {
+  if (shell === "cmd.exe") return <VscTerminalCmd size={13} />;
+  if (shell === "wsl.exe") return <VscTerminalUbuntu size={13} />;
+  if (shell === "bash.exe") return <VscTerminalBash size={13} />;
+  if (shell === "powershell.exe") return <VscTerminalPowershell size={13} />;
+  if (shell === "git-bash.exe") return <VscTerminalGitBash size={13} />;
+  return <Terminal size={13} />;
+};
 
 export function SessionTabs({
   sessions,
@@ -45,99 +55,73 @@ export function SessionTabs({
   onSelect,
   onClose,
   onNew,
+  shells,
+  projectName,
+  projectPath,
+  panel,
+  onPanelToggle,
 }: SessionTabsProps) {
-  const [shells, setShells] = React.useState<ShellOption[]>([]);
-
-  React.useEffect(() => {
-    fetch("/api/shells")
-      .then((response) => response.json())
-      .then((availableShells: ShellOption[]) => {
-        setShells(availableShells);
-      })
-      .catch(() => setShells([]));
-  }, []);
+  const [newTerminalOpen, setNewTerminalOpen] = React.useState(false);
 
   return (
-    <div className="flex w-52 flex-col border-r border-white/10 bg-white/3">
-      <div className="flex items-center justify-between px-3 py-2">
-        <span className="text-xs font-medium tracking-wide text-white/40">
-          SESSIONZ
-        </span>
-        <ButtonGroup>
-          <Button variant={"ghost"} size={"icon-sm"} onClick={() => onNew()}>
-            <Plus size={16} />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="More Options"
-                >
-                  <ChevronDown />
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuGroup>
-                {shells.map((shell) => (
-                  <DropdownMenuItem
-                    key={shell.value}
-                    onClick={() => onNew(shell.value)}
-                  >
-                    <Terminal size={14} />
-                    {shell.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ButtonGroup>
-      </div>
-      <div className="flex flex-col gap-1 overflow-y-auto px-2 pb-2">
+    <div className="flex h-8 shrink-0 items-center border-b border-border bg-background">
+      <div className="flex h-full items-center gap-px">
         {sessions.map((session) => {
           const isActive = session.id === activeId;
           return (
             <div
               key={session.id}
               onClick={() => onSelect(session.id)}
-              className={`group flex flex-col items-center justify-between gap-2 rounded-md px-2 py-2 text-sm ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-white/50 hover:bg-white/5 hover:text-white/80"
-              }`}
+              className={`group flex h-full cursor-pointer items-center gap-1.5 px-2 text-xs border-r hover:bg-accent/20`}
             >
-              <div className="w-full overflow-clip items-center justify-between flex">
-                <span className="truncate text-xs line-clamp-2">
-                  {session.shell === "cmd.exe" ? <VscTerminalCmd /> :
-                   session.shell === "wsl.exe" ? <VscTerminalUbuntu /> :
-                   session.shell === "bash.exe" ? <VscTerminalBash /> :
-                   session.shell === "powershell.exe" ? <VscTerminalPowershell /> :
-                   session.shell === "git-bash.exe" ? <VscTerminalGitBash /> :
-                   <Terminal size={13} />}
-                  {/*{session.title == "Opencode" ? <SiOpencode /> : }*/}
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClose(session.id);
-                  }}
-                  title="Close session"
-                  className="shrink-0 items-center justify-center rounded text-white/40 hover:text-white"
-                >
-                  <X size={13} />
-                </button>
-              </div>
-              {/*<span className="w-full truncate text-xs line-clamp-2 cursor-default">
-                {session.shell}
-              </span>*/}
-              <span className="w-full truncate text-xs line-clamp-2 cursor-default">
-                {session.title}
-              </span>
+              <ShellIcon shell={session.shell} />
+              <span className="max-w-28 truncate">{session.title}</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onClose(session.id); }}
+                className="ml-0.5 flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 hover:bg-accent hover:text-foreground group-hover:opacity-100"
+              >
+                <X size={11} />
+              </button>
             </div>
           );
         })}
+      </div>
+      <div className="flex items-center gap-0.5 px-1">
+        <button
+          onClick={() => onNew()}
+          className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Plus size={14} />
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground">
+                <ChevronDown size={12} />
+              </button>
+            }
+          />
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuGroup>
+              {shells.map((shell) => (
+                <DropdownMenuItem key={shell.value} onClick={() => onNew(shell.value)}>
+                  <Terminal size={14} />
+                  {shell.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <div className="ml-auto flex items-center gap-1 px-2 text-xs text-muted-foreground">
+        <span className="truncate text-muted-foreground/80">{projectName}</span>
+        <Separator orientation="vertical" className="mx-1 h-8" />
+        <button onClick={() => onPanelToggle?.(panel === "files" ? null : "files")} className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "files" ? "bg-accent text-foreground" : ""}`} title="Files">
+          <Folder size={13} />
+        </button>
+        <button onClick={() => onPanelToggle?.(panel === "git" ? null : "git")} className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "git" ? "bg-accent text-foreground" : ""}`} title="Git">
+          <GitBranch size={13} />
+        </button>
       </div>
     </div>
   );

@@ -23,12 +23,15 @@ function isTitleMessage(value: unknown): value is TitleMessage {
 export function SessionView({
   session,
   onTitle,
+  active = true,
 }: {
   session: SessionTab;
   onTitle: (id: string, title: string) => void;
+  active?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const termRef = useRef<Terminal | null>(null);
 
   const onTitleRef = useRef(onTitle);
 
@@ -36,18 +39,19 @@ export function SessionView({
     onTitleRef.current = onTitle;
   }, [onTitle]);
 
+  useEffect(() => {
+    if (active) termRef.current?.focus();
+  }, [active]);
+
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const term = new Terminal({
       fontSize: 14,
-      theme: {
-        background: '#1a1b26',
-        foreground: '#a9b1d6',
-      },
       fontFamily: "Cascadia Mono",
     });
+    termRef.current = term;
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(container);
@@ -64,7 +68,8 @@ export function SessionView({
     const shellQuery = session.shell
       ? `&shell=${encodeURIComponent(session.shell)}`
       : "";
-    const wsUrl = `${proto}//${window.location.host}/api/terminal?session=${session.id}${shellQuery}`;
+    const cwdQuery = session.cwd ? `&cwd=${encodeURIComponent(session.cwd)}` : "";
+    const wsUrl = `${proto}//${window.location.host}/api/terminal?session=${session.id}${shellQuery}${cwdQuery}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     sessionSockets.set(session.id, ws);
@@ -131,13 +136,14 @@ export function SessionView({
       sessionSockets.delete(session.id);
       if (ws.readyState !== WebSocket.CLOSED) ws.close();
       term.dispose();
+      if (termRef.current === term) termRef.current = null;
     };
   }, [session.id, session.shell]);
 
   return (
     <div
       ref={containerRef}
-      className="term-surface h-screen min-h-0 scrollbar-none bg-background"
+      className="term-surface h-full min-h-0 scrollbar-none bg-background"
       style={{
         padding: 0,
         minHeight: 0,

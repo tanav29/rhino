@@ -1,12 +1,72 @@
 import { createServer } from "http";
-import { readFile } from "fs/promises";
-import { resolve } from "path";
+import { readFile, readdir, stat } from "fs/promises";
+import { dirname, isAbsolute, join, relative, resolve } from "path";
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import { getAvailableShells } from "./utils/shells";
+import { execFile } from "child_process";
+import { promisify } from "util";
 
 const hostname = process.env.HOST || "127.0.0.1";
 const vitePort = 5173;
+const execFileAsync = promisify(execFile);
+const MAX_PREVIEW_FILE_SIZE = 2_000_000;
+const MAX_LISTED_FILES = 20000;
+const IGNORED_DIR_NAMES = new Set([
+  "node_modules", ".git", "dist", "build", "out", ".next", ".nuxt",
+  "target", "venv", ".venv", "__pycache__", ".cache", "coverage",
+]);
+
+async function listFilesFallback(root: string): Promise<string[]> {
+  const results: string[] = [];
+  async function walk(dir: string, prefix: string) {
+    if (results.length >= MAX_LISTED_FILES) return;
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (results.length >= MAX_LISTED_FILES) return;
+      if (entry.name === ".git") continue;
+      const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (IGNORED_DIR_NAMES.has(entry.name)) continue;
+        await walk(join(dir, entry.name), relPath);
+      } else if (entry.isFile()) {
+        results.push(relPath);
+      }
+    }
+  }
+  await walk(root, "");
+  return results;
+}
+
+async function listProjectFiles(cwd: string): Promise<string[]> {
+  try {
+    const result = await execFileAsync("git", ["-C", cwd, "ls-files", "-co", "--exclude-standard"], {
+      windowsHide: true,
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    const files = result.stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((p) => p.replace(/\\/g, "/"));
+    if (files.length) return files.slice(0, MAX_LISTED_FILES);
+  } catch {
+    // not a git repo, or git unavailable — fall back to a manual walk
+  }
+  return listFilesFallback(cwd);
+}
+
+function resolveWithinCwd(cwd: string, relPath: string): string | null {
+  const resolved = resolve(cwd, relPath);
+  const rel = relative(cwd, resolved);
+  if (rel.startsWith("..") || isAbsolute(rel)) return null;
+  return resolved;
+}
 
 function cleanEnv(): Record<string, string> {
   const env: Record<string, string> = {};
@@ -17,6 +77,14 @@ function cleanEnv(): Record<string, string> {
 }
 
 function getShell(shellValue?: string): { shell: string; args: string[] } {
+  if (shellValue?.startsWith("ssh:")) {
+    const target = shellValue.slice(4).trim();
+    const portMatch = target.match(/^(.*):(\d+)$/);
+    return {
+      shell: process.platform === "win32" ? "ssh.exe" : "ssh",
+      args: portMatch ? ["-p", portMatch[2], portMatch[1]] : [target],
+    };
+  }
   if (shellValue) {
     const selectedShell = getAvailableShells().find(
       (availableShell) => availableShell.value === shellValue,
@@ -132,6 +200,7 @@ function getOrCreateSession(
   cols: number,
   rows: number,
   shellValue?: string,
+  cwd?: string,
 ): SessionPTY {
   let session = sessions.get(id);
   if (session) return session;
@@ -142,10 +211,11 @@ function getOrCreateSession(
     cols,
     rows,
     useConptyDll: true,
-    cwd:
-      process.platform === "win32"
+    cwd: shellValue?.startsWith("ssh:")
+      ? undefined
+      : cwd || (process.platform === "win32"
         ? process.env.USERPROFILE || "C:\\"
-        : process.env.HOME || "/",
+        : process.env.HOME || "/"),
     env: cleanEnv(),
   });
 
@@ -188,6 +258,7 @@ function handlePTYConnection(
   ws: WebSocket,
   sessionId?: string,
   shellValue?: string,
+  cwd?: string,
 ) {
   const id = sessionId || "default";
   let session: SessionPTY | null = null;
@@ -212,7 +283,7 @@ function handlePTYConnection(
         const cols = parseInt(match[1], 10);
         const rows = parseInt(match[2], 10);
         if (!session) {
-          session = getOrCreateSession(id, cols, rows, shellValue);
+          session = getOrCreateSession(id, cols, rows, shellValue, cwd);
           attach(session);
         } else {
           session.pty.resize(cols, rows);
@@ -281,6 +352,111 @@ export async function startServer(options: {
       return;
     }
 
+    if (reqUrl.pathname === "/api/browse") {
+      const requested = reqUrl.searchParams.get("path")?.trim();
+      const home = process.platform === "win32" ? process.env.USERPROFILE || "C:\\" : process.env.HOME || "/";
+      const resolved = resolve(requested || home);
+      try {
+        const dirents = await readdir(resolved, { withFileTypes: true });
+        const entries = dirents
+          .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+          .map((entry) => ({ name: entry.name, path: join(resolved, entry.name) }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        const parent = dirname(resolved);
+        writeJson(res, 200, { path: resolved, parent: parent === resolved ? null : parent, entries }, dev);
+      } catch (error) {
+        writeJson(res, 200, { path: resolved, parent: null, entries: [], error: error instanceof Error ? error.message : "Unable to read directory" }, dev);
+      }
+      return;
+    }
+
+    if (reqUrl.pathname === "/api/git/status") {
+      try {
+        const cwd = reqUrl.searchParams.get("cwd") || process.cwd();
+        const result = await execFileAsync("git", ["-C", cwd, "status", "--short", "--branch"], { windowsHide: true });
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(result.stdout || "Working tree clean");
+      } catch (error) {
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(error instanceof Error ? error.message : "Git unavailable");
+      }
+      return;
+    }
+
+    if (reqUrl.pathname === "/api/files") {
+      const cwd = resolve(reqUrl.searchParams.get("cwd") || process.cwd());
+      try {
+        const paths = await listProjectFiles(cwd);
+        writeJson(res, 200, { paths }, dev);
+      } catch (error) {
+        writeJson(res, 200, { paths: [], error: error instanceof Error ? error.message : "Unable to list files" }, dev);
+      }
+      return;
+    }
+
+    if (reqUrl.pathname === "/api/file") {
+      const cwd = resolve(reqUrl.searchParams.get("cwd") || process.cwd());
+      const relPath = reqUrl.searchParams.get("path") || "";
+      const resolved = resolveWithinCwd(cwd, relPath);
+      if (!resolved) {
+        writeJson(res, 400, { error: "Invalid path" }, dev);
+        return;
+      }
+      try {
+        const stats = await stat(resolved);
+        if (!stats.isFile()) throw new Error("Not a file");
+        if (stats.size > MAX_PREVIEW_FILE_SIZE) {
+          writeJson(res, 200, { error: "File is too large to preview" }, dev);
+          return;
+        }
+        const buffer = await readFile(resolved);
+        if (buffer.subarray(0, 8000).includes(0)) {
+          writeJson(res, 200, { error: "Binary file cannot be previewed" }, dev);
+          return;
+        }
+        writeJson(res, 200, { contents: buffer.toString("utf-8") }, dev);
+      } catch (error) {
+        writeJson(res, 200, { error: error instanceof Error ? error.message : "Unable to read file" }, dev);
+      }
+      return;
+    }
+
+    if (reqUrl.pathname === "/api/git/diff") {
+      const cwd = resolve(reqUrl.searchParams.get("cwd") || process.cwd());
+      const relPath = reqUrl.searchParams.get("path") || "";
+      const resolved = resolveWithinCwd(cwd, relPath);
+      if (!resolved) {
+        writeJson(res, 400, { error: "Invalid path" }, dev);
+        return;
+      }
+      try {
+        const statusResult = await execFileAsync("git", ["-C", cwd, "status", "--porcelain=1", "--untracked-files=all", "--", relPath], { windowsHide: true });
+        const statusLine = statusResult.stdout.split("\n").find(Boolean) ?? "";
+        if (statusLine.startsWith("??")) {
+          const contents = await readFile(resolved, "utf-8");
+          writeJson(res, 200, { kind: "added", contents }, dev);
+          return;
+        }
+        let patch = "";
+        for (const args of [["diff", "HEAD", "--", relPath], ["diff", "--cached", "--", relPath], ["diff", "--", relPath]]) {
+          try {
+            const result = await execFileAsync("git", ["-C", cwd, ...args], { windowsHide: true, maxBuffer: 20 * 1024 * 1024 });
+            if (result.stdout.trim()) { patch = result.stdout; break; }
+          } catch {
+            // try the next diff strategy
+          }
+        }
+        if (!patch) {
+          writeJson(res, 200, { kind: "empty" }, dev);
+          return;
+        }
+        writeJson(res, 200, { kind: "diff", patch }, dev);
+      } catch (error) {
+        writeJson(res, 200, { error: error instanceof Error ? error.message : "Unable to diff file" }, dev);
+      }
+      return;
+    }
+
     if (dev) {
       res.writeHead(404);
       res.end("Not found");
@@ -309,7 +485,7 @@ export async function startServer(options: {
       const sessionId = upUrl.searchParams.get("session") ?? undefined;
       wss.handleUpgrade(req, socket, head, (ws) => {
         const shellValue = upUrl.searchParams.get("shell") ?? undefined;
-        handlePTYConnection(ws, sessionId, shellValue);
+        handlePTYConnection(ws, sessionId, shellValue, upUrl.searchParams.get("cwd") ?? undefined);
       });
     } else if (pathname === "/api/debug") {
       wss.handleUpgrade(req, socket, head, (ws) => {
