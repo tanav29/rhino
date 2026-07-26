@@ -1,12 +1,10 @@
 import { Hono } from "hono";
 import { dirname, join, resolve } from "path";
-import { resolveWithinCwd, sessionsSnapshot } from "./sessions";
+import { resolveWithinCwd, sessionsSnapshot, listProjectFiles } from "./sessions";
 import { getAvailableShells } from "../utils/shells";
-import {
-  listProjectFiles
-} from "./sessions";
-import { execFileAsync } from "@/lib/server-commands";
+import { execFileAsync } from "../lib/server-commands";
 import { readdir, readFile, stat } from "fs/promises";
+import { MAX_PREVIEW_FILE_SIZE } from "./env";
 
 export const apiRouter = new Hono();
 
@@ -58,7 +56,7 @@ apiRouter.get("/file", async (c) => {
   try {
     const stats = await stat(resolved);
     if (!stats.isFile()) throw new Error("Not a file");
-    if (stats.size > 2_000_000) return c.json({ error: "File is too large to preview" }, 400);
+    if (stats.size > MAX_PREVIEW_FILE_SIZE) return c.json({ error: "File is too large to preview" }, 400);
     const buffer = await readFile(resolved);
     if (buffer.subarray(0, 8000).includes(0)) return c.json({ error: "Binary file cannot be previewed" }, 400);
     return c.json({ contents: buffer.toString("utf-8") }, 200);
@@ -67,6 +65,20 @@ apiRouter.get("/file", async (c) => {
   }
 });
 
+
+apiRouter.get("/git/status", async (c) => {
+  const cwd = resolve(c.req.query("cwd") || process.cwd());
+  try {
+    const result = await execFileAsync(
+      "git",
+      ["-C", cwd, "status", "--short", "--branch"],
+      { windowsHide: true, maxBuffer: 20 * 1024 * 1024 },
+    );
+    return c.text(result.stdout, 200);
+  } catch {
+    return c.text("", 200);
+  }
+});
 
 apiRouter.get("/git/diff", async (c) => {
   const cwd = resolve(c.req.query("cwd") || process.cwd());

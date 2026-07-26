@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import type { SessionTab } from "./session-tabs";
 import { sessionSockets } from "./session-sockets";
+import { apiBase } from "./api-base";
 import "xterm/css/xterm.css";
 
 type TitleMessage = {
@@ -72,9 +73,10 @@ export function SessionView({
     function connect() {
       if (disposed) return;
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsHost = apiBase ? "localhost:4242" : window.location.host;
       const shellQuery = session.shell ? `&shell=${encodeURIComponent(session.shell)}` : "";
       const cwdQuery = session.cwd ? `&cwd=${encodeURIComponent(session.cwd)}` : "";
-      const wsUrl = `${proto}//${window.location.host}/api/terminal?session=${session.id}${shellQuery}${cwdQuery}`;
+      const wsUrl = `${proto}//${wsHost}/api/terminal?session=${session.id}${shellQuery}${cwdQuery}`;
       ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       sessionSockets.set(session.id, ws);

@@ -32,7 +32,6 @@ interface SessionTabsProps {
   onNew: (shell?: string, cwd?: string) => void;
   shells: { name: string; value: string }[];
   projectName?: string;
-  projectPath?: string;
   panel?: "files" | "git" | "info" | null;
   onPanelToggle?: (panel: "files" | "git" | "info" | null) => void;
 }
@@ -48,23 +47,18 @@ const ShellIcon = ({ shell }: { shell?: string }) => {
 
 export function SessionTabs({
   sessions,
-  activeId,
   onSelect,
   onClose,
   onNew,
   shells,
   projectName,
-  projectPath,
   panel,
   onPanelToggle,
 }: SessionTabsProps) {
-  const [newTerminalOpen, setNewTerminalOpen] = React.useState(false);
-
   return (
     <div className="flex h-8 shrink-0 items-center border-b border-border bg-background">
       <div className="flex h-full items-center gap-px">
         {sessions.map((session) => {
-          const isActive = session.id === activeId;
           return (
             <div
               key={session.id}

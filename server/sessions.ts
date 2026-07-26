@@ -4,6 +4,7 @@ import { isAbsolute, join, relative, resolve } from "path";
 import { WebSocket } from "ws";
 import * as pty from "node-pty";
 import { getAvailableShells } from "../utils/shells";
+import { IGNORED_DIR_NAMES } from "./env";
 
 interface SessionPTY {
   pty: import("node-pty").IPty;
@@ -169,21 +170,7 @@ async function listFilesFallback(root: string): Promise<string[]> {
         const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
         if (entry.isDirectory()) {
           if (
-            ![
-              "node_modules",
-              ".git",
-              "dist",
-              "build",
-              "out",
-              ".next",
-              ".nuxt",
-              "target",
-              "venv",
-              ".venv",
-              "__pycache__",
-              ".cache",
-              "coverage",
-            ].includes(entry.name)
+            !IGNORED_DIR_NAMES.has(entry.name)
           ) {
             await walk(join(dir, entry.name), relPath);
           }

@@ -9,15 +9,6 @@ export default defineConfig({
       "@": fileURLToPath(new URL(".", import.meta.url)),
     },
   },
-  server: {
-    proxy: {
-      "/api": {
-        target: "http://localhost:4242",
-        changeOrigin: true,
-        ws: true,
-      },
-    },
-  },
   build: {
     outDir: "dist",
     emptyOutDir: true,
