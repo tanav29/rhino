@@ -76,24 +76,47 @@ export default function App() {
   const [defaultShell, setDefaultShell] = useState<string>();
   const [newOpen, setNewOpen] = useState(false);
   const [shells, setShells] = useState<{ name: string; value: string }[]>([]);
+  const lastSessionByProject = useRef<Record<string, string>>({});
   const project = projects.find((item) => item.id === activeProjectId);
   const sessions = project?.sessions ?? [];
   const activeSession = sessions.find((item) => item.id === activeSessionId);
 
   useEffect(() => {
-    const loaded = loadWorkspace();
-    startTransition(() => {
-      setProjects(loaded);
-      setActiveProjectId(loaded[0].id);
-      setActiveSessionId(loaded[0].sessions[0].id);
-      setPanes([{ id: uuid(), sessionId: loaded[0].sessions[0].id }]);
-      setDefaultShell(localStorage.getItem(DEFAULT_SHELL_STORAGE_KEY) ?? undefined);
-      setHydrated(true);
-    });
+    const fallback = loadWorkspace();
+    fetch(`${apiBase}/api/workspace`)
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null)
+      .then((remote) => {
+        const loaded =
+          remote?.projects?.length && remote.projects.every((p: Project) => p?.id && Array.isArray(p.sessions))
+            ? (remote.projects as Project[])
+            : fallback;
+        const projectId = loaded.some((p) => p.id === remote?.activeProjectId)
+          ? remote.activeProjectId
+          : loaded[0].id;
+        const selectedProject = loaded.find((p) => p.id === projectId) ?? loaded[0];
+        const sessionId = selectedProject.sessions.some((s) => s.id === remote?.activeSessionId)
+          ? remote.activeSessionId
+          : selectedProject.sessions[0].id;
+        startTransition(() => {
+          setProjects(loaded);
+          setActiveProjectId(projectId);
+          setActiveSessionId(sessionId);
+          setPanes(Array.isArray(remote?.panes) && remote.panes.length ? remote.panes : [{ id: uuid(), sessionId }]);
+          setDefaultShell(remote?.defaultShell ?? localStorage.getItem(DEFAULT_SHELL_STORAGE_KEY) ?? undefined);
+          setHydrated(true);
+        });
+      });
   }, []);
   useEffect(() => {
-    if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  }, [hydrated, projects]);
+    if (!hydrated || !projects.length) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    void fetch(`${apiBase}/api/workspace`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projects, activeProjectId, activeSessionId, panes, defaultShell }),
+    }).catch(() => undefined);
+  }, [hydrated, projects, activeProjectId, activeSessionId, panes, defaultShell]);
   useEffect(() => {
     if (activeSession) document.title = `${activeSession.title} — ${project?.name ?? "Terminal"}`;
   }, [activeSession, project]);
@@ -106,6 +129,13 @@ export default function App() {
         all.map((p) => (p.id === project.id ? { ...p, sessions: [...p.sessions, session] } : p)),
       );
       setActiveSessionId(session.id);
+      setPanes((all) =>
+        all.length
+          ? all.map((pane, index) =>
+              index === 0 ? { ...pane, sessionId: session.id } : pane,
+            )
+          : all,
+      );
       if (shell) {
         setDefaultShell(shell);
         localStorage.setItem(DEFAULT_SHELL_STORAGE_KEY, shell);
@@ -115,10 +145,11 @@ export default function App() {
   );
   const selectSession = useCallback((id: string) => {
     setActiveSessionId(id);
-    setPanes((all) => {
-      if (all.length <= 1) return all;
-      return all.map((p, i) => (i === 0 ? { ...p, sessionId: id } : p));
+    setActiveProjectId((projectId) => {
+      lastSessionByProject.current[projectId] = id;
+      return projectId;
     });
+    setPanes((all) => all.map((pane, index) => (index === 0 ? { ...pane, sessionId: id } : pane)));
   }, []);
   const updateTitle = useCallback(
     (id: string, title: string) =>
@@ -149,9 +180,13 @@ export default function App() {
   const selectProject = (id: string) => {
     const next = projects.find((p) => p.id === id);
     if (!next) return;
+    lastSessionByProject.current[activeProjectId] = activeSessionId;
+    const sessionId = next.sessions.some((session) => session.id === lastSessionByProject.current[id])
+      ? lastSessionByProject.current[id]
+      : next.sessions[0].id;
     setActiveProjectId(id);
-    setActiveSessionId(next.sessions[0].id);
-    setPanes([{ id: uuid(), sessionId: next.sessions[0].id }]);
+    setActiveSessionId(sessionId);
+    setPanes([{ id: uuid(), sessionId }]);
   };
   const addProject = useCallback(() => setNewOpen(true), []);
   const removeProject = (id: string) => {
@@ -271,6 +306,9 @@ export default function App() {
     const s = sessions.find((sess) => sess.id === pane.sessionId) ?? activeSession;
     return { ...pane, session: s };
   });
+  const allSessions = projects.flatMap((item) => item.sessions);
+  const paneCount = paneSessions.length;
+  const splitColumn = panes[0]?.direction === "column";
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -340,36 +378,36 @@ export default function App() {
           panel={panel}
           onPanelToggle={setPanel}
         />
-        {activeSession && (
-          <div
-            className="flex min-h-0 flex-1"
-            style={{ flexDirection: panes[0]?.direction === "column" ? "column" : "row" }}
-          >
-            {paneSessions.map((ps, i) => {
-              const isActive = ps.session?.id === activeSessionId;
-              const isLast = i === paneSessions.length - 1;
-              const isColumn = ps.direction === "column";
-              return (
-                <div
-                  key={ps.id}
-                  className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-                  style={{
-                    borderRight: !isLast && !isColumn ? "1px solid var(--border)" : undefined,
-                    borderBottom: !isLast && isColumn ? "1px solid var(--border)" : undefined,
-                  }}
-                >
-                  {ps.session && (
-                    <SessionView
-                      session={ps.session}
-                      onTitle={updateTitle}
-                      active={isActive}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          {allSessions.map((session) => {
+            const paneIndex = paneSessions.findIndex((pane) => pane.session?.id === session.id);
+            const visible = paneIndex >= 0 && paneCount > 0;
+            const size = visible ? `${100 / paneCount}%` : "0";
+            const isLast = paneIndex === paneCount - 1;
+            return (
+              <div
+                key={session.id}
+                className="absolute overflow-hidden"
+                style={{
+                  display: visible ? "block" : "none",
+                  top: splitColumn ? `${paneIndex * (100 / paneCount)}%` : 0,
+                  left: splitColumn ? 0 : `${paneIndex * (100 / paneCount)}%`,
+                  height: splitColumn ? size : "100%",
+                  width: splitColumn ? "100%" : size,
+                  borderRight: visible && !isLast && !splitColumn ? "1px solid var(--border)" : undefined,
+                  borderBottom: visible && !isLast && splitColumn ? "1px solid var(--border)" : undefined,
+                }}
+              >
+                <SessionView
+                  session={session}
+                  onTitle={updateTitle}
+                  active={session.id === activeSessionId}
+                  visible={visible}
+                />
+              </div>
+            );
+          })}
+        </div>
       </main>
       {panel && <WorkspacePanel type={panel} project={project} onClose={() => setPanel(null)} />}
       <NewSessionDialog

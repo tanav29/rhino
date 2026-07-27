@@ -47,6 +47,7 @@ const ShellIcon = ({ shell }: { shell?: string }) => {
 
 export function SessionTabs({
   sessions,
+  activeId,
   onSelect,
   onClose,
   onNew,
@@ -68,7 +69,11 @@ export function SessionTabs({
               }}
               role="button"
               tabIndex={0}
-              className={`group flex h-full cursor-pointer items-center gap-1.5 px-2 text-xs border-r hover:bg-accent/20`}
+              className={`group flex h-full cursor-pointer items-center gap-1.5 border-r px-2 text-xs transition-colors ${
+                session.id === activeId
+                  ? "bg-accent text-accent-foreground"
+                  : "hover:bg-accent/50"
+              }`}
             >
               <ShellIcon shell={session.shell} />
               <span className="max-w-28 truncate">{session.title}</span>

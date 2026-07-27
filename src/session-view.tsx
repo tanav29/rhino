@@ -12,6 +12,8 @@ type TitleMessage = {
   title: string;
 };
 
+const ESC = String.fromCharCode(27);
+
 function isTitleMessage(value: unknown): value is TitleMessage {
   return (
     typeof value === "object" &&
@@ -21,18 +23,29 @@ function isTitleMessage(value: unknown): value is TitleMessage {
   );
 }
 
+function isTerminalResponse(value: string) {
+  return (
+    (value.startsWith(`${ESC}[?`) && /^\[\?[0-9;]*c$/.test(value.slice(1))) ||
+    (value.startsWith(`${ESC}[`) && /^\[[0-9;]+R$/.test(value.slice(1)))
+  );
+}
+
 export function SessionView({
   session,
   onTitle,
   active = true,
+  visible = true,
 }: {
   session: SessionTab;
   onTitle: (id: string, title: string) => void;
   active?: boolean;
+  visible?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const termRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  const visibleRef = useRef(visible);
 
   const onTitleRef = useRef(onTitle);
 
@@ -40,9 +53,17 @@ export function SessionView({
     onTitleRef.current = onTitle;
   }, [onTitle]);
 
-  useEffect(() => {
-    if (active) termRef.current?.focus();
-  }, [active]);
+  visibleRef.current = visible;
+
+  useLayoutEffect(() => {
+    if (!visible) return;
+    try {
+      fitAddonRef.current?.fit();
+      if (active) termRef.current?.focus();
+    } catch {
+      // the terminal may not have measurable dimensions yet
+    }
+  }, [active, visible]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -54,6 +75,7 @@ export function SessionView({
     });
     termRef.current = term;
     const fitAddon = new FitAddon();
+    fitAddonRef.current = fitAddon;
     term.loadAddon(fitAddon);
     term.open(container);
     try {
@@ -61,7 +83,7 @@ export function SessionView({
     } catch {
       // fall back to canvas renderer
     }
-    fitAddon.fit();
+    if (visibleRef.current) fitAddon.fit();
 
     let disposed = false;
 
@@ -119,6 +141,7 @@ export function SessionView({
     connect();
 
     const dataDisposable = term.onData((data) => {
+      if (isTerminalResponse(data)) return;
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(data);
       }
@@ -135,7 +158,7 @@ export function SessionView({
     });
 
     const resizeObserver = new ResizeObserver(() => {
-      if (disposed) return;
+      if (disposed || !visibleRef.current) return;
       try {
         fitAddon.fit();
       } catch {
@@ -151,10 +174,13 @@ export function SessionView({
        dataDisposable.dispose();
        resizeDisposable.dispose();
        titleDisposable.dispose();
-       sessionSockets.delete(session.id);
-       if (ws && ws.readyState !== WebSocket.CLOSED) ws.close();
+       if (sessionSockets.get(session.id) === ws) {
+         sessionSockets.delete(session.id);
+         if (ws && ws.readyState !== WebSocket.CLOSED) ws.close();
+       }
        term.dispose();
        if (termRef.current === term) termRef.current = null;
+       if (fitAddonRef.current === fitAddon) fitAddonRef.current = null;
      };
   }, [session.id, session.shell, session.cwd]);
 

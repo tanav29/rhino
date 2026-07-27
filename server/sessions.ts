@@ -11,10 +11,23 @@ interface SessionPTY {
   clients: Set<WebSocket>;
   title: string;
   titleBuffer: string;
+  outputBuffer: string;
   createdAt: number;
 }
 
 const sessions = new Map<string, SessionPTY>();
+const MAX_OUTPUT_BUFFER = 200_000;
+const ESC = String.fromCharCode(27);
+
+function stripTerminalResponses(value: string) {
+  return value.replace(new RegExp(`${ESC}\\[\\?[0-9;]*c|${ESC}\\[[0-9;]+R`, "g"), "");
+}
+
+function stripReplayControlSequences(value: string) {
+  return stripTerminalResponses(value)
+    .replace(/\^\[\[\?[0-9;]*c/g, "")
+    .replace(new RegExp(`${ESC}\\[(?:[0-9]+;)?[356]n|${ESC}\\[(?:>|=)?c`, "g"), "");
+}
 
 function sendMessage(ws: WebSocket, payload: unknown) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
@@ -132,13 +145,18 @@ function getOrCreateSession(
     clients: new Set(),
     title: ptyProcess.process,
     titleBuffer: "",
+    outputBuffer: "",
     createdAt: Date.now(),
   };
   sessions.set(id, session);
   ptyProcess.onData((data) => {
+    const displayData = stripReplayControlSequences(data);
+    session!.outputBuffer = stripReplayControlSequences(
+      (session!.outputBuffer + data).slice(-MAX_OUTPUT_BUFFER),
+    );
     const titles = captureTitleChanges(session!, data);
     for (const c of session!.clients) {
-      if (c.readyState === WebSocket.OPEN) c.send(data);
+      if (c.readyState === WebSocket.OPEN && displayData) c.send(displayData);
     }
     if (titles.length > 0) {
       broadcastTitle(session!, titles[titles.length - 1]);
@@ -239,7 +257,7 @@ export function handlePTYConnection(
       return;
     }
     if (input.startsWith("\x1b[RESIZE:")) {
-      const m = input.match(/\x1b\[RESIZE:(\d+);(\d+)\]/);
+        const m = input.match(new RegExp(`${ESC}\\[RESIZE:(\\d+);(\\d+)\\]`));
       if (m) {
         const cols = parseInt(m[1], 10),
           rows = parseInt(m[2], 10);
@@ -252,7 +270,7 @@ export function handlePTYConnection(
         return;
       }
     }
-    if (session) session.pty.write(input);
+    if (session) session.pty.write(stripTerminalResponses(input));
   });
 
   function attach(s: SessionPTY) {
@@ -261,6 +279,8 @@ export function handlePTYConnection(
     session = s;
     s.clients.add(ws);
     sendMessage(ws, { type: "title", title: s.title });
+    const replay = stripReplayControlSequences(s.outputBuffer);
+    if (replay) ws.send(replay);
   }
 
   ws.on("close", () => {

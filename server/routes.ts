@@ -5,11 +5,40 @@ import { getAvailableShells } from "../utils/shells";
 import { execFileAsync } from "../lib/server-commands";
 import { readdir, readFile, stat } from "fs/promises";
 import { MAX_PREVIEW_FILE_SIZE } from "./env";
+import { getWorkspace, setWorkspace, type WorkspaceState } from "./workspace";
 
 export const apiRouter = new Hono();
 
 apiRouter.get("/sessions", (c) => {
   return c.json(sessionsSnapshot(), 200);
+});
+
+apiRouter.get("/workspace", (c) => c.json(getWorkspace(), 200));
+
+apiRouter.put("/workspace", async (c) => {
+  try {
+    const body = (await c.req.json()) as Partial<WorkspaceState>;
+    if (
+      !Array.isArray(body.projects) ||
+      typeof body.activeProjectId !== "string" ||
+      typeof body.activeSessionId !== "string" ||
+      !Array.isArray(body.panes)
+    ) {
+      return c.json({ error: "Invalid workspace" }, 400);
+    }
+    return c.json(
+      setWorkspace({
+        projects: body.projects,
+        activeProjectId: body.activeProjectId,
+        activeSessionId: body.activeSessionId,
+        panes: body.panes,
+        defaultShell: typeof body.defaultShell === "string" ? body.defaultShell : undefined,
+      }),
+      200,
+    );
+  } catch {
+    return c.json({ error: "Invalid workspace" }, 400);
+  }
 });
 
 apiRouter.get("/shells", (c) => {

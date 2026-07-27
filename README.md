@@ -67,6 +67,5 @@ Opens at `http://localhost:5173` (Vite dev server) with the backend on `http://l
 | `src/session-tabs.tsx` | Tab bar with shell icons and panel toggles |
 | `src/file-tree-panel.tsx` | File browser with syntax-highlighted preview |
 | `src/git-panel.tsx` | Git status and diff viewer |
-| `src/command-palette.tsx` | Command palette UI |
 | `utils/shells.ts` | Shell detection utilities |
 | `bin/term.mjs` | Production entrypoint for `npx` |
