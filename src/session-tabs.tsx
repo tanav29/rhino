@@ -7,7 +7,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, X, Terminal, ChevronDown, Folder, GitBranch } from "lucide-react";
+import {
+  Plus,
+  X,
+  Terminal,
+  ChevronDown,
+  Folder,
+  GitBranch,
+} from "lucide-react";
 import {
   VscTerminalBash,
   VscTerminalCmd,
@@ -65,17 +72,17 @@ export function SessionTabs({
               key={session.id}
               onClick={() => onSelect(session.id)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") onSelect(session.id);
+                if (event.key === "Enter" || event.key === " ")
+                  onSelect(session.id);
               }}
               role="button"
               tabIndex={0}
-              className={`group flex h-full cursor-pointer items-center gap-1.5 border-r px-2 text-xs transition-colors ${
+              className={`group flex h-full cursor-pointer items-center gap-1.5 px-2 text-xs transition-colors ${
                 session.id === activeId
                   ? "bg-accent text-accent-foreground"
                   : "hover:bg-accent/50"
-              }`}
-            >
-              <ShellIcon shell={session.shell} />
+              }`}>
+              {/* <ShellIcon shell={session.shell} /> */}
               <span className="max-w-28 truncate">{session.title}</span>
               <button
                 type="button"
@@ -84,8 +91,7 @@ export function SessionTabs({
                   e.stopPropagation();
                   onClose(session.id);
                 }}
-                className="ml-0.5 flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 hover:bg-accent hover:text-foreground group-hover:opacity-100"
-              >
+                className="ml-0.5 flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 hover:bg-accent hover:text-foreground group-hover:opacity-100">
                 <X size={11} />
               </button>
             </div>
@@ -97,8 +103,7 @@ export function SessionTabs({
           type="button"
           aria-label="New terminal"
           onClick={() => onNew()}
-          className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
+          className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground">
           <Plus size={14} />
         </button>
         <DropdownMenu>
@@ -107,8 +112,7 @@ export function SessionTabs({
               <button
                 type="button"
                 aria-label="Choose shell"
-                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
+                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground">
                 <ChevronDown size={12} />
               </button>
             }
@@ -116,7 +120,9 @@ export function SessionTabs({
           <DropdownMenuContent align="start" className="w-48">
             <DropdownMenuGroup>
               {shells.map((shell) => (
-                <DropdownMenuItem key={shell.value} onClick={() => onNew(shell.value)}>
+                <DropdownMenuItem
+                  key={shell.value}
+                  onClick={() => onNew(shell.value)}>
                   <Terminal size={14} />
                   {shell.name}
                 </DropdownMenuItem>
@@ -133,8 +139,7 @@ export function SessionTabs({
           aria-label="Toggle files panel"
           onClick={() => onPanelToggle?.(panel === "files" ? null : "files")}
           className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "files" ? "bg-accent text-foreground" : ""}`}
-          title="Files"
-        >
+          title="Files">
           <Folder size={13} />
         </button>
         <button
@@ -142,8 +147,7 @@ export function SessionTabs({
           aria-label="Toggle git panel"
           onClick={() => onPanelToggle?.(panel === "git" ? null : "git")}
           className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "git" ? "bg-accent text-foreground" : ""}`}
-          title="Git"
-        >
+          title="Git">
           <GitBranch size={13} />
         </button>
       </div>

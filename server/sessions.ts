@@ -1,5 +1,6 @@
 import { execFileAsync } from "../lib/server-commands";
 import { readdir } from "fs/promises";
+import { statSync } from "fs";
 import { isAbsolute, join, relative, resolve } from "path";
 import { WebSocket } from "ws";
 import * as pty from "node-pty";
@@ -117,6 +118,22 @@ function getShell(shellValue?: string): { shell: string; args: string[] } {
   return { shell: process.env.SHELL || "/bin/zsh", args: ["-l"] };
 }
 
+function getWorkingDirectory(cwd?: string): string {
+  const fallback =
+    process.platform === "win32"
+      ? process.env.USERPROFILE || process.cwd()
+      : process.env.HOME || process.cwd();
+  const candidate = cwd ? resolve(cwd) : fallback;
+
+  try {
+    if (statSync(candidate).isDirectory()) return candidate;
+  } catch {
+    /* use the fallback for stale or inaccessible workspace paths */
+  }
+
+  return fallback;
+}
+
 function getOrCreateSession(
   id: string,
   cols: number,
@@ -132,12 +149,7 @@ function getOrCreateSession(
     cols,
     rows,
     useConptyDll: true,
-    cwd: shellValue?.startsWith("ssh:")
-      ? undefined
-      : cwd ||
-        (process.platform === "win32"
-          ? process.env.USERPROFILE || "C:\\"
-          : process.env.HOME || "/"),
+    cwd: shellValue?.startsWith("ssh:") ? undefined : getWorkingDirectory(cwd),
     env: cleanEnv(),
   });
   session = {

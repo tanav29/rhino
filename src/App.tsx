@@ -1,4 +1,11 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Plus, TerminalSquare, Trash2, X, Search } from "lucide-react";
 import { SessionTabs, type SessionTab } from "./session-tabs";
 import { closeSessionSocket } from "./session-sockets";
@@ -88,22 +95,36 @@ export default function App() {
       .catch(() => null)
       .then((remote) => {
         const loaded =
-          remote?.projects?.length && remote.projects.every((p: Project) => p?.id && Array.isArray(p.sessions))
+          remote?.projects?.length &&
+          remote.projects.every(
+            (p: Project) => p?.id && Array.isArray(p.sessions),
+          )
             ? (remote.projects as Project[])
             : fallback;
         const projectId = loaded.some((p) => p.id === remote?.activeProjectId)
           ? remote.activeProjectId
           : loaded[0].id;
-        const selectedProject = loaded.find((p) => p.id === projectId) ?? loaded[0];
-        const sessionId = selectedProject.sessions.some((s) => s.id === remote?.activeSessionId)
+        const selectedProject =
+          loaded.find((p) => p.id === projectId) ?? loaded[0];
+        const sessionId = selectedProject.sessions.some(
+          (s) => s.id === remote?.activeSessionId,
+        )
           ? remote.activeSessionId
           : selectedProject.sessions[0].id;
         startTransition(() => {
           setProjects(loaded);
           setActiveProjectId(projectId);
           setActiveSessionId(sessionId);
-          setPanes(Array.isArray(remote?.panes) && remote.panes.length ? remote.panes : [{ id: uuid(), sessionId }]);
-          setDefaultShell(remote?.defaultShell ?? localStorage.getItem(DEFAULT_SHELL_STORAGE_KEY) ?? undefined);
+          setPanes(
+            Array.isArray(remote?.panes) && remote.panes.length
+              ? remote.panes
+              : [{ id: uuid(), sessionId }],
+          );
+          setDefaultShell(
+            remote?.defaultShell ??
+              localStorage.getItem(DEFAULT_SHELL_STORAGE_KEY) ??
+              undefined,
+          );
           setHydrated(true);
         });
       });
@@ -114,11 +135,25 @@ export default function App() {
     void fetch(`${apiBase}/api/workspace`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projects, activeProjectId, activeSessionId, panes, defaultShell }),
+      body: JSON.stringify({
+        projects,
+        activeProjectId,
+        activeSessionId,
+        panes,
+        defaultShell,
+      }),
     }).catch(() => undefined);
-  }, [hydrated, projects, activeProjectId, activeSessionId, panes, defaultShell]);
+  }, [
+    hydrated,
+    projects,
+    activeProjectId,
+    activeSessionId,
+    panes,
+    defaultShell,
+  ]);
   useEffect(() => {
-    if (activeSession) document.title = `${activeSession.title} — ${project?.name ?? "Terminal"}`;
+    if (activeSession)
+      document.title = `${activeSession.title} — ${project?.name ?? "Terminal"}`;
   }, [activeSession, project]);
 
   const addSession = useCallback(
@@ -126,7 +161,11 @@ export default function App() {
       if (!project) return;
       const session = newSession(cwd || project.path, shell ?? defaultShell);
       setProjects((all) =>
-        all.map((p) => (p.id === project.id ? { ...p, sessions: [...p.sessions, session] } : p)),
+        all.map((p) =>
+          p.id === project.id
+            ? { ...p, sessions: [...p.sessions, session] }
+            : p,
+        ),
       );
       setActiveSessionId(session.id);
       setPanes((all) =>
@@ -149,7 +188,11 @@ export default function App() {
       lastSessionByProject.current[projectId] = id;
       return projectId;
     });
-    setPanes((all) => all.map((pane, index) => (index === 0 ? { ...pane, sessionId: id } : pane)));
+    setPanes((all) =>
+      all.map((pane, index) =>
+        index === 0 ? { ...pane, sessionId: id } : pane,
+      ),
+    );
   }, []);
   const updateTitle = useCallback(
     (id: string, title: string) =>
@@ -167,7 +210,9 @@ export default function App() {
       closeSessionSocket(id);
       setProjects((all) =>
         all.map((p) =>
-          p.id === activeProjectId ? { ...p, sessions: p.sessions.filter((s) => s.id !== id) } : p,
+          p.id === activeProjectId
+            ? { ...p, sessions: p.sessions.filter((s) => s.id !== id) }
+            : p,
         ),
       );
       if (activeSessionId === id) {
@@ -181,7 +226,9 @@ export default function App() {
     const next = projects.find((p) => p.id === id);
     if (!next) return;
     lastSessionByProject.current[activeProjectId] = activeSessionId;
-    const sessionId = next.sessions.some((session) => session.id === lastSessionByProject.current[id])
+    const sessionId = next.sessions.some(
+      (session) => session.id === lastSessionByProject.current[id],
+    )
       ? lastSessionByProject.current[id]
       : next.sessions[0].id;
     setActiveProjectId(id);
@@ -214,10 +261,15 @@ export default function App() {
   const split = useCallback(
     (direction: "row" | "column") => {
       if (!activeSession || !project) return;
-      const session = newSession(activeSession.cwd || project.path, activeSession.shell);
+      const session = newSession(
+        activeSession.cwd || project.path,
+        activeSession.shell,
+      );
       setProjects((all) =>
         all.map((p) =>
-          p.id === project.id ? { ...p, sessions: [...p.sessions, session] } : p,
+          p.id === project.id
+            ? { ...p, sessions: [...p.sessions, session] }
+            : p,
         ),
       );
       setActiveSessionId(session.id);
@@ -238,13 +290,60 @@ export default function App() {
           setPaletteOpen(false);
         },
       })),
-      { label: "New session", shortcut: "⌘T", action: () => { addSession(); setPaletteOpen(false); } },
-      { label: "Split right", shortcut: "⌘D", action: () => { split("row"); setPaletteOpen(false); } },
-      { label: "Split down", shortcut: "⌘⇧D", action: () => { split("column"); setPaletteOpen(false); } },
-      { label: "Files panel", shortcut: "⌘⇧F", action: () => { setPanel("files"); setPaletteOpen(false); } },
-      { label: "Git panel", shortcut: "⌘⇧G", action: () => { setPanel("git"); setPaletteOpen(false); } },
-      { label: "Session info", action: () => { setPanel("info"); setPaletteOpen(false); } },
-      { label: "Close panel", action: () => { setPanel(null); setPaletteOpen(false); } },
+      {
+        label: "New session",
+        shortcut: "⌘T",
+        action: () => {
+          addSession();
+          setPaletteOpen(false);
+        },
+      },
+      {
+        label: "Split right",
+        shortcut: "⌘D",
+        action: () => {
+          split("row");
+          setPaletteOpen(false);
+        },
+      },
+      {
+        label: "Split down",
+        shortcut: "⌘⇧D",
+        action: () => {
+          split("column");
+          setPaletteOpen(false);
+        },
+      },
+      {
+        label: "Files panel",
+        shortcut: "⌘⇧F",
+        action: () => {
+          setPanel("files");
+          setPaletteOpen(false);
+        },
+      },
+      {
+        label: "Git panel",
+        shortcut: "⌘⇧G",
+        action: () => {
+          setPanel("git");
+          setPaletteOpen(false);
+        },
+      },
+      {
+        label: "Session info",
+        action: () => {
+          setPanel("info");
+          setPaletteOpen(false);
+        },
+      },
+      {
+        label: "Close panel",
+        action: () => {
+          setPanel(null);
+          setPaletteOpen(false);
+        },
+      },
     ],
     [projects, addSession, split],
   );
@@ -303,7 +402,8 @@ export default function App() {
   if (!hydrated) return <div className="h-screen bg-background" />;
 
   const paneSessions = panes.map((pane) => {
-    const s = sessions.find((sess) => sess.id === pane.sessionId) ?? activeSession;
+    const s =
+      sessions.find((sess) => sess.id === pane.sessionId) ?? activeSession;
     return { ...pane, session: s };
   });
   const allSessions = projects.flatMap((item) => item.sessions);
@@ -313,19 +413,20 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <aside className="flex w-48 shrink-0 flex-col border-r border-border bg-background">
-        <div className="flex items-center gap-2 border-b border-border px-3 h-8">
+        {/* <div className="flex items-center gap-2 border-b border-border px-3 h-8">
           <TerminalSquare size={16} className="text-gray-400" />
           <span className="text-xs font-medium tracking-wide text-sidebar-foreground/50">
             PROJECTS
           </span>
-        </div>
+        </div> */}
         <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2">
           {projects.map((p) => (
             <div
               key={p.id}
               onClick={() => selectProject(p.id)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") selectProject(p.id);
+                if (event.key === "Enter" || event.key === " ")
+                  selectProject(p.id);
               }}
               role="button"
               tabIndex={0}
@@ -333,8 +434,7 @@ export default function App() {
                 p.id === activeProjectId
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
-            >
+              }`}>
               <div className="flex w-full items-center gap-2">
                 <span className="truncate text-xs font-medium">{p.name}</span>
                 <button
@@ -345,8 +445,7 @@ export default function App() {
                     removeProject(p.id);
                   }}
                   title="Delete workspace"
-                  className="ml-auto flex size-5 shrink-0 items-center justify-center rounded text-sidebar-foreground/40 opacity-0 hover:text-destructive group-hover:opacity-100"
-                >
+                  className="ml-auto flex size-5 shrink-0 items-center justify-center rounded text-sidebar-foreground/40 opacity-0 hover:text-destructive group-hover:opacity-100">
                   <Trash2 size={12} />
                 </button>
               </div>
@@ -359,8 +458,7 @@ export default function App() {
             type="button"
             aria-label="New project"
             onClick={addProject}
-            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-          >
+            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
             <Plus size={14} />
             <span>New project</span>
           </button>
@@ -380,7 +478,9 @@ export default function App() {
         />
         <div className="relative min-h-0 flex-1 overflow-hidden">
           {allSessions.map((session) => {
-            const paneIndex = paneSessions.findIndex((pane) => pane.session?.id === session.id);
+            const paneIndex = paneSessions.findIndex(
+              (pane) => pane.session?.id === session.id,
+            );
             const visible = paneIndex >= 0 && paneCount > 0;
             const size = visible ? `${100 / paneCount}%` : "0";
             const isLast = paneIndex === paneCount - 1;
@@ -394,10 +494,15 @@ export default function App() {
                   left: splitColumn ? 0 : `${paneIndex * (100 / paneCount)}%`,
                   height: splitColumn ? size : "100%",
                   width: splitColumn ? "100%" : size,
-                  borderRight: visible && !isLast && !splitColumn ? "1px solid var(--border)" : undefined,
-                  borderBottom: visible && !isLast && splitColumn ? "1px solid var(--border)" : undefined,
-                }}
-              >
+                  borderRight:
+                    visible && !isLast && !splitColumn
+                      ? "1px solid var(--border)"
+                      : undefined,
+                  borderBottom:
+                    visible && !isLast && splitColumn
+                      ? "1px solid var(--border)"
+                      : undefined,
+                }}>
                 <SessionView
                   session={session}
                   onTitle={updateTitle}
@@ -409,7 +514,13 @@ export default function App() {
           })}
         </div>
       </main>
-      {panel && <WorkspacePanel type={panel} project={project} onClose={() => setPanel(null)} />}
+      {panel && (
+        <WorkspacePanel
+          type={panel}
+          project={project}
+          onClose={() => setPanel(null)}
+        />
+      )}
       <NewSessionDialog
         open={newOpen}
         onOpenChange={setNewOpen}
@@ -420,7 +531,9 @@ export default function App() {
           const session = newSession(cwd, shell);
           const p: Project = {
             id: uuid(),
-            name: cwd.split(/[\\/]/).filter(Boolean).pop() || `Project ${projects.length + 1}`,
+            name:
+              cwd.split(/[\\/]/).filter(Boolean).pop() ||
+              `Project ${projects.length + 1}`,
             path: cwd,
             sessions: [session],
           };
@@ -433,13 +546,11 @@ export default function App() {
       {paletteOpen && (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
-          onClick={() => setPaletteOpen(false)}
-        >
+          onClick={() => setPaletteOpen(false)}>
           <div className="fixed inset-0 bg-black/50" />
           <div
             className="relative z-10 w-full max-w-md overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 border-b border-border px-3">
               <Search size={14} className="shrink-0 text-muted-foreground" />
               <input
@@ -464,8 +575,7 @@ export default function App() {
                     key={cmd.label}
                     type="button"
                     onClick={cmd.action}
-                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
                     <span>{cmd.label}</span>
                     {cmd.shortcut && (
                       <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -495,8 +605,7 @@ function WorkspacePanel({
   const wide = type === "files" || type === "git";
   return (
     <aside
-      className={`flex ${wide ? "w-80" : "w-72"} shrink-0 flex-col overflow-hidden border-l border-border bg-background text-sm text-sidebar-foreground`}
-    >
+      className={`flex ${wide ? "w-80" : "w-72"} shrink-0 flex-col overflow-hidden border-l border-border bg-background text-sm text-sidebar-foreground`}>
       <div className="flex items-center justify-between border-b border-border px-3 h-8">
         <span className="font-medium">
           {type === "files" ? "Files" : type === "git" ? "Git" : "Shortcuts"}
@@ -505,8 +614,7 @@ function WorkspacePanel({
           type="button"
           aria-label="Close workspace panel"
           onClick={onClose}
-          className="text-muted-foreground hover:text-foreground"
-        >
+          className="text-muted-foreground hover:text-foreground">
           <X size={15} />
         </button>
       </div>
@@ -515,13 +623,17 @@ function WorkspacePanel({
           (project ? (
             <FilesPanel cwd={project.path} />
           ) : (
-            <p className="p-4 text-sidebar-foreground/60">No project selected.</p>
+            <p className="p-4 text-sidebar-foreground/60">
+              No project selected.
+            </p>
           ))}
         {type === "git" && <GitPanel cwd={project?.path} />}
         {type === "info" && (
           <div className="flex flex-col gap-4 p-4">
             <div>
-              <h3 className="mb-2 text-xs font-medium text-sidebar-foreground/80">Navigation</h3>
+              <h3 className="mb-2 text-xs font-medium text-sidebar-foreground/80">
+                Navigation
+              </h3>
               <div className="flex flex-col gap-1.5">
                 <ShortcutRow keys={["⌘", "T"]} label="New terminal" />
                 <ShortcutRow keys={["⌘", "D"]} label="Split right" />
@@ -532,18 +644,28 @@ function WorkspacePanel({
               </div>
             </div>
             <div>
-              <h3 className="mb-2 text-xs font-medium text-sidebar-foreground/80">Panels</h3>
+              <h3 className="mb-2 text-xs font-medium text-sidebar-foreground/80">
+                Panels
+              </h3>
               <div className="flex flex-col gap-1.5">
                 <ShortcutRow keys={["⌘", "⇧", "F"]} label="Files panel" />
                 <ShortcutRow keys={["⌘", "⇧", "G"]} label="Git panel" />
               </div>
             </div>
             <div>
-              <h3 className="mb-2 text-xs font-medium text-sidebar-foreground/80">Shell</h3>
+              <h3 className="mb-2 text-xs font-medium text-sidebar-foreground/80">
+                Shell
+              </h3>
               <p className="text-xs text-sidebar-foreground/50">
-                Run <code className="rounded bg-muted px-1 py-0.5 text-[11px]">tasklist</code> or{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-[11px]">netstat -ano</code> to
-                inspect processes and ports.
+                Run{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+                  tasklist
+                </code>{" "}
+                or{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+                  netstat -ano
+                </code>{" "}
+                to inspect processes and ports.
               </p>
             </div>
           </div>
@@ -561,8 +683,7 @@ function ShortcutRow({ keys, label }: { keys: string[]; label: string }) {
         {keys.map((key, i) => (
           <kbd
             key={i}
-            className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 text-[10px] font-medium text-muted-foreground"
-          >
+            className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 text-[10px] font-medium text-muted-foreground">
             {key}
           </kbd>
         ))}

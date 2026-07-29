@@ -1,11 +1,9 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { Terminal } from "xterm";
-import { FitAddon } from "@xterm/addon-fit";
-import { WebglAddon } from "@xterm/addon-webgl";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Terminal, useTerminal } from "@wterm/react";
+import { GhosttyCore } from "@wterm/ghostty";
 import type { SessionTab } from "./session-tabs";
 import { sessionSockets } from "./session-sockets";
 import { apiBase } from "./api-base";
-import "xterm/css/xterm.css";
 
 type TitleMessage = {
   type: "title";
@@ -41,63 +39,56 @@ export function SessionView({
   active?: boolean;
   visible?: boolean;
 }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const { ref, write, focus } = useTerminal();
+  const [core, setCore] = useState<GhosttyCore | null>(null);
+  const [ready, setReady] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
-  const termRef = useRef<Terminal | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
-  const visibleRef = useRef(visible);
-
   const onTitleRef = useRef(onTitle);
+
+  useEffect(() => {
+    let cancelled = false;
+    void GhosttyCore.load().then((loadedCore) => {
+      if (!cancelled) setCore(loadedCore);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     onTitleRef.current = onTitle;
   }, [onTitle]);
 
-  visibleRef.current = visible;
-
   useLayoutEffect(() => {
-    if (!visible) return;
-    try {
-      fitAddonRef.current?.fit();
-      if (active) termRef.current?.focus();
-    } catch {
-      // the terminal may not have measurable dimensions yet
-    }
-  }, [active, visible]);
+    if (visible && active) focus();
+  }, [active, focus, visible]);
 
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const term = new Terminal({
-      fontSize: 14,
-      fontFamily: "Cascadia Mono",
-    });
-    termRef.current = term;
-    const fitAddon = new FitAddon();
-    fitAddonRef.current = fitAddon;
-    term.loadAddon(fitAddon);
-    term.open(container);
-    try {
-      term.loadAddon(new WebglAddon());
-    } catch {
-      // fall back to canvas renderer
-    }
-    if (visibleRef.current) fitAddon.fit();
+  useEffect(() => {
+    if (!core || !ready) return;
 
     let disposed = false;
-
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let reconnectDelay = 1000;
     const maxReconnectDelay = 30000;
 
+    function sendResize() {
+      const terminal = ref.current?.instance;
+      if (wsRef.current?.readyState === WebSocket.OPEN && terminal) {
+        wsRef.current.send(`\x1b[RESIZE:${terminal.cols};${terminal.rows}]`);
+      }
+    }
+
     function connect() {
       if (disposed) return;
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsHost = apiBase ? "localhost:4242" : window.location.host;
-      const shellQuery = session.shell ? `&shell=${encodeURIComponent(session.shell)}` : "";
-      const cwdQuery = session.cwd ? `&cwd=${encodeURIComponent(session.cwd)}` : "";
+      const shellQuery = session.shell
+        ? `&shell=${encodeURIComponent(session.shell)}`
+        : "";
+      const cwdQuery = session.cwd
+        ? `&cwd=${encodeURIComponent(session.cwd)}`
+        : "";
       const wsUrl = `${proto}//${wsHost}/api/terminal?session=${session.id}${shellQuery}${cwdQuery}`;
       ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -106,7 +97,7 @@ export function SessionView({
       ws.onopen = () => {
         if (disposed) return;
         reconnectDelay = 1000;
-        ws?.send(`\x1b[RESIZE:${term.cols};${term.rows}]`);
+        sendResize();
       };
 
       ws.onmessage = (event: MessageEvent) => {
@@ -119,81 +110,69 @@ export function SessionView({
             return;
           }
         } catch {
-          // fall through to raw write
+          // Terminal output is not JSON; pass it through unchanged.
         }
-        term.write(data);
+        write(data);
       };
 
       ws.onclose = () => {
         if (disposed) return;
         if (wsRef.current === ws) {
           wsRef.current = null;
-          term.write("\r\n\x1b[90m[disconnected]\x1b[0m\r\n");
+          write("\r\n\x1b[90m[disconnected]\x1b[0m\r\n");
         }
         reconnectTimer = setTimeout(connect, reconnectDelay);
         reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay);
       };
 
-      ws.onerror = () => {
-        ws?.close();
-      };
+      ws.onerror = () => ws?.close();
     }
+
     connect();
 
-    const dataDisposable = term.onData((data) => {
-      if (isTerminalResponse(data)) return;
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(data);
+    return () => {
+      disposed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (sessionSockets.get(session.id) === ws) {
+        sessionSockets.delete(session.id);
+        if (ws && ws.readyState !== WebSocket.CLOSED) ws.close();
       }
-    });
+      wsRef.current = null;
+    };
+  }, [core, ready, ref, session.cwd, session.id, session.shell, write]);
 
-    const resizeDisposable = term.onResize(({ cols, rows }) => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(`\x1b[RESIZE:${cols};${rows}]`);
-      }
-    });
-
-    const titleDisposable = term.onTitleChange((title) => {
-      onTitleRef.current(session.id, title);
-    });
-
-    const resizeObserver = new ResizeObserver(() => {
-      if (disposed || !visibleRef.current) return;
-      try {
-        fitAddon.fit();
-      } catch {
-        // container may be hidden
-      }
-    });
-    resizeObserver.observe(container);
-
-     return () => {
-       disposed = true;
-       if (reconnectTimer) clearTimeout(reconnectTimer);
-       resizeObserver.disconnect();
-       dataDisposable.dispose();
-       resizeDisposable.dispose();
-       titleDisposable.dispose();
-       if (sessionSockets.get(session.id) === ws) {
-         sessionSockets.delete(session.id);
-         if (ws && ws.readyState !== WebSocket.CLOSED) ws.close();
-       }
-       term.dispose();
-       if (termRef.current === term) termRef.current = null;
-       if (fitAddonRef.current === fitAddon) fitAddonRef.current = null;
-     };
-  }, [session.id, session.shell, session.cwd]);
+  if (!core) {
+    return <div className="h-full min-h-0 bg-background" />;
+  }
 
   return (
-    <div
-      ref={containerRef}
-      className="term-surface h-full min-h-0 scrollbar-none bg-background"
+    <Terminal
+      ref={ref}
+      core={core}
+      autoResize
+      theme="monokai"
       style={{
-        padding: 0,
+        borderRadius: 0,
+        backgroundColor: "var(--background)",
+        padding: 8,
+        fontFamily: "JetBrains Mono, monospace",
+        height: "100%",
         minHeight: 0,
-        minWidth: 0,
-        overflow: "hidden",
       }}
+      cursorBlink
+      className="h-full min-h-0 rounded-none p-0"
+      onData={(data) => {
+        if (isTerminalResponse(data)) return;
+        if (wsRef.current?.readyState === WebSocket.OPEN)
+          wsRef.current.send(data);
+      }}
+      onResize={(cols, rows) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(`\x1b[RESIZE:${cols};${rows}]`);
+        }
+      }}
+      onReady={() => setReady(true)}
+      onTitle={(title) => onTitleRef.current(session.id, title)}
     />
   );
 }

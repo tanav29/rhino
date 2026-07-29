@@ -5,12 +5,12 @@
 
 ## Project Overview
 
-`wterm` is a browser-based terminal built with React, xterm.js, and node-pty. It runs a custom HTTP + WebSocket server (`server.ts`) that bridges browser terminals to local shell PTY processes.
+`term` is a browser-based terminal built with React, wterm, Ghostty, and node-pty. It runs a custom HTTP + WebSocket server that bridges browser terminals to local shell PTY processes.
 
 ## Key Directories
 
 - `server.ts` — Express-like HTTP + WebSocket server; PTY management, file browsing, git integration
-- `src/` — React frontend: `App.tsx` (root), `session-view.tsx` (xterm wrapper), `session-tabs.tsx`, etc.
+- `src/` — React frontend: `App.tsx` (root), `session-view.tsx` (Ghostty wrapper), `session-tabs.tsx`, etc.
 - `components/ui/` — shadcn/ui components built on `@base-ui/react`
 - `lib/` — Shared utilities (`cn`, `execFileAsync`)
 - `utils/` — Shell detection utilities

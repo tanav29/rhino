@@ -1,6 +1,6 @@
 # wterm
 
-Full local terminal in the browser, connected to your machine's shell via WebSocket and [node-pty](https://github.com/microsoft/node-pty).
+Full local terminal in the browser, connected to your machine's shell via WebSocket and [node-pty](https://github.com/microsoft/node-pty), with [Ghostty](https://ghostty.org)-powered emulation.
 
 ## Features
 
@@ -63,7 +63,7 @@ Opens at `http://localhost:5173` (Vite dev server) with the backend on `http://l
 | `server/sessions.ts` | PTY session management and WebSocket handling |
 | `server/websocket.ts` | WebSocket upgrade handler |
 | `src/App.tsx` | Main React app with workspace/session management |
-| `src/session-view.tsx` | xterm.js terminal wrapper with auto-reconnect |
+| `src/session-view.tsx` | Ghostty terminal wrapper with auto-reconnect |
 | `src/session-tabs.tsx` | Tab bar with shell icons and panel toggles |
 | `src/file-tree-panel.tsx` | File browser with syntax-highlighted preview |
 | `src/git-panel.tsx` | Git status and diff viewer |
