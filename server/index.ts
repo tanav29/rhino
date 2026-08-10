@@ -24,9 +24,12 @@ if (NODE_ENV === "production") {
 }
 
 const websocketServer = new WebSocketServer({ noServer: true });
-const server = serve({ port: 4242, fetch: app.fetch, websocket: { server: websocketServer } }, () => {
-  console.log("> Local Terminal ready on http://localhost:4242");
-});
+const server = serve(
+  { port: 4242, fetch: app.fetch, websocket: { server: websocketServer } },
+  () => {
+    console.log("> Local Terminal ready on http://localhost:4242");
+  },
+);
 
 server.on("close", () => {
   for (const session of getSessions().values()) session.pty.kill();

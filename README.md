@@ -36,16 +36,16 @@ Opens at `http://localhost:5173` (Vite dev server) with the backend on `http://l
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-| --- | --- |
-| `⌘T` / `Ctrl+T` | New terminal |
-| `⌘D` / `Ctrl+D` | Split right |
-| `⌘⇧D` / `Ctrl+Shift+D` | Split down |
-| `⌘N` / `Ctrl+N` | New workspace |
-| `⌘P` / `Ctrl+P` | Command palette |
-| `⌘1-9` / `Ctrl+1-9` | Switch workspace |
-| `⌘⇧F` / `Ctrl+Shift+F` | Files panel |
-| `⌘⇧G` / `Ctrl+Shift+G` | Git panel |
+| Shortcut               | Action           |
+| ---------------------- | ---------------- |
+| `⌘T` / `Ctrl+T`        | New terminal     |
+| `⌘D` / `Ctrl+D`        | Split right      |
+| `⌘⇧D` / `Ctrl+Shift+D` | Split down       |
+| `⌘N` / `Ctrl+N`        | New workspace    |
+| `⌘P` / `Ctrl+P`        | Command palette  |
+| `⌘1-9` / `Ctrl+1-9`    | Switch workspace |
+| `⌘⇧F` / `Ctrl+Shift+F` | Files panel      |
+| `⌘⇧G` / `Ctrl+Shift+G` | Git panel        |
 
 ## How It Works
 
@@ -56,16 +56,16 @@ Opens at `http://localhost:5173` (Vite dev server) with the backend on `http://l
 
 ## Key Files
 
-| File | Description |
-| --- | --- |
-| `server/index.ts` | Hono HTTP + WebSocket server entry |
-| `server/routes.ts` | API routes: sessions, shells, browse, files, git |
-| `server/sessions.ts` | PTY session management and WebSocket handling |
-| `server/websocket.ts` | WebSocket upgrade handler |
-| `src/App.tsx` | Main React app with workspace/session management |
-| `src/session-view.tsx` | Ghostty terminal wrapper with auto-reconnect |
-| `src/session-tabs.tsx` | Tab bar with shell icons and panel toggles |
-| `src/file-tree-panel.tsx` | File browser with syntax-highlighted preview |
-| `src/git-panel.tsx` | Git status and diff viewer |
-| `utils/shells.ts` | Shell detection utilities |
-| `bin/term.mjs` | Production entrypoint for `npx` |
+| File                      | Description                                      |
+| ------------------------- | ------------------------------------------------ |
+| `server/index.ts`         | Hono HTTP + WebSocket server entry               |
+| `server/routes.ts`        | API routes: sessions, shells, browse, files, git |
+| `server/sessions.ts`      | PTY session management and WebSocket handling    |
+| `server/websocket.ts`     | WebSocket upgrade handler                        |
+| `src/App.tsx`             | Main React app with workspace/session management |
+| `src/session-view.tsx`    | Ghostty terminal wrapper with auto-reconnect     |
+| `src/session-tabs.tsx`    | Tab bar with shell icons and panel toggles       |
+| `src/file-tree-panel.tsx` | File browser with syntax-highlighted preview     |
+| `src/git-panel.tsx`       | Git status and diff viewer                       |
+| `utils/shells.ts`         | Shell detection utilities                        |
+| `bin/term.mjs`            | Production entrypoint for `npx`                  |

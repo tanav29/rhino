@@ -7,14 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Plus,
-  X,
-  Terminal,
-  ChevronDown,
-  Folder,
-  GitBranch,
-} from "lucide-react";
+import { Plus, X, Terminal, ChevronDown, PanelLeftOpen, PanelRightOpen } from "lucide-react";
 import {
   VscTerminalBash,
   VscTerminalCmd,
@@ -22,7 +15,6 @@ import {
   VscTerminalPowershell,
   VscTerminalUbuntu,
 } from "react-icons/vsc";
-import { Separator } from "@/components/ui/separator";
 
 export interface SessionTab {
   id: string;
@@ -38,7 +30,6 @@ interface SessionTabsProps {
   onClose: (id: string) => void;
   onNew: (shell?: string, cwd?: string) => void;
   shells: { name: string; value: string }[];
-  projectName?: string;
   panel?: "files" | "git" | "info" | null;
   onPanelToggle?: (panel: "files" | "git" | "info" | null) => void;
 }
@@ -59,30 +50,38 @@ export function SessionTabs({
   onClose,
   onNew,
   shells,
-  projectName,
   panel,
   onPanelToggle,
 }: SessionTabsProps) {
   return (
     <div className="flex h-8 shrink-0 items-center border-b border-border bg-background">
-      <div className="flex h-full items-center gap-px">
+      <div className="flex items-center gap-1 px-2 text-xs text-muted-foreground">
+        <button
+          type="button"
+          aria-label="Toggle files panel"
+          onClick={() => onPanelToggle?.(panel === "files" ? null : "files")}
+          className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "files" ? "bg-accent text-foreground" : ""}`}
+          title="Files"
+        >
+          <PanelRightOpen size={13} />
+        </button>
+      </div>
+      <div className="flex h-full items-center gap-px overflow-x-auto scrollbar-none">
         {sessions.map((session) => {
           return (
             <div
               key={session.id}
               onClick={() => onSelect(session.id)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ")
-                  onSelect(session.id);
+                if (event.key === "Enter" || event.key === " ") onSelect(session.id);
               }}
               role="button"
               tabIndex={0}
               className={`group flex h-full cursor-pointer items-center gap-1.5 px-2 text-xs transition-colors ${
-                session.id === activeId
-                  ? "bg-accent text-accent-foreground"
-                  : "hover:bg-accent/50"
-              }`}>
-              {/* <ShellIcon shell={session.shell} /> */}
+                session.id === activeId ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+              }`}
+            >
+              <ShellIcon shell={session.shell} />
               <span className="max-w-28 truncate">{session.title}</span>
               <button
                 type="button"
@@ -91,7 +90,8 @@ export function SessionTabs({
                   e.stopPropagation();
                   onClose(session.id);
                 }}
-                className="ml-0.5 flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 hover:bg-accent hover:text-foreground group-hover:opacity-100">
+                className="ml-0.5 flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 hover:bg-accent hover:text-foreground group-hover:opacity-100"
+              >
                 <X size={11} />
               </button>
             </div>
@@ -103,7 +103,8 @@ export function SessionTabs({
           type="button"
           aria-label="New terminal"
           onClick={() => onNew()}
-          className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground">
+          className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
           <Plus size={14} />
         </button>
         <DropdownMenu>
@@ -112,7 +113,8 @@ export function SessionTabs({
               <button
                 type="button"
                 aria-label="Choose shell"
-                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground">
+                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
                 <ChevronDown size={12} />
               </button>
             }
@@ -120,9 +122,7 @@ export function SessionTabs({
           <DropdownMenuContent align="start" className="w-48">
             <DropdownMenuGroup>
               {shells.map((shell) => (
-                <DropdownMenuItem
-                  key={shell.value}
-                  onClick={() => onNew(shell.value)}>
+                <DropdownMenuItem key={shell.value} onClick={() => onNew(shell.value)}>
                   <Terminal size={14} />
                   {shell.name}
                 </DropdownMenuItem>
@@ -131,24 +131,15 @@ export function SessionTabs({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="ml-auto flex items-center gap-1 px-2 text-xs text-muted-foreground">
-        <span className="truncate text-muted-foreground/80">{projectName}</span>
-        <Separator orientation="vertical" className="mx-1 h-8" />
+      <div className="ml-auto flex items-center px-2">
         <button
           type="button"
-          aria-label="Toggle files panel"
-          onClick={() => onPanelToggle?.(panel === "files" ? null : "files")}
-          className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "files" ? "bg-accent text-foreground" : ""}`}
-          title="Files">
-          <Folder size={13} />
-        </button>
-        <button
-          type="button"
-          aria-label="Toggle git panel"
-          onClick={() => onPanelToggle?.(panel === "git" ? null : "git")}
-          className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "git" ? "bg-accent text-foreground" : ""}`}
-          title="Git">
-          <GitBranch size={13} />
+          aria-label={panel ? "Close workspace panel" : "Open workspace panel"}
+          onClick={() => onPanelToggle?.(panel ? null : "files")}
+          className={`flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${panel ? "bg-accent text-foreground" : ""}`}
+          title={panel ? "Close workspace panel" : "Open workspace panel"}
+        >
+          <PanelLeftOpen size={13} />
         </button>
       </div>
     </div>

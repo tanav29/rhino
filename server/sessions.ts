@@ -199,9 +199,7 @@ async function listFilesFallback(root: string): Promise<string[]> {
         if (results.length >= 20000 || entry.name === ".git") return;
         const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
         if (entry.isDirectory()) {
-          if (
-            !IGNORED_DIR_NAMES.has(entry.name)
-          ) {
+          if (!IGNORED_DIR_NAMES.has(entry.name)) {
             await walk(join(dir, entry.name), relPath);
           }
         } else if (entry.isFile() && results.length < 20000) {
@@ -269,7 +267,7 @@ export function handlePTYConnection(
       return;
     }
     if (input.startsWith("\x1b[RESIZE:")) {
-        const m = input.match(new RegExp(`${ESC}\\[RESIZE:(\\d+);(\\d+)\\]`));
+      const m = input.match(new RegExp(`${ESC}\\[RESIZE:(\\d+);(\\d+)\\]`));
       if (m) {
         const cols = parseInt(m[1], 10),
           rows = parseInt(m[2], 10);

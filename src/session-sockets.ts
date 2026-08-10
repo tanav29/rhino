@@ -1,12 +1,13 @@
-export const sessionSockets = new Map<string, WebSocket>();
+import type { WebSocketTransport } from "@wterm/react";
+
+export const sessionSockets = new Map<string, WebSocketTransport>();
 
 export function closeSessionSocket(id: string) {
-  const ws = sessionSockets.get(id);
+  const transport = sessionSockets.get(id);
   sessionSockets.delete(id);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send("\x1b[CLOSE]");
-    ws.close();
-  } else {
-    ws?.close();
-  }
+  if (!transport) return;
+  // `send` buffers while reconnecting, so explicitly close immediately after
+  // asking the PTY to exit rather than leaving an orphaned reconnect loop.
+  transport.send("\x1b[CLOSE]");
+  transport.close();
 }

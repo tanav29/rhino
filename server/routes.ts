@@ -62,12 +62,15 @@ apiRouter.get("/browse", async (c) => {
     const parent = dirname(resolved);
     return c.json({ path: resolved, parent: parent === resolved ? null : parent, entries }, 200);
   } catch (error) {
-    return c.json({
-      path: resolved,
-      parent: null,
-      entries: [],
-      error: error instanceof Error ? error.message : "Unable to read directory",
-    }, 500);
+    return c.json(
+      {
+        path: resolved,
+        parent: null,
+        entries: [],
+        error: error instanceof Error ? error.message : "Unable to read directory",
+      },
+      500,
+    );
   }
 });
 
@@ -85,24 +88,24 @@ apiRouter.get("/file", async (c) => {
   try {
     const stats = await stat(resolved);
     if (!stats.isFile()) throw new Error("Not a file");
-    if (stats.size > MAX_PREVIEW_FILE_SIZE) return c.json({ error: "File is too large to preview" }, 400);
+    if (stats.size > MAX_PREVIEW_FILE_SIZE)
+      return c.json({ error: "File is too large to preview" }, 400);
     const buffer = await readFile(resolved);
-    if (buffer.subarray(0, 8000).includes(0)) return c.json({ error: "Binary file cannot be previewed" }, 400);
+    if (buffer.subarray(0, 8000).includes(0))
+      return c.json({ error: "Binary file cannot be previewed" }, 400);
     return c.json({ contents: buffer.toString("utf-8") }, 200);
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : "Unable to read file" }, 500);
   }
 });
 
-
 apiRouter.get("/git/status", async (c) => {
   const cwd = resolve(c.req.query("cwd") || process.cwd());
   try {
-    const result = await execFileAsync(
-      "git",
-      ["-C", cwd, "status", "--short", "--branch"],
-      { windowsHide: true, maxBuffer: 20 * 1024 * 1024 },
-    );
+    const result = await execFileAsync("git", ["-C", cwd, "status", "--short", "--branch"], {
+      windowsHide: true,
+      maxBuffer: 20 * 1024 * 1024,
+    });
     return c.text(result.stdout, 200);
   } catch {
     return c.text("", 200);
@@ -111,7 +114,7 @@ apiRouter.get("/git/status", async (c) => {
 
 apiRouter.get("/git/diff", async (c) => {
   const cwd = resolve(c.req.query("cwd") || process.cwd());
-  const path = c.req.query("path") || ""
+  const path = c.req.query("path") || "";
 
   const resolved = resolveWithinCwd(cwd, path);
   if (!resolved) return c.json({ error: "Invalid path" }, 400);
