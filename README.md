@@ -1,5 +1,7 @@
 # wterm
 
+![Preview](image.png)
+
 Full local terminal in the browser, connected to your machine's shell via WebSocket and [node-pty](https://github.com/microsoft/node-pty), with [Ghostty](https://ghostty.org)-powered emulation.
 
 ## Features
