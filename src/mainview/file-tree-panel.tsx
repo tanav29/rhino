@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { FileTree, useFileTree } from "@pierre/trees/react";
 import type { GitStatusEntry } from "@pierre/trees";
-import { apiBase } from "./api-base";
+import { rpc } from "./rpc";
 import { parseGitStatus, toGitStatusEntries } from "./git-status";
 
 interface FilesData {
@@ -19,25 +19,21 @@ export function FilesPanel({ cwd }: { cwd: string }) {
     setData(null);
     setError(null);
     Promise.all([
-      fetch(`${apiBase}/api/files?cwd=${encodeURIComponent(cwd)}`).then(async (r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      }),
-      fetch(`${apiBase}/api/git/status?cwd=${encodeURIComponent(cwd)}`)
-        .then(async (r) => {
-          if (!r.ok) throw new Error();
-          return r.text();
-        })
+      rpc.request.listProjectFiles({ cwd }),
+      rpc.request
+        .readGitStatus({ cwd })
         .catch(() => ""),
     ])
       .then(([filesRes, statusText]) => {
         if (cancelled) return;
-        const paths: string[] = filesRes?.paths ?? [];
-        if (filesRes?.error && paths.length === 0) {
+        if (filesRes.error && filesRes.paths.length === 0) {
           setError(filesRes.error);
           return;
         }
-        setData({ paths, gitStatus: toGitStatusEntries(parseGitStatus(statusText)) });
+        setData({
+          paths: filesRes.paths,
+          gitStatus: toGitStatusEntries(parseGitStatus(statusText)),
+        });
       })
       .catch(() => {
         if (!cancelled) setError("Unable to load files");

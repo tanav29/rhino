@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronUp, Folder, Loader2, TerminalSquare } from "lucide-react";
-import { apiBase } from "./api-base";
+import { rpc } from "./rpc";
+import type { DirectoryListing, ShellOption } from "../shared/rpc-schema";
 import {
   Dialog,
   DialogContent,
@@ -10,23 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
-interface ShellOption {
-  name: string;
-  value: string;
-}
-
-interface BrowseEntry {
-  name: string;
-  path: string;
-}
-
-interface BrowseResult {
-  path: string;
-  parent: string | null;
-  entries: BrowseEntry[];
-  error?: string;
-}
 
 export function NewSessionDialog({
   open,
@@ -42,20 +26,18 @@ export function NewSessionDialog({
   onCreate: (shell: string | undefined, cwd: string) => void;
 }) {
   const [shell, setShell] = useState("");
-  const [browse, setBrowse] = useState<BrowseResult | null>(null);
+  const [browse, setBrowse] = useState<DirectoryListing | null>(null);
   const [pathInput, setPathInput] = useState(initialPath);
   const [loading, setLoading] = useState(false);
 
   const loadPath = async (path: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`${apiBase}/api/browse?path=${encodeURIComponent(path)}`);
-      if (!response.ok) throw new Error("Unable to browse");
-      const data = (await response.json()) as BrowseResult;
+      const data = await rpc.request.browseDirectory({ path });
       setBrowse(data);
       setPathInput(data.path);
     } catch {
-      setBrowse({ path, parent: null, entries: [], error: "Unable to reach server" });
+      setBrowse({ path, parent: null, entries: [], error: "Unable to browse" });
     } finally {
       setLoading(false);
     }

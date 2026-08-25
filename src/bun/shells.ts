@@ -1,15 +1,19 @@
-import { execSync } from "child_process";
-import os from "os";
+import { execSync } from "node:child_process";
+import os from "node:os";
+import type { ShellOption } from "../shared/rpc-schema";
 
-export function getAvailableShells() {
-  const shells = [];
+interface AvailableShell extends ShellOption {
+  args: string[];
+}
+
+export function getAvailableShells(): AvailableShell[] {
+  const shells: AvailableShell[] = [];
 
   if (os.platform() === "win32") {
     // Always available on Windows
     shells.push({ name: "Command Prompt", value: "cmd.exe", args: ["/k"] });
     shells.push({ name: "PowerShell", value: "powershell.exe", args: [] });
 
-    // PowerShell 7+ and Git Bash (if installed)
     try {
       execSync("where pwsh.exe", { stdio: "ignore" });
       shells.push({ name: "PowerShell 7+", value: "pwsh.exe", args: [] });

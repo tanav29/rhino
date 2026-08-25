@@ -1,9 +1,8 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Folder } from "lucide-react";
 import { SessionTabs, type SessionTab } from "./session-tabs";
-import { closeSessionSocket } from "./session-sockets";
 import { SessionView } from "./session-view";
-import { apiBase } from "./api-base";
+import { rpc } from "./rpc";
 import { FilesPanel } from "./file-tree-panel";
 import { GitPanel } from "./git-panel";
 import { NewSessionDialog } from "./new-terminal-dialog";
@@ -21,8 +20,6 @@ interface Pane {
   direction?: "row" | "column";
 }
 
-const STORAGE_KEY = "term.workspace:v1";
-const DEFAULT_SHELL_STORAGE_KEY = "term.default-shell";
 let counter = 0;
 const uuid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -41,22 +38,6 @@ const newProject = (): Project => ({
   sessions: [newSession()],
 });
 
-function loadWorkspace(): Project[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (
-      Array.isArray(parsed) &&
-      parsed.length &&
-      parsed.every((p) => p?.id && Array.isArray(p.sessions))
-    )
-      return parsed;
-  } catch {
-    /* use a clean workspace */
-  }
-  return [newProject()];
-}
-
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState("");
@@ -73,53 +54,55 @@ export default function App() {
   const activeSession = sessions.find((item) => item.id === activeSessionId);
 
   useEffect(() => {
-    const fallback = loadWorkspace();
-    fetch(`${apiBase}/api/workspace`)
-      .then((response) => (response.ok ? response.json() : null))
+    void rpc.request
+      .loadWorkspace({})
       .catch(() => null)
-      .then((remote) => {
-        const loaded =
-          remote?.projects?.length &&
-          remote.projects.every((p: Project) => p?.id && Array.isArray(p.sessions))
-            ? (remote.projects as Project[])
-            : fallback;
-        const projectId = loaded.some((p) => p.id === remote?.activeProjectId)
-          ? remote.activeProjectId
-          : loaded[0].id;
+      .then((snapshot) => {
+        const valid =
+          snapshot?.projects?.length &&
+          snapshot.projects.every((p: unknown) => {
+            const project = p as Project;
+            return Boolean(project?.id && Array.isArray(project.sessions));
+          });
+        const loaded = valid ? (snapshot!.projects as Project[]) : [newProject()];
+        const snapshotProjectId = snapshot?.activeProjectId;
+        const projectId =
+          snapshotProjectId && loaded.some((p) => p.id === snapshotProjectId)
+            ? snapshotProjectId
+            : loaded[0].id;
         const selectedProject = loaded.find((p) => p.id === projectId) ?? loaded[0];
-        const sessionId = selectedProject.sessions.some((s) => s.id === remote?.activeSessionId)
-          ? remote.activeSessionId
-          : selectedProject.sessions[0].id;
+        const snapshotSessionId = snapshot?.activeSessionId;
+        const sessionId =
+          selectedProject.sessions.some((s) => s.id === snapshotSessionId)
+            ? snapshotSessionId!
+            : selectedProject.sessions[0].id;
         startTransition(() => {
           setProjects(loaded);
           setActiveProjectId(projectId);
           setActiveSessionId(sessionId);
           setPanes(
-            Array.isArray(remote?.panes) && remote.panes.length
-              ? remote.panes
+            Array.isArray(snapshot?.panes) && snapshot.panes.length
+              ? (snapshot.panes as Pane[])
               : [{ id: uuid(), sessionId }],
           );
-          setDefaultShell(
-            remote?.defaultShell ?? localStorage.getItem(DEFAULT_SHELL_STORAGE_KEY) ?? undefined,
-          );
+          setDefaultShell(snapshot?.defaultShell ?? undefined);
           setHydrated(true);
         });
       });
   }, []);
   useEffect(() => {
     if (!hydrated || !projects.length) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-    void fetch(`${apiBase}/api/workspace`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projects,
-        activeProjectId,
-        activeSessionId,
-        panes,
-        defaultShell,
-      }),
-    }).catch(() => undefined);
+    void rpc.request
+      .saveWorkspace({
+        workspace: {
+          projects,
+          activeProjectId,
+          activeSessionId,
+          panes,
+          defaultShell,
+        },
+      })
+      .catch(() => undefined);
   }, [hydrated, projects, activeProjectId, activeSessionId, panes, defaultShell]);
   useEffect(() => {
     if (activeSession) document.title = `${activeSession.title} — ${project?.name ?? "Terminal"}`;
@@ -140,7 +123,6 @@ export default function App() {
       );
       if (shell) {
         setDefaultShell(shell);
-        localStorage.setItem(DEFAULT_SHELL_STORAGE_KEY, shell);
       }
     },
     [defaultShell, project],
@@ -166,7 +148,7 @@ export default function App() {
   const closeSession = useCallback(
     (id: string) => {
       if (sessions.length <= 1) return;
-      closeSessionSocket(id);
+      rpc.send.killSession({ sessionId: id });
       setProjects((all) =>
         all.map((p) =>
           p.id === activeProjectId ? { ...p, sessions: p.sessions.filter((s) => s.id !== id) } : p,
@@ -209,7 +191,7 @@ export default function App() {
       )
     )
       return;
-    target.sessions.forEach((s) => closeSessionSocket(s.id));
+    target.sessions.forEach((s) => rpc.send.killSession({ sessionId: s.id }));
     const remaining = projects.filter((p) => p.id !== id);
     const fallback = remaining.length ? remaining : [newProject()];
     setProjects(fallback);
@@ -236,88 +218,6 @@ export default function App() {
     },
     [activeSession, project],
   );
-
-  /* Command palette removed.
-  const commands: CommandItem[] = useMemo(
-    () => [
-      ...projects.map((p) => ({
-        label: `Switch to ${p.name}`,
-        action: () => {
-          selectProject(p.id);
-          setPaletteOpen(false);
-        },
-      })),
-      {
-        label: "New session",
-        shortcut: "⌘T",
-        action: () => {
-          addSession();
-          setPaletteOpen(false);
-        },
-      },
-      {
-        label: "Split right",
-        shortcut: "⌘D",
-        action: () => {
-          split("row");
-          setPaletteOpen(false);
-        },
-      },
-      {
-        label: "Split down",
-        shortcut: "⌘⇧D",
-        action: () => {
-          split("column");
-          setPaletteOpen(false);
-        },
-      },
-      {
-        label: "Files panel",
-        shortcut: "⌘⇧F",
-        action: () => {
-          setPanel("files");
-          setPaletteOpen(false);
-        },
-      },
-      {
-        label: "Git panel",
-        shortcut: "⌘⇧G",
-        action: () => {
-          setPanel("git");
-          setPaletteOpen(false);
-        },
-      },
-      {
-        label: "Session info",
-        action: () => {
-          setPanel("info");
-          setPaletteOpen(false);
-        },
-      },
-      {
-        label: "Close panel",
-        action: () => {
-          setPanel(null);
-          setPaletteOpen(false);
-        },
-      },
-    ],
-    [projects, addSession, split],
-  );
-
-  const filteredCommands = useMemo(() => {
-    if (!paletteQuery) return commands;
-    const q = paletteQuery.toLowerCase();
-    return commands.filter((c) => c.label.toLowerCase().includes(q));
-  }, [commands, paletteQuery]);
-
-  useEffect(() => {
-    if (paletteOpen) {
-      setPaletteQuery("");
-      setTimeout(() => paletteInputRef.current?.focus(), 0);
-    }
-  }, [paletteOpen]);
-  */
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -352,8 +252,8 @@ export default function App() {
   }, [activeSessionId, addSession, projects, sessions, split]);
 
   useEffect(() => {
-    fetch(`${apiBase}/api/shells`)
-      .then((response) => response.json())
+    void rpc.request
+      .listShells({})
       .then(setShells)
       .catch(() => setShells([]));
   }, []);
@@ -371,12 +271,6 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <aside className="flex w-48 shrink-0 flex-col border-r border-border bg-background">
-        {/* <div className="flex items-center gap-2 border-b border-border px-3 h-8">
-          <TerminalSquare size={16} className="text-gray-400" />
-          <span className="text-xs font-medium tracking-wide text-sidebar-foreground/50">
-            PROJECTS
-          </span>
-        </div> */}
         <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 py-2">
           {projects.map((p) => (
             <div
@@ -492,56 +386,6 @@ export default function App() {
           setPanes([{ id: uuid(), sessionId: p.sessions[0].id }]);
         }}
       />
-      {/* Command palette removed.
-      {paletteOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
-          onClick={() => setPaletteOpen(false)}
-        >
-          <div className="fixed inset-0 bg-black/50" />
-          <div
-            className="relative z-10 w-full max-w-md overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2 border-b border-border px-3">
-              <Search size={14} className="shrink-0 text-muted-foreground" />
-              <input
-                ref={paletteInputRef}
-                value={paletteQuery}
-                onChange={(e) => setPaletteQuery(e.target.value)}
-                placeholder="Type a command..."
-                className="h-10 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-              />
-              <kbd className="pointer-events-none shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                ESC
-              </kbd>
-            </div>
-            <div className="max-h-64 overflow-y-auto p-1">
-              {filteredCommands.length === 0 ? (
-                <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-                  No commands found
-                </p>
-              ) : (
-                filteredCommands.map((cmd) => (
-                  <button
-                    key={cmd.label}
-                    type="button"
-                    onClick={cmd.action}
-                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span>{cmd.label}</span>
-                    {cmd.shortcut && (
-                      <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        {cmd.shortcut}
-                      </kbd>
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 }

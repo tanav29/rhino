@@ -1,0 +1,3 @@
+{
+  "ignorePatterns": [".hutch/**", "dist/**", "build/**"]
+}

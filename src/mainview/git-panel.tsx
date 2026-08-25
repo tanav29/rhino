@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { PatchDiff } from "@pierre/diffs/react";
 import { parseGitStatus, type GitChangedFile } from "./git-status";
-import { apiBase } from "./api-base";
+import { rpc } from "./rpc";
 
 type DiffResponse =
   | { kind: "added"; contents: string }
@@ -20,14 +20,10 @@ export function GitPanel({ cwd }: { cwd?: string }) {
     setFiles(null);
     setError(null);
     setSelected(null);
-    fetch(`${apiBase}/api/git/status?cwd=${encodeURIComponent(cwd ?? ".")}`)
-      .then(async (r) => {
-        if (!r.ok) throw new Error();
-        return r.text();
-      })
+    rpc.request
+      .readGitStatus({ cwd: cwd ?? "." })
       .then((text) => {
-        if (cancelled) return;
-        setFiles(parseGitStatus(text));
+        if (!cancelled) setFiles(parseGitStatus(text));
       })
       .catch(() => {
         if (!cancelled) setError("Git unavailable");
@@ -104,13 +100,8 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
   useEffect(() => {
     let cancelled = false;
     setDiff(null);
-    fetch(
-      `${apiBase}/api/git/diff?cwd=${encodeURIComponent(cwd ?? ".")}&path=${encodeURIComponent(path)}`,
-    )
-      .then(async (r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
+    rpc.request
+      .readGitDiff({ cwd: cwd ?? ".", path })
       .then((data) => {
         if (!cancelled) setDiff(data);
       })
