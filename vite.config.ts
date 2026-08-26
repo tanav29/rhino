@@ -90,9 +90,9 @@ export { shikiThemes };
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react(), slimShiki()],
-  base: "./",
+  base: command === "serve" ? "/" : "./",
   resolve: {
     alias: [
       { find: /^@\//, replacement: `${projectRoot}/` },
@@ -109,9 +109,14 @@ export default defineConfig({
   build: {
     outDir: "../../dist",
     emptyOutDir: true,
+    target: "esnext",
+    cssMinify: true,
+    assetsInlineLimit: 0,
+    chunkSizeWarningLimit: 1000,
+    reportCompressedSize: false,
   },
   server: {
     port: 5173,
     strictPort: true,
   },
-});
+}));

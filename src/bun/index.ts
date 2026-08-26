@@ -74,9 +74,11 @@ async function resolveMainViewUrl(): Promise<string> {
 process.on("exit", killAllSessions);
 
 const url = await resolveMainViewUrl();
+const isDevWindow =
+  process.env.ELECTROBUN_BUILD_ENV === "dev" || process.env.NODE_ENV === "development";
 
 new BrowserWindow({
-  title: "term",
+  title: isDevWindow ? "term — DEV" : "term",
   url,
   rpc,
   frame: {

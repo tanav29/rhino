@@ -1,8 +1,10 @@
 import type { ElectrobunConfig } from "electrobun";
 
+const isDev = process.env.ELECTROBUN_BUILD_ENV === "dev";
+
 export default {
 	app: {
-		name: "term",
+		name: isDev ? "term (dev)" : "term",
 		identifier: "dev.10xdevs.term",
 		version: "0.2.0",
 	},

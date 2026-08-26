@@ -1,6 +1,5 @@
 - use bun
 - code like a senior dev
-- never run a dev server unless explicitly asked
 - do minimal changes
 
 ## Project Overview
@@ -34,19 +33,3 @@ Hutch tasks live in `hutch.config.ts` (`install`, `start`, `dev`, `dev:hmr`, `hm
 - Workspace layout is persisted as JSON under `Utils.paths.userData` (`workspace.json`), not localStorage.
 - `vite.config.ts` contains a `slimShiki` build plugin that trims shiki's 200+ grammars / 60+ themes to the languages actually used and `aurora-x` (keeps the webview bundle ~5MB vs ~12MB unslimmed).
 - Windows app icon configured in `electrobun.config.ts` (`win.icon: "assets/icon.ico"`); regenerate with `bun <tmp>/make-ico.ts` after changing `logo.png`.
-
-<!-- to:todo-instructions:start -->
-
-## Project TODOs
-
-This project uses the `to` CLI for project-scoped task tracking.
-
-- Run `to ls` to inspect current tasks before starting work.
-- Run `to tree <number>` to inspect a task and its subtasks.
-- Run `to add "task text"` to add follow-up work.
-- Run `to add "task text" --parent <number>` to add subtasks.
-- Use `--priority <high|medium|low>` and `--label <label>` for task metadata.
-- Run `to done <number>` when a task is complete.
-- Prefer `to do <number> --create-branch` when starting agent-driven work.
-
-<!-- to:todo-instructions:end -->

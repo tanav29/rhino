@@ -4,12 +4,16 @@ export default {
 		version: "2.0.1",
 	},
 	scripts: {
-		install: ["hutch", "pm", "install", "--frozen-lockfile"],
-		start: "hutch electrobun prepare && hutch pm exec -- vite build && hutch electrobun dev",
-		dev: "hutch electrobun prepare && hutch pm exec -- vite build && hutch electrobun dev --watch",
-		"dev:hmr": ["hutch", "pm", "exec", "--", "concurrently", "hutch run hmr", "hutch run start"],
-		hmr: "hutch electrobun prepare && hutch pm exec -- vite --port 5173",
-		build: "hutch electrobun prepare && hutch pm exec -- vite build && hutch electrobun build --env=stable",
-		"build:canary": "hutch electrobun prepare && hutch pm exec -- vite build && hutch electrobun build --env=canary",
+		install: ["bun", "install", "--frozen-lockfile"],
+		start:
+			"hutch electrobun prepare && node node_modules/vite/bin/vite.js build && node scripts/clean-webview.mjs && hutch electrobun dev",
+		dev: "hutch electrobun prepare && node node_modules/vite/bin/vite.js build && node scripts/clean-webview.mjs && hutch electrobun dev --watch",
+		"dev:hmr":
+			"hutch electrobun prepare && node scripts/clean-webview.mjs && node node_modules/concurrently/dist/bin/index.js \"node node_modules/vite/bin/vite.js --port 5173\" \"hutch electrobun dev\"",
+		hmr: "node node_modules/vite/bin/vite.js --port 5173",
+		build:
+			"hutch electrobun prepare && node node_modules/vite/bin/vite.js build && hutch electrobun build --env=stable",
+		"build:canary":
+			"hutch electrobun prepare && node node_modules/vite/bin/vite.js build && hutch electrobun build --env=canary",
 	},
 };

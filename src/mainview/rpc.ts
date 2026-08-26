@@ -28,7 +28,26 @@ function notify<T>(map: Map<string, Set<Listener<T>>>, sessionId: string, payloa
   for (const fn of map.get(sessionId) ?? []) fn(payload);
 }
 
-export const rpc = Electroview.defineRPC<AppRPC>({
+type RpcShape = {
+  request: {
+    loadWorkspace: (p: {}) => Promise<import("../shared/rpc-schema").WorkspaceSnapshot | null>;
+    saveWorkspace: (p: { workspace: import("../shared/rpc-schema").WorkspaceSnapshot }) => Promise<null>;
+    listShells: (p: {}) => Promise<import("../shared/rpc-schema").ShellOption[]>;
+    browseDirectory: (p: { path?: string }) => Promise<import("../shared/rpc-schema").DirectoryListing>;
+    listProjectFiles: (p: { cwd: string }) => Promise<{ paths: string[]; error?: string }>;
+    readFilePreview: (p: { cwd: string; path: string }) => Promise<import("../shared/rpc-schema").FilePreview>;
+    readGitStatus: (p: { cwd: string }) => Promise<string>;
+    readGitDiff: (p: { cwd: string; path: string }) => Promise<import("../shared/rpc-schema").GitDiffResult>;
+    attachSession: (p: import("../shared/rpc-schema").AttachSessionParams) => Promise<import("../shared/rpc-schema").AttachSessionResult>;
+  };
+  send: {
+    ptyInput: (p: { sessionId: string; data: string }) => void;
+    ptyResize: (p: { sessionId: string; cols: number; rows: number }) => void;
+    killSession: (p: { sessionId: string }) => void;
+  };
+};
+
+export const rpc: RpcShape = Electroview.defineRPC<AppRPC>({
   maxRequestTime: 60_000,
   handlers: {
     requests: {},
@@ -38,10 +57,39 @@ export const rpc = Electroview.defineRPC<AppRPC>({
       ptyExit: ({ sessionId }) => notify(exitListeners, sessionId, undefined),
     },
   },
-});
+}) as unknown as RpcShape;
 
 // Attach the browser side of the transport exactly once per page load.
-new Electroview({ rpc });
+// In a plain browser (vite dev without Electrobun) this throws — fall back
+// to a no-op transport so the UI still renders for agent-browser and `vite` dev.
+try {
+  new Electroview({ rpc: rpc as unknown as ReturnType<typeof Electroview.defineRPC<AppRPC>> });
+} catch {
+  // Running outside Electrobun (e.g. `vite` dev in a normal browser).
+  (rpc as unknown as { request: RpcShape["request"] }).request = {
+    loadWorkspace: async () => {
+      try {
+        const raw = localStorage.getItem("term.workspace:v1");
+        return raw ? (JSON.parse(raw) as import("../shared/rpc-schema").WorkspaceSnapshot) : null;
+      } catch {
+        return null;
+      }
+    },
+    saveWorkspace: async () => null,
+    listShells: async () => [],
+    browseDirectory: async () => ({ path: "/", parent: null, entries: [] }),
+    listProjectFiles: async () => ({ paths: [] }),
+    readFilePreview: async () => ({ error: "Not available in browser" }),
+    readGitStatus: async () => "",
+    readGitDiff: async () => ({ kind: "empty" as const }),
+    attachSession: async () => ({ title: "Terminal", replay: "" }),
+  };
+  (rpc as unknown as { send: RpcShape["send"] }).send = {
+    ptyInput: () => {},
+    ptyResize: () => {},
+    killSession: () => {},
+  };
+}
 
 export function subscribePtyOutput(sessionId: string, fn: Listener<string>) {
   return subscribe(outputListeners, sessionId, fn);
