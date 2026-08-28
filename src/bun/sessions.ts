@@ -154,13 +154,10 @@ function finishSession(id: string, session: PtySession) {
   emit({ kind: "exit", sessionId: id });
 }
 
-export function attachSession({
-  sessionId,
-  shell: shellValue,
-  cwd,
-  cols,
-  rows,
-}: AttachParams): { title: string; replay: string } {
+export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }: AttachParams): {
+  title: string;
+  replay: string;
+} {
   const existing = sessions.get(sessionId);
   if (existing) {
     return { title: existing.title, replay: stripReplayControlSequences(existing.outputBuffer) };

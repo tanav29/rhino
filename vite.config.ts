@@ -12,14 +12,62 @@ const projectRoot = dirname(fileURLToPath(import.meta.url));
  * file types simply highlight as plain text.
  */
 const HIGHLIGHT_LANGUAGES = new Set([
-  "typescript", "javascript", "tsx", "jsx", "json", "jsonc", "json5",
-  "css", "scss", "less", "html", "xml", "markdown", "mdx",
-  "python", "go", "rust", "java", "kotlin", "swift", "dart", "scala",
-  "c", "cpp", "csharp", "fsharp", "objective-c", "objective-cpp",
-  "php", "ruby", "shellscript", "powershell", "bat", "perl", "lua",
-  "sql", "yaml", "toml", "ini", "docker", "makefile", "cmake",
-  "vue", "vue-html", "svelte", "graphql", "diff", "graphql",
-  "haskell", "elixir", "erlang", "clojure", "groovy", "zig", "julia", "r",
+  "typescript",
+  "javascript",
+  "tsx",
+  "jsx",
+  "json",
+  "jsonc",
+  "json5",
+  "css",
+  "scss",
+  "less",
+  "html",
+  "xml",
+  "markdown",
+  "mdx",
+  "python",
+  "go",
+  "rust",
+  "java",
+  "kotlin",
+  "swift",
+  "dart",
+  "scala",
+  "c",
+  "cpp",
+  "csharp",
+  "fsharp",
+  "objective-c",
+  "objective-cpp",
+  "php",
+  "ruby",
+  "shellscript",
+  "powershell",
+  "bat",
+  "perl",
+  "lua",
+  "sql",
+  "yaml",
+  "toml",
+  "ini",
+  "docker",
+  "makefile",
+  "cmake",
+  "vue",
+  "vue-html",
+  "svelte",
+  "graphql",
+  "diff",
+  "graphql",
+  "haskell",
+  "elixir",
+  "erlang",
+  "clojure",
+  "groovy",
+  "zig",
+  "julia",
+  "r",
 ]);
 
 /** Filters shiki's `{ "id": ..., "import": () => import(...) }[]` registries by rebuilding the array. */
@@ -27,7 +75,8 @@ function filterShikiRegistry(code: string, keep: (id: string) => boolean): strin
   return code.replace(
     /const\s+(bundled(?:Languages|Themes)Info)\s*=\s*\[([\s\S]*?)\];/g,
     (_full, varName: string, inner: string) => {
-      const entryRe = /\{[^{}]*?"id": "([^"]+)"[^{}]*?"import": \(\(\) => import\("[^"]+"\)\)[^{}]*?\}/g;
+      const entryRe =
+        /\{[^{}]*?"id": "([^"]+)"[^{}]*?"import": \(\(\) => import\("[^"]+"\)\)[^{}]*?\}/g;
       let m: RegExpExecArray | null;
       const kept: string[] = [];
       while ((m = entryRe.exec(inner)) !== null) {
@@ -105,15 +154,51 @@ export default defineConfig(({ command }) => ({
   optimizeDeps: {
     exclude: ["@wterm/ghostty"],
   },
+  esbuild: {
+    drop: command === "serve" ? [] : ["console", "debugger"],
+    legalComments: "none",
+  },
   root: "src/mainview",
   build: {
     outDir: "../../dist",
     emptyOutDir: true,
     target: "esnext",
     cssMinify: true,
+    cssCodeSplit: true,
+    sourcemap: false,
     assetsInlineLimit: 0,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 850,
     reportCompressedSize: false,
+    minify: "esbuild",
+    rollupOptions: {
+      treeshake: true,
+      output: {
+        compact: true,
+        manualChunks(id) {
+          const n = id.replaceAll("\\", "/");
+          // Split large static vendors, keep shiki/pierre dynamic imports as separate async chunks
+          if (n.includes("node_modules")) {
+            if (n.includes("/zustand/")) return "zustand";
+            if (n.includes("/@wterm/")) return "terminal";
+            if (n.includes("/@base-ui")) return "ui";
+            // Keep shiki & pierre as auto-split dynamic chunks (do not bundle)
+            if (n.includes("/shiki") || n.includes("/@shikijs/") || n.includes("/@pierre/"))
+              return undefined;
+            if (n.includes("/react")) return undefined; // keep react in main to avoid circular
+            // lucide-react (icons) stays in vendor: at ~11KB a dedicated chunk
+            // isn't worth it and split it off created an icons↔vendor cycle.
+            return "vendor";
+          }
+          if (n.includes("/src/mainview/file-tree") || n.includes("/src/mainview/git-panel"))
+            return "panels";
+          if (
+            n.includes("/src/mainview/new-terminal") ||
+            n.includes("/src/mainview/settings-dialog")
+          )
+            return "dialogs";
+        },
+      },
+    },
   },
   server: {
     port: 5173,

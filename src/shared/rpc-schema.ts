@@ -32,6 +32,9 @@ export interface WorkspaceSnapshot {
   activeSessionId: string;
   panes: unknown[];
   defaultShell?: string;
+  termFontSize?: number;
+  termLineHeight?: number;
+  termCursorBlink?: boolean;
 }
 
 export interface AttachSessionParams {
@@ -63,9 +66,7 @@ export interface AttachSessionResult {
 export type BunRequestHandlers = {
   [M in keyof AppRPC["bun"]["requests"]]?: (
     params: AppRPC["bun"]["requests"][M]["params"],
-  ) =>
-    | AppRPC["bun"]["requests"][M]["response"]
-    | Promise<AppRPC["bun"]["requests"][M]["response"]>;
+  ) => AppRPC["bun"]["requests"][M]["response"] | Promise<AppRPC["bun"]["requests"][M]["response"]>;
 };
 
 export type AppRPC = {

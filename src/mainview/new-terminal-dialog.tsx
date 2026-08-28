@@ -56,21 +56,25 @@ export function NewSessionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New terminal</DialogTitle>
+          <DialogTitle>New workspace</DialogTitle>
           <DialogDescription>Choose a shell and starting directory.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
-            Shell
+        <div className="flex flex-col gap-4 px-5 pb-4 pt-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              Shell
+            </span>
             <select
               value={shell}
               onChange={(event) => setShell(event.target.value)}
-              className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-8 rounded-[8px] border border-white/15 bg-white/[0.06] px-2.5 font-mono text-[12.5px] text-white outline-none focus-visible:border-white/30 focus-visible:ring-2 focus-visible:ring-white/20"
             >
-              <option value="">Default shell</option>
+              <option value="" className="bg-[#1a1a1a]">
+                Default shell
+              </option>
               {shells.map((option) => (
-                <option key={option.value} value={option.value}>
+                <option key={option.value} value={option.value} className="bg-[#1a1a1a]">
                   {option.name}
                 </option>
               ))}
@@ -78,7 +82,9 @@ export function NewSessionDialog({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Directory</span>
+            <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              Directory
+            </span>
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -90,19 +96,20 @@ export function NewSessionDialog({
                 value={pathInput}
                 onChange={(event) => setPathInput(event.target.value)}
                 spellCheck={false}
-                className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="h-8 flex-1 rounded-[8px] border border-white/15 bg-white/[0.06] px-2.5 font-mono text-[12.5px] text-white placeholder:text-zinc-500 outline-none focus-visible:border-white/30 focus-visible:ring-2 focus-visible:ring-white/20"
+                placeholder="/path/to/project"
               />
               <Button type="submit" variant="outline" size="sm">
                 Go
               </Button>
             </form>
-            <div className="h-48 overflow-y-auto rounded-md border border-border">
+            <div className="h-52 overflow-y-auto rounded-[8px] border border-white/10 bg-white/[0.03]">
               {loading ? (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
+                <div className="flex h-full items-center justify-center text-zinc-500">
                   <Loader2 size={16} className="animate-spin" />
                 </div>
               ) : browse?.error ? (
-                <p className="p-3 text-xs text-destructive">{browse.error}</p>
+                <p className="p-3 font-mono text-xs text-red-400">{browse.error}</p>
               ) : (
                 <>
                   {browse?.parent && (
@@ -110,14 +117,14 @@ export function NewSessionDialog({
                       type="button"
                       aria-label="Go to parent directory"
                       onClick={() => loadPath(browse.parent!)}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[12.5px] text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-100"
                     >
                       <ChevronUp size={13} />
                       Up a level
                     </button>
                   )}
                   {browse?.entries.length === 0 && (
-                    <p className="p-3 text-xs text-muted-foreground">No subfolders</p>
+                    <p className="p-3 font-mono text-xs text-zinc-500">No subfolders</p>
                   )}
                   {browse?.entries.map((entry) => (
                     <button
@@ -125,10 +132,10 @@ export function NewSessionDialog({
                       aria-label={`Open ${entry.name}`}
                       key={entry.path}
                       onClick={() => loadPath(entry.path)}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-foreground"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] transition-colors hover:bg-white/10 hover:text-white"
                     >
-                      <Folder size={13} className="shrink-0 text-muted-foreground" />
-                      <span className="truncate">{entry.name}</span>
+                      <Folder size={13} className="shrink-0 text-zinc-600" />
+                      <span className="truncate font-[450] tracking-tight">{entry.name}</span>
                     </button>
                   ))}
                 </>

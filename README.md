@@ -27,6 +27,7 @@ hutch --version
 `hutch electrobun prepare` projects the devkit into `.hutch/devkit` (tsconfig paths + Vite aliases). Run `bun install && hutch electrobun prepare` after cloning.
 
 > **Windows + broken IPv6:** if `hutch electrobun prepare` fails with `ReleaseDownloadFailed` on a host that has IPv6 routes but no IPv6 egress, prefer IPv4:
+>
 > ```powershell
 > netsh interface ipv6 set prefixpolicy ::ffff:0:0/96 50 0
 > ```
@@ -75,19 +76,19 @@ src/mainview/session-view.tsx  Ghostty + rpc attach/input/resize
 
 ## Keyboard shortcuts
 
-| Shortcut               | Action         |
-| ---------------------- | -------------- |
-| `⌘T` / `Ctrl+T`        | New terminal   |
-| `⌘D` / `Ctrl+D`        | Split right    |
-| `⌘⇧D` / `Ctrl+Shift+D` | Split down     |
-| `⌘N` / `Ctrl+N`        | New workspace  |
-| `Ctrl+Tab` / `Shift`   | Next / prev tab|
+| Shortcut               | Action           |
+| ---------------------- | ---------------- |
+| `⌘T` / `Ctrl+T`        | New terminal     |
+| `⌘D` / `Ctrl+D`        | Split right      |
+| `⌘⇧D` / `Ctrl+Shift+D` | Split down       |
+| `⌘N` / `Ctrl+N`        | New workspace    |
+| `Ctrl+Tab` / `Shift`   | Next / prev tab  |
 | `⌘1-9` / `Ctrl+1-9`    | Switch workspace |
 
 ## Scripts
 
-| Script | What it does |
-| ------ | ------------ |
-| `bun run type-check` | `tsc --noEmit` |
-| `bun run lint` / `lint:fix` | `oxlint` |
-| `bun run fmt` / `fmt:check` | `oxfmt` |
+| Script                      | What it does   |
+| --------------------------- | -------------- |
+| `bun run type-check`        | `tsc --noEmit` |
+| `bun run lint` / `lint:fix` | `oxlint`       |
+| `bun run fmt` / `fmt:check` | `oxfmt`        |

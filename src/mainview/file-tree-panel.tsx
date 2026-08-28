@@ -20,9 +20,7 @@ export function FilesPanel({ cwd }: { cwd: string }) {
     setError(null);
     Promise.all([
       rpc.request.listProjectFiles({ cwd }),
-      rpc.request
-        .readGitStatus({ cwd })
-        .catch(() => ""),
+      rpc.request.readGitStatus({ cwd }).catch(() => ""),
     ])
       .then(([filesRes, statusText]) => {
         if (cancelled) return;
@@ -43,16 +41,16 @@ export function FilesPanel({ cwd }: { cwd: string }) {
     };
   }, [cwd]);
 
-  if (error) return <p className="p-3 text-xs text-sidebar-foreground/60">{error}</p>;
+  if (error) return <p className="p-3 font-mono text-xs text-zinc-500">{error}</p>;
   if (!data)
     return (
-      <div className="flex items-center gap-2 p-3 text-xs text-sidebar-foreground/50">
+      <div className="flex items-center gap-2 p-3 font-mono text-xs text-zinc-500">
         <Loader2 size={12} className="animate-spin" />
         Loading files…
       </div>
     );
   if (data.paths.length === 0)
-    return <p className="p-3 text-xs text-sidebar-foreground/60">No files found in {cwd}.</p>;
+    return <p className="p-3 font-mono text-xs text-zinc-500">No files found in {cwd}.</p>;
 
   return <FilesTreeBody key={cwd} paths={data.paths} gitStatus={data.gitStatus} />;
 }
@@ -68,7 +66,7 @@ function FilesTreeBody({ paths, gitStatus }: { paths: string[]; gitStatus: GitSt
   });
 
   return (
-    <div className="h-full min-h-0 overflow-auto px-1 py-1">
+    <div className="h-full min-h-0 overflow-auto bg-[#0f0f0f] px-1 py-1 [&_*]:!font-mono">
       <FileTree model={model} />
     </div>
   );

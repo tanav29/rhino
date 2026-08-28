@@ -1,95 +1,63 @@
-import { startTransition, useCallback, useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Folder } from "lucide-react";
-import { SessionTabs, type SessionTab } from "./session-tabs";
+import { lazy, Suspense, useEffect } from "react";
+import { Plus, Trash2, Folder, X } from "lucide-react";
+import { SessionTabs } from "./session-tabs";
 import { SessionView } from "./session-view";
 import { rpc } from "./rpc";
-import { FilesPanel } from "./file-tree-panel";
-import { GitPanel } from "./git-panel";
-import { NewSessionDialog } from "./new-terminal-dialog";
+import { useWorkspaceStore, selectActiveSession } from "./store";
 
-export interface Project {
-  id: string;
-  name: string;
-  path: string;
-  sessions: SessionTab[];
-}
+const FilesPanel = lazy(() => import("./file-tree-panel").then((m) => ({ default: m.FilesPanel })));
+const GitPanel = lazy(() => import("./git-panel").then((m) => ({ default: m.GitPanel })));
+const NewSessionDialog = lazy(() =>
+  import("./new-terminal-dialog").then((m) => ({ default: m.NewSessionDialog })),
+);
+const SettingsDialog = lazy(() =>
+  import("./settings-dialog").then((m) => ({ default: m.SettingsDialog })),
+);
 
-interface Pane {
-  id: string;
-  sessionId: string;
-  direction?: "row" | "column";
-}
-
-let counter = 0;
-const uuid = () =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const newSession = (cwd?: string, shell?: string): SessionTab => ({
-  id: uuid(),
-  title: `Terminal ${++counter}`,
-  cwd,
-  shell,
-});
-const newProject = (): Project => ({
-  id: uuid(),
-  name: "Workspace",
-  path: ".",
-  sessions: [newSession()],
-});
+export type { Project } from "./store";
 
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProjectId, setActiveProjectId] = useState("");
-  const [activeSessionId, setActiveSessionId] = useState("");
-  const [panes, setPanes] = useState<Pane[]>([]);
-  const [panel, setPanel] = useState<"files" | "git" | "info" | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-  const [defaultShell, setDefaultShell] = useState<string>();
-  const [newOpen, setNewOpen] = useState(false);
-  const [shells, setShells] = useState<{ name: string; value: string }[]>([]);
-  const lastSessionByProject = useRef<Record<string, string>>({});
-  const project = projects.find((item) => item.id === activeProjectId);
+  const projects = useWorkspaceStore((s) => s.projects);
+  const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
+  const activeSessionId = useWorkspaceStore((s) => s.activeSessionId);
+  const panes = useWorkspaceStore((s) => s.panes);
+  const panel = useWorkspaceStore((s) => s.panel);
+  const hydrated = useWorkspaceStore((s) => s.hydrated);
+  const termFontSize = useWorkspaceStore((s) => s.termFontSize);
+  const termLineHeight = useWorkspaceStore((s) => s.termLineHeight);
+  const termCursorBlink = useWorkspaceStore((s) => s.termCursorBlink);
+  const newOpen = useWorkspaceStore((s) => s.newOpen);
+  const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
+  const shells = useWorkspaceStore((s) => s.shells);
+  const setPanel = useWorkspaceStore((s) => s.setPanel);
+  const setNewOpen = useWorkspaceStore((s) => s.setNewOpen);
+  const setSettingsOpen = useWorkspaceStore((s) => s.setSettingsOpen);
+  const setTermFontSize = useWorkspaceStore((s) => s.setTermFontSize);
+  const setTermLineHeight = useWorkspaceStore((s) => s.setTermLineHeight);
+  const setTermCursorBlink = useWorkspaceStore((s) => s.setTermCursorBlink);
+  const setShells = useWorkspaceStore((s) => s.setShells);
+  const hydrate = useWorkspaceStore((s) => s.hydrate);
+  const addSession = useWorkspaceStore((s) => s.addSession);
+  const selectSession = useWorkspaceStore((s) => s.selectSession);
+  const updateTitle = useWorkspaceStore((s) => s.updateTitle);
+  const closeSession = useWorkspaceStore((s) => s.closeSession);
+  const selectProject = useWorkspaceStore((s) => s.selectProject);
+  const removeProject = useWorkspaceStore((s) => s.removeProject);
+  const createProject = useWorkspaceStore((s) => s.createProject);
+  const split = useWorkspaceStore((s) => s.split);
+
+  const project = useWorkspaceStore((s) => s.projects.find((p) => p.id === s.activeProjectId));
   const sessions = project?.sessions ?? [];
-  const activeSession = sessions.find((item) => item.id === activeSessionId);
+  const activeSession = useWorkspaceStore(selectActiveSession);
+  const defaultShell = useWorkspaceStore((s) => s.defaultShell);
 
   useEffect(() => {
     void rpc.request
       .loadWorkspace({})
       .catch(() => null)
-      .then((snapshot) => {
-        const valid =
-          snapshot?.projects?.length &&
-          snapshot.projects.every((p: unknown) => {
-            const project = p as Project;
-            return Boolean(project?.id && Array.isArray(project.sessions));
-          });
-        const loaded = valid ? (snapshot!.projects as Project[]) : [newProject()];
-        const snapshotProjectId = snapshot?.activeProjectId;
-        const projectId =
-          snapshotProjectId && loaded.some((p) => p.id === snapshotProjectId)
-            ? snapshotProjectId
-            : loaded[0].id;
-        const selectedProject = loaded.find((p) => p.id === projectId) ?? loaded[0];
-        const snapshotSessionId = snapshot?.activeSessionId;
-        const sessionId =
-          selectedProject.sessions.some((s) => s.id === snapshotSessionId)
-            ? snapshotSessionId!
-            : selectedProject.sessions[0].id;
-        startTransition(() => {
-          setProjects(loaded);
-          setActiveProjectId(projectId);
-          setActiveSessionId(sessionId);
-          setPanes(
-            Array.isArray(snapshot?.panes) && snapshot.panes.length
-              ? (snapshot.panes as Pane[])
-              : [{ id: uuid(), sessionId }],
-          );
-          setDefaultShell(snapshot?.defaultShell ?? undefined);
-          setHydrated(true);
-        });
-      });
-  }, []);
+      .then((snapshot) => hydrate(snapshot));
+  }, [hydrate]);
+
   useEffect(() => {
     if (!hydrated || !projects.length) return;
     void rpc.request
@@ -100,134 +68,37 @@ export default function App() {
           activeSessionId,
           panes,
           defaultShell,
+          termFontSize,
+          termLineHeight,
+          termCursorBlink,
         },
       })
       .catch(() => undefined);
-  }, [hydrated, projects, activeProjectId, activeSessionId, panes, defaultShell]);
+  }, [
+    hydrated,
+    projects,
+    activeProjectId,
+    activeSessionId,
+    panes,
+    defaultShell,
+    termFontSize,
+    termLineHeight,
+    termCursorBlink,
+  ]);
+
   useEffect(() => {
     if (activeSession) document.title = `${activeSession.title} — ${project?.name ?? "Terminal"}`;
   }, [activeSession, project]);
-
-  const addSession = useCallback(
-    (shell?: string, cwd?: string) => {
-      if (!project) return;
-      const session = newSession(cwd || project.path, shell ?? defaultShell);
-      setProjects((all) =>
-        all.map((p) => (p.id === project.id ? { ...p, sessions: [...p.sessions, session] } : p)),
-      );
-      setActiveSessionId(session.id);
-      setPanes((all) =>
-        all.length
-          ? all.map((pane, index) => (index === 0 ? { ...pane, sessionId: session.id } : pane))
-          : all,
-      );
-      if (shell) {
-        setDefaultShell(shell);
-      }
-    },
-    [defaultShell, project],
-  );
-  const selectSession = useCallback((id: string) => {
-    setActiveSessionId(id);
-    setActiveProjectId((projectId) => {
-      lastSessionByProject.current[projectId] = id;
-      return projectId;
-    });
-    setPanes((all) => all.map((pane, index) => (index === 0 ? { ...pane, sessionId: id } : pane)));
-  }, []);
-  const updateTitle = useCallback(
-    (id: string, title: string) =>
-      setProjects((all) =>
-        all.map((p) => ({
-          ...p,
-          sessions: p.sessions.map((s) => (s.id === id ? { ...s, title } : s)),
-        })),
-      ),
-    [],
-  );
-  const closeSession = useCallback(
-    (id: string) => {
-      if (sessions.length <= 1) return;
-      rpc.send.killSession({ sessionId: id });
-      setProjects((all) =>
-        all.map((p) =>
-          p.id === activeProjectId ? { ...p, sessions: p.sessions.filter((s) => s.id !== id) } : p,
-        ),
-      );
-      setPanes((all) => {
-        const remaining = all.filter((pane) => pane.sessionId !== id);
-        if (remaining.length) return remaining;
-        const next = sessions.find((s) => s.id !== id);
-        return next ? [{ id: uuid(), sessionId: next.id }] : [];
-      });
-      if (activeSessionId === id) {
-        const next = sessions.find((s) => s.id !== id);
-        if (next) selectSession(next.id);
-      }
-    },
-    [activeProjectId, activeSessionId, sessions, selectSession],
-  );
-  const selectProject = (id: string) => {
-    const next = projects.find((p) => p.id === id);
-    if (!next) return;
-    lastSessionByProject.current[activeProjectId] = activeSessionId;
-    const sessionId = next.sessions.some(
-      (session) => session.id === lastSessionByProject.current[id],
-    )
-      ? lastSessionByProject.current[id]
-      : next.sessions[0].id;
-    setActiveProjectId(id);
-    setActiveSessionId(sessionId);
-    setPanes([{ id: uuid(), sessionId }]);
-  };
-  const addProject = useCallback(() => setNewOpen(true), []);
-  const removeProject = (id: string) => {
-    const target = projects.find((p) => p.id === id);
-    if (!target) return;
-    const count = target.sessions.length;
-    if (
-      !window.confirm(
-        `Delete workspace "${target.name}"? This closes ${count} terminal${count === 1 ? "" : "s"}.`,
-      )
-    )
-      return;
-    target.sessions.forEach((s) => rpc.send.killSession({ sessionId: s.id }));
-    const remaining = projects.filter((p) => p.id !== id);
-    const fallback = remaining.length ? remaining : [newProject()];
-    setProjects(fallback);
-    if (activeProjectId === id) {
-      const next = fallback[0];
-      setActiveProjectId(next.id);
-      setActiveSessionId(next.sessions[0].id);
-      setPanes([{ id: uuid(), sessionId: next.sessions[0].id }]);
-    }
-  };
-
-  const split = useCallback(
-    (direction: "row" | "column") => {
-      if (!activeSession || !project) return;
-      const session = newSession(activeSession.cwd || project.path, activeSession.shell);
-      setProjects((all) =>
-        all.map((p) => (p.id === project.id ? { ...p, sessions: [...p.sessions, session] } : p)),
-      );
-      setActiveSessionId(session.id);
-      setPanes((all) => [
-        ...all.map((p, i) => (i === 0 ? { ...p, direction } : p)),
-        { id: uuid(), sessionId: session.id, direction },
-      ]);
-    },
-    [activeSession, project],
-  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey;
       if (event.ctrlKey && event.key === "Tab" && sessions.length > 1) {
         event.preventDefault();
-        const currentIndex = sessions.findIndex((session) => session.id === activeSessionId);
+        const idx = sessions.findIndex((s) => s.id === activeSessionId);
         const step = event.shiftKey ? -1 : 1;
-        const nextIndex = (currentIndex + step + sessions.length) % sessions.length;
-        selectSession(sessions[nextIndex].id);
+        const next = (idx + step + sessions.length) % sessions.length;
+        selectSession(sessions[next].id);
         return;
       }
       if (mod && event.key.toLowerCase() === "t") {
@@ -240,23 +111,24 @@ export default function App() {
       }
       if (mod && event.key.toLowerCase() === "n") {
         event.preventDefault();
-        addProject();
+        useWorkspaceStore.getState().addProject();
       }
       if (mod && /^[1-9]$/.test(event.key)) {
         event.preventDefault();
-        selectProject(projects[Number(event.key) - 1]?.id ?? "");
+        const target = projects[Number(event.key) - 1];
+        if (target) selectProject(target.id);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeSessionId, addSession, projects, sessions, split]);
+  }, [activeSessionId, addSession, projects, sessions, split, selectSession, selectProject]);
 
   useEffect(() => {
     void rpc.request
       .listShells({})
       .then(setShells)
       .catch(() => setShells([]));
-  }, []);
+  }, [setShells]);
 
   if (!hydrated) return <div className="h-screen bg-background" />;
 
@@ -270,58 +142,74 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <aside className="flex w-48 shrink-0 flex-col border-r border-border bg-background">
-        <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 py-2">
-          {projects.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => selectProject(p.id)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") selectProject(p.id);
-              }}
-              role="button"
-              tabIndex={0}
-              className={`group flex w-full flex-col items-start gap-0.5 rounded-md px-2.5 py-2 text-left text-sm cursor-pointer ${
-                p.id === activeProjectId
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
-            >
-              <div className="flex w-full items-center gap-2">
-                <span className="truncate text-xs font-medium flex gap-1 items-center">
-                  <Folder className="w-3" />
-                  {p.name}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Delete workspace ${p.name}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeProject(p.id);
-                  }}
-                  title="Delete workspace"
-                  className="ml-auto flex size-5 shrink-0 items-center justify-center rounded text-sidebar-foreground/40 opacity-0 hover:text-destructive group-hover:opacity-100"
+      <aside className="flex w-[220px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+        <div className="flex h-9 shrink-0 items-center border-b border-sidebar-border px-3">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+            Workspaces
+          </span>
+          <span className="ml-auto rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none text-zinc-400">
+            {projects.length}
+          </span>
+        </div>
+        <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-2 scrollbar-none">
+          {projects.map((p) => {
+            const isActive = p.id === activeProjectId;
+            return (
+              <div
+                key={p.id}
+                onClick={() => selectProject(p.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") selectProject(p.id);
+                }}
+                role="button"
+                tabIndex={0}
+                className={`group flex w-full flex-col items-start gap-0.5 rounded-[8px] px-2.5 py-2 text-left text-sm cursor-pointer transition-none ${
+                  isActive
+                    ? "bg-white text-black shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                    : "text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
+                }`}
+              >
+                <div className="flex w-full items-center gap-2">
+                  <span className="truncate text-[12.5px] font-[550] flex gap-1.5 items-center tracking-tight">
+                    <Folder
+                      className={`w-3.5 shrink-0 ${isActive ? "text-black/60" : "text-zinc-600 group-hover:text-zinc-400"}`}
+                    />
+                    {p.name}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Delete workspace ${p.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeProject(p.id);
+                    }}
+                    title="Delete workspace"
+                    className={`ml-auto flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${isActive ? "text-black/40 hover:bg-black/10 hover:text-red-600" : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-red-400 group-hover:opacity-100"}`}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                <span
+                  className={`truncate font-mono text-[11px] w-full pl-[20px] leading-none ${isActive ? "text-black/55" : "text-zinc-600 group-hover:text-zinc-500"}`}
                 >
-                  <Trash2 size={12} />
-                </button>
+                  {p.path}
+                </span>
               </div>
-              <span className="truncate text-[11px] text-sidebar-foreground/40 w-full">
-                {p.path}
-              </span>
-            </div>
-          ))}
+            );
+          })}
           <button
             type="button"
             aria-label="New project"
-            onClick={addProject}
-            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            onClick={() => useWorkspaceStore.getState().addProject()}
+            className="mt-1 flex w-full items-center gap-2 rounded-[8px] border border-white/10 bg-transparent px-2.5 py-2 font-mono text-xs font-medium text-zinc-500 hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors"
           >
-            <Plus size={14} />
+            <Plus size={13} strokeWidth={2.2} />
             <span>New project</span>
+            <span className="ml-auto font-mono text-[10px] text-zinc-600">⌘N</span>
           </button>
         </div>
       </aside>
-      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <main className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
         <SessionTabs
           sessions={sessions}
           activeId={activeSessionId}
@@ -331,27 +219,31 @@ export default function App() {
           shells={shells}
           panel={panel}
           onPanelToggle={setPanel}
+          onSettings={() => setSettingsOpen(true)}
         />
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div className="relative isolate min-h-0 flex-1 overflow-hidden bg-[#0e0e0e]">
           {allSessions.map((session) => {
             const paneIndex = paneSessions.findIndex((pane) => pane.session?.id === session.id);
             const visible = paneIndex >= 0 && paneCount > 0;
-            const size = visible ? `${100 / paneCount}%` : "0";
+            const size = `${100 / paneCount}%`;
             const isLast = paneIndex === paneCount - 1;
             return (
               <div
                 key={session.id}
+                aria-hidden={visible ? undefined : true}
                 className="absolute overflow-hidden"
                 style={{
-                  display: visible ? "block" : "none",
-                  top: splitColumn ? `${paneIndex * (100 / paneCount)}%` : 0,
-                  left: splitColumn ? 0 : `${paneIndex * (100 / paneCount)}%`,
-                  height: splitColumn ? size : "100%",
-                  width: splitColumn ? "100%" : size,
+                  visibility: visible ? "visible" : "hidden",
+                  pointerEvents: visible ? "auto" : "none",
+                  zIndex: visible ? 1 : 0,
+                  top: visible ? (splitColumn ? `${paneIndex * (100 / paneCount)}%` : 0) : 0,
+                  left: visible ? (splitColumn ? 0 : `${paneIndex * (100 / paneCount)}%`) : 0,
+                  height: visible ? (splitColumn ? size : "100%") : "100%",
+                  width: visible ? (splitColumn ? "100%" : size) : "100%",
                   borderRight:
-                    visible && !isLast && !splitColumn ? "1px solid var(--border)" : undefined,
+                    visible && !isLast && !splitColumn ? "1px solid oklch(1 0 0 / 10%)" : undefined,
                   borderBottom:
-                    visible && !isLast && splitColumn ? "1px solid var(--border)" : undefined,
+                    visible && !isLast && splitColumn ? "1px solid oklch(1 0 0 / 10%)" : undefined,
                 }}
               >
                 <SessionView
@@ -359,33 +251,43 @@ export default function App() {
                   onTitle={updateTitle}
                   active={session.id === activeSessionId}
                   visible={visible}
+                  fontSize={termFontSize}
+                  lineHeight={termLineHeight}
+                  cursorBlink={termCursorBlink}
                 />
               </div>
             );
           })}
         </div>
       </main>
-      {panel && <WorkspacePanel project={project} panel={panel} onPanelToggle={setPanel} />}
-      <NewSessionDialog
-        open={newOpen}
-        onOpenChange={setNewOpen}
-        shells={shells}
-        initialPath={project?.path ?? "."}
-        onCreate={(shell, cwd) => {
-          if (!cwd) return;
-          const session = newSession(cwd, shell);
-          const p: Project = {
-            id: uuid(),
-            name: cwd.split(/[\\/]/).filter(Boolean).pop() || `Project ${projects.length + 1}`,
-            path: cwd,
-            sessions: [session],
-          };
-          setProjects((all) => [...all, p]);
-          setActiveProjectId(p.id);
-          setActiveSessionId(p.sessions[0].id);
-          setPanes([{ id: uuid(), sessionId: p.sessions[0].id }]);
-        }}
-      />
+      {panel && (
+        <Suspense
+          fallback={
+            <div className="w-[min(24rem,40vw)] shrink-0 border-l border-white/10 bg-[#0f0f0f]" />
+          }
+        >
+          <WorkspacePanel project={project} panel={panel} onPanelToggle={setPanel} />
+        </Suspense>
+      )}
+      <Suspense fallback={null}>
+        <NewSessionDialog
+          open={newOpen}
+          onOpenChange={setNewOpen}
+          shells={shells}
+          initialPath={project?.path ?? "."}
+          onCreate={createProject}
+        />
+        <SettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          fontSize={termFontSize}
+          onFontSizeChange={setTermFontSize}
+          lineHeight={termLineHeight}
+          onLineHeightChange={setTermLineHeight}
+          cursorBlink={termCursorBlink}
+          onCursorBlinkChange={setTermCursorBlink}
+        />
+      </Suspense>
     </div>
   );
 }
@@ -395,23 +297,23 @@ function WorkspacePanel({
   panel,
   onPanelToggle,
 }: {
-  project?: Project;
-  panel: "files" | "git" | "info";
-  onPanelToggle: (panel: "files" | "git" | "info" | null) => void;
+  project?: { path: string };
+  panel: "files" | "git";
+  onPanelToggle: (panel: "files" | "git" | null) => void;
 }) {
   return (
-    <aside className="flex w-[min(24rem,40vw)] shrink-0 flex-col overflow-hidden border-l border-border bg-sidebar text-sm text-sidebar-foreground">
-      <div className="flex h-10 items-center border-b border-sidebar-border px-2">
-        <div className="flex h-7 items-center gap-0.5 rounded-md bg-sidebar-accent/60 p-0.5">
-          {(["files", "git", "info"] as const).map((item) => (
+    <aside className="flex w-[min(24rem,40vw)] shrink-0 flex-col overflow-hidden border-l border-white/10 bg-[#0f0f0f] text-sm text-foreground">
+      <div className="flex h-9 shrink-0 items-center border-b border-white/10 bg-[#0f0f0f] px-2">
+        <div className="flex h-7 items-center gap-0.5 rounded-full bg-white/[0.06] p-1 ring-1 ring-white/5">
+          {(["files", "git"] as const).map((item) => (
             <button
               key={item}
               type="button"
               aria-pressed={panel === item}
               onClick={() => onPanelToggle(item)}
-              className={`rounded px-2.5 py-1 text-[11px] font-medium capitalize transition-colors ${panel === item ? "bg-background text-foreground shadow-sm" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"}`}
+              className={`rounded-full px-3 py-1 text-[11px] font-[650] capitalize tracking-tight transition-none ${panel === item ? "bg-white text-black shadow-sm" : "text-zinc-500 hover:text-zinc-200"}`}
             >
-              {item === "info" ? "Shortcuts" : item}
+              {item}
             </button>
           ))}
         </div>
@@ -420,69 +322,29 @@ function WorkspacePanel({
           aria-label="Close workspace panel"
           title="Close panel"
           onClick={() => onPanelToggle(null)}
-          className="ml-auto rounded p-1 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          className="ml-auto flex size-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-100"
         >
-          ×
+          <X size={14} />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {panel === "files" &&
-          (project ? (
-            <FilesPanel cwd={project.path} />
-          ) : (
-            <p className="p-4 text-sidebar-foreground/60">No project selected.</p>
-          ))}
-        {panel === "git" && <GitPanel cwd={project?.path} />}
-        {panel === "info" && (
-          <div className="flex flex-col gap-4 p-4">
-            <div>
-              <h3 className="mb-2 text-xs font-medium text-sidebar-foreground/80">Navigation</h3>
-              <div className="flex flex-col gap-1.5">
-                <ShortcutRow keys={["⌘", "T"]} label="New terminal" />
-                <ShortcutRow keys={["⌘", "D"]} label="Split right" />
-                <ShortcutRow keys={["⌘", "⇧", "D"]} label="Split down" />
-                <ShortcutRow keys={["⌘", "N"]} label="New workspace" />
-                <ShortcutRow keys={["Ctrl", "Tab"]} label="Next terminal" />
-                <ShortcutRow keys={["Ctrl", "Shift", "Tab"]} label="Previous terminal" />
-                <ShortcutRow keys={["⌘", "1-9"]} label="Switch workspace" />
-              </div>
+      <div className="min-h-0 flex-1 overflow-hidden bg-[#0f0f0f]">
+        <Suspense
+          fallback={
+            <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
+              <span className="size-3 animate-spin rounded-full border border-muted-foreground/30 border-t-muted-foreground" />
+              Loading…
             </div>
-            <div>
-              <h3 className="mb-2 text-xs font-medium text-sidebar-foreground/80">Panels</h3>
-              <div className="flex flex-col gap-1.5">
-                <ShortcutRow keys={["⌘", "⇧", "F"]} label="Files panel" />
-                <ShortcutRow keys={["⌘", "⇧", "G"]} label="Git panel" />
-              </div>
-            </div>
-            <div>
-              <h3 className="mb-2 text-xs font-medium text-sidebar-foreground/80">Shell</h3>
-              <p className="text-xs text-sidebar-foreground/50">
-                Run <code className="rounded bg-muted px-1 py-0.5 text-[11px]">tasklist</code> or{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-[11px]">netstat -ano</code> to
-                inspect processes and ports.
-              </p>
-            </div>
-          </div>
-        )}
+          }
+        >
+          {panel === "files" &&
+            (project ? (
+              <FilesPanel cwd={project.path} />
+            ) : (
+              <p className="p-4 text-muted-foreground">No project selected.</p>
+            ))}
+          {panel === "git" && <GitPanel cwd={project?.path} />}
+        </Suspense>
       </div>
     </aside>
-  );
-}
-
-function ShortcutRow({ keys, label }: { keys: string[]; label: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-sidebar-foreground/60">{label}</span>
-      <div className="flex items-center gap-0.5">
-        {keys.map((key, i) => (
-          <kbd
-            key={i}
-            className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 text-[10px] font-medium text-muted-foreground"
-          >
-            {key}
-          </kbd>
-        ))}
-      </div>
-    </div>
   );
 }

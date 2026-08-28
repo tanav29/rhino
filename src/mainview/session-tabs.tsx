@@ -7,14 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, X, Terminal, ChevronDown, PanelLeftOpen, PanelRightOpen } from "lucide-react";
-import {
-  VscTerminalBash,
-  VscTerminalCmd,
-  VscTerminalGitBash,
-  VscTerminalPowershell,
-  VscTerminalUbuntu,
-} from "react-icons/vsc";
+import { Plus, X, Terminal, ChevronDown, PanelLeftOpen, Settings } from "lucide-react";
 
 export interface SessionTab {
   id: string;
@@ -30,18 +23,12 @@ interface SessionTabsProps {
   onClose: (id: string) => void;
   onNew: (shell?: string, cwd?: string) => void;
   shells: { name: string; value: string }[];
-  panel?: "files" | "git" | "info" | null;
-  onPanelToggle?: (panel: "files" | "git" | "info" | null) => void;
+  panel?: "files" | "git" | null;
+  onPanelToggle?: (panel: "files" | "git" | null) => void;
+  onSettings?: () => void;
 }
 
-const ShellIcon = ({ shell }: { shell?: string }) => {
-  if (shell === "cmd.exe") return <VscTerminalCmd size={13} />;
-  if (shell === "wsl.exe") return <VscTerminalUbuntu size={13} />;
-  if (shell === "bash.exe") return <VscTerminalBash size={13} />;
-  if (shell === "powershell.exe") return <VscTerminalPowershell size={13} />;
-  if (shell === "git-bash.exe") return <VscTerminalGitBash size={13} />;
-  return <Terminal size={13} />;
-};
+const ShellIcon = (_props: { shell?: string }) => <Terminal size={13} />;
 
 export function SessionTabs({
   sessions,
@@ -52,22 +39,13 @@ export function SessionTabs({
   shells,
   panel,
   onPanelToggle,
+  onSettings,
 }: SessionTabsProps) {
   return (
-    <div className="flex h-8 shrink-0 items-center border-b border-border bg-background">
-      <div className="flex items-center gap-1 px-2 text-xs text-muted-foreground">
-        <button
-          type="button"
-          aria-label="Toggle files panel"
-          onClick={() => onPanelToggle?.(panel === "files" ? null : "files")}
-          className={`flex size-6 items-center justify-center rounded hover:bg-accent hover:text-foreground ${panel === "files" ? "bg-accent text-foreground" : ""}`}
-          title="Files"
-        >
-          <PanelRightOpen size={13} />
-        </button>
-      </div>
-      <div className="flex h-full items-center gap-px overflow-x-auto scrollbar-none">
+    <div className="flex h-9 shrink-0 items-center border-b border-white/10 bg-[#0f0f0f]">
+      <div className="flex h-full items-stretch gap-0 overflow-x-auto scrollbar-none">
         {sessions.map((session) => {
+          const active = session.id === activeId;
           return (
             <div
               key={session.id}
@@ -77,12 +55,16 @@ export function SessionTabs({
               }}
               role="button"
               tabIndex={0}
-              className={`group flex h-full cursor-pointer items-center gap-1.5 px-2 text-xs transition-colors ${
-                session.id === activeId ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+              className={`group relative flex shrink-0 cursor-pointer items-center gap-2 border-r px-3 text-xs transition-none select-none ${
+                active
+                  ? "bg-white text-black border-white"
+                  : "border-white/10 bg-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
               }`}
             >
               <ShellIcon shell={session.shell} />
-              <span className="max-w-28 truncate">{session.title}</span>
+              <span className="max-w-[148px] truncate font-[550] tracking-tight">
+                {session.title}
+              </span>
               <button
                 type="button"
                 aria-label={`Close ${session.title}`}
@@ -90,22 +72,27 @@ export function SessionTabs({
                   e.stopPropagation();
                   onClose(session.id);
                 }}
-                className="ml-0.5 flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 hover:bg-accent hover:text-foreground group-hover:opacity-100"
+                className={`ml-1 flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${
+                  active
+                    ? "text-black/50 hover:bg-black/10 hover:text-black"
+                    : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-zinc-100 group-hover:opacity-100"
+                }`}
               >
-                <X size={11} />
+                <X size={11} strokeWidth={2.2} />
               </button>
             </div>
           );
         })}
       </div>
-      <div className="flex items-center gap-0.5 px-1">
+      <div className="flex items-center gap-0.5 border-l border-white/10 pl-1 pr-1">
         <button
           type="button"
           aria-label="New terminal"
           onClick={() => onNew()}
-          className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex size-7 items-center justify-center rounded-[6px] text-zinc-500 hover:bg-white/10 hover:text-zinc-100 transition-colors"
+          title="New terminal (Ctrl+T)"
         >
-          <Plus size={14} />
+          <Plus size={14} strokeWidth={2} />
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -113,13 +100,13 @@ export function SessionTabs({
               <button
                 type="button"
                 aria-label="Choose shell"
-                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="flex size-7 items-center justify-center rounded-[6px] text-zinc-500 hover:bg-white/10 hover:text-zinc-100 transition-colors"
               >
-                <ChevronDown size={12} />
+                <ChevronDown size={12} strokeWidth={2} />
               </button>
             }
           />
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-52">
             <DropdownMenuGroup>
               {shells.map((shell) => (
                 <DropdownMenuItem key={shell.value} onClick={() => onNew(shell.value)}>
@@ -131,15 +118,25 @@ export function SessionTabs({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="ml-auto flex items-center px-2">
+      <div className="ml-auto flex items-center gap-1 pl-2 pr-2">
+        <div className="mr-1 hidden h-4 w-px bg-white/10 sm:block" />
+        <button
+          type="button"
+          aria-label="Terminal settings"
+          onClick={() => onSettings?.()}
+          className="flex size-7 items-center justify-center rounded-[6px] text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-100"
+          title="Terminal settings"
+        >
+          <Settings size={14} strokeWidth={1.8} />
+        </button>
         <button
           type="button"
           aria-label={panel ? "Close workspace panel" : "Open workspace panel"}
           onClick={() => onPanelToggle?.(panel ? null : "files")}
-          className={`flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${panel ? "bg-accent text-foreground" : ""}`}
+          className={`flex size-7 items-center justify-center rounded-[6px] transition-colors ${panel ? "bg-white text-black" : "text-zinc-500 hover:bg-white/10 hover:text-zinc-100"}`}
           title={panel ? "Close workspace panel" : "Open workspace panel"}
         >
-          <PanelLeftOpen size={13} />
+          <PanelLeftOpen size={14} strokeWidth={1.8} />
         </button>
       </div>
     </div>

@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/hutch.mjs run start",
-    "dev:hmr": "node scripts/hutch.mjs run dev:hmr",
-    "dev:watch": "node scripts/hutch.mjs run dev",
-    "start": "node scripts/hutch.mjs run start",
-    "build": "node scripts/hutch.mjs run build",
+    "dev": "bun scripts/hutch.mjs run start",
+    "dev:hmr": "bun scripts/hutch.mjs run dev:hmr",
+    "dev:watch": "bun scripts/hutch.mjs run dev",
+    "start": "bun scripts/hutch.mjs run start",
+    "build": "bun scripts/hutch.mjs run build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
@@ -29,8 +29,8 @@
     "lucide-react": "^1.8.0",
     "react": "19.2.5",
     "react-dom": "19.2.5",
-    "react-icons": "^5.7.0",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",

@@ -31,14 +31,26 @@ function notify<T>(map: Map<string, Set<Listener<T>>>, sessionId: string, payloa
 type RpcShape = {
   request: {
     loadWorkspace: (p: {}) => Promise<import("../shared/rpc-schema").WorkspaceSnapshot | null>;
-    saveWorkspace: (p: { workspace: import("../shared/rpc-schema").WorkspaceSnapshot }) => Promise<null>;
+    saveWorkspace: (p: {
+      workspace: import("../shared/rpc-schema").WorkspaceSnapshot;
+    }) => Promise<null>;
     listShells: (p: {}) => Promise<import("../shared/rpc-schema").ShellOption[]>;
-    browseDirectory: (p: { path?: string }) => Promise<import("../shared/rpc-schema").DirectoryListing>;
+    browseDirectory: (p: {
+      path?: string;
+    }) => Promise<import("../shared/rpc-schema").DirectoryListing>;
     listProjectFiles: (p: { cwd: string }) => Promise<{ paths: string[]; error?: string }>;
-    readFilePreview: (p: { cwd: string; path: string }) => Promise<import("../shared/rpc-schema").FilePreview>;
+    readFilePreview: (p: {
+      cwd: string;
+      path: string;
+    }) => Promise<import("../shared/rpc-schema").FilePreview>;
     readGitStatus: (p: { cwd: string }) => Promise<string>;
-    readGitDiff: (p: { cwd: string; path: string }) => Promise<import("../shared/rpc-schema").GitDiffResult>;
-    attachSession: (p: import("../shared/rpc-schema").AttachSessionParams) => Promise<import("../shared/rpc-schema").AttachSessionResult>;
+    readGitDiff: (p: {
+      cwd: string;
+      path: string;
+    }) => Promise<import("../shared/rpc-schema").GitDiffResult>;
+    attachSession: (
+      p: import("../shared/rpc-schema").AttachSessionParams,
+    ) => Promise<import("../shared/rpc-schema").AttachSessionResult>;
   };
   send: {
     ptyInput: (p: { sessionId: string; data: string }) => void;

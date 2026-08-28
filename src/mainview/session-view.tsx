@@ -13,11 +13,17 @@ export function SessionView({
   onTitle,
   active = true,
   visible = true,
+  fontSize = 13,
+  lineHeight = 1.38,
+  cursorBlink = true,
 }: {
   session: SessionTab;
   onTitle: (id: string, title: string) => void;
   active?: boolean;
   visible?: boolean;
+  fontSize?: number;
+  lineHeight?: number;
+  cursorBlink?: boolean;
 }) {
   const { ref, write, focus } = useTerminal();
   const [core, setCore] = useState<GhosttyCore | null>(null);
@@ -43,6 +49,13 @@ export function SessionView({
   useLayoutEffect(() => {
     if (visible && active) focus();
   }, [active, focus, visible]);
+
+  useLayoutEffect(() => {
+    if (!visible || !ready) return;
+    const el = ref.current?.instance?.element as HTMLElement | undefined;
+    if (!el) return;
+    void el.offsetHeight;
+  }, [visible, ready, ref]);
 
   useEffect(() => {
     if (!core || !ready) return;
@@ -94,30 +107,71 @@ export function SessionView({
     };
   }, [core, ready, ref, session.cwd, session.id, session.shell, write]);
 
+  const rowHeight = Math.round(fontSize * lineHeight);
+
+  // wterm's ResizeObserver only recomputes the grid when the container's box
+  // changes size. A font-size / line-height change keeps the box identical, so
+  // the cell metrics (and thus cols/rows and the PTY geometry) go stale. Re-fit
+  // manually: measure a probe cell, derive cols/rows, and resize — resize()
+  // fires onResize below, which propagates the new size to the PTY.
+  useLayoutEffect(() => {
+    if (!ready) return;
+    const wt = ref.current?.instance;
+    const el = wt?.element as HTMLElement | undefined;
+    if (!wt || !el) return;
+    const grid = (el.querySelector(".term-grid") as HTMLElement | null) ?? el;
+    const probe = document.createElement("div");
+    probe.className = "term-row";
+    probe.style.cssText = "visibility:hidden;position:absolute;";
+    const span = document.createElement("span");
+    span.textContent = "W";
+    probe.appendChild(span);
+    grid.appendChild(probe);
+    const charWidth = span.getBoundingClientRect().width;
+    probe.remove();
+    if (charWidth <= 0) return;
+    const cs = getComputedStyle(el);
+    const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const cols = Math.max(1, Math.floor((el.clientWidth - padX) / charWidth));
+    const rows = Math.max(1, Math.floor((el.clientHeight - padY) / rowHeight));
+    if (cols !== wt.cols || rows !== wt.rows) wt.resize(cols, rows);
+  }, [fontSize, rowHeight, ready, ref]);
+
   if (!core) {
-    return <div className="h-full min-h-0 bg-background" />;
+    return (
+      <div
+        className="h-full min-h-0"
+        style={{ background: "oklch(0.105 0 0)", fontSize: `${fontSize}px` } as React.CSSProperties}
+      />
+    );
   }
 
   return (
     <Terminal
-        ref={ref}
-        core={core}
-        autoResize
-        className="terminal-surface h-full min-h-0 rounded-none p-0"
-        style={{
+      ref={ref}
+      core={core}
+      autoResize
+      className="terminal-surface h-full min-h-0"
+      style={
+        {
           borderRadius: 0,
           height: "100%",
           minHeight: 0,
-        }}
-        cursorBlink
-        onData={(data) => rpc.send.ptyInput({ sessionId: session.id, data })}
-        onResize={(cols, rows) => {
-          pendingSizeRef.current = { cols, rows };
-          rpc.send.ptyResize({ sessionId: session.id, cols, rows });
-        }}
-        onReady={() => setReady(true)}
-        onError={(error) => console.error("Unable to initialize terminal", error)}
-        onTitle={(title) => onTitleRef.current(session.id, title)}
+          "--term-font-size": `${fontSize}px`,
+          "--term-line-height": `${lineHeight}`,
+          "--term-row-height": `${rowHeight}px`,
+        } as React.CSSProperties
+      }
+      cursorBlink={cursorBlink}
+      onData={(data) => rpc.send.ptyInput({ sessionId: session.id, data })}
+      onResize={(cols, rows) => {
+        pendingSizeRef.current = { cols, rows };
+        rpc.send.ptyResize({ sessionId: session.id, cols, rows });
+      }}
+      onReady={() => setReady(true)}
+      onError={(error) => console.error("Unable to initialize terminal", error)}
+      onTitle={(title) => onTitleRef.current(session.id, title)}
     />
   );
 }

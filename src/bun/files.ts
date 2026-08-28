@@ -40,10 +40,14 @@ async function walkDirectory(
  */
 export async function listProjectFiles(cwd: string, ignoredDirs: Set<string>): Promise<string[]> {
   try {
-    const result = await execFileAsync("git", ["-C", cwd, "ls-files", "-co", "--exclude-standard"], {
-      windowsHide: true,
-      maxBuffer: 20 * 1024 * 1024,
-    });
+    const result = await execFileAsync(
+      "git",
+      ["-C", cwd, "ls-files", "-co", "--exclude-standard"],
+      {
+        windowsHide: true,
+        maxBuffer: 20 * 1024 * 1024,
+      },
+    );
     const files = (result.stdout as string)
       .split("\n")
       .reduce<string[]>((acc, line) => {

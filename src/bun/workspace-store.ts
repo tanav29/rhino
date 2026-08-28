@@ -38,9 +38,21 @@ export function saveWorkspace(workspace: WorkspaceSnapshot) {
   saveTimer = setTimeout(() => {
     saveTimer = null;
     const file = storageFile();
+    const data = JSON.stringify(workspace, null, 2);
     try {
-      mkdirSync(dirname(file), { recursive: true });
-      writeFileSync(file, JSON.stringify(workspace, null, 2));
+      // Use Bun.write when running under Bun (preferred), fallback to node:fs
+      const bunWrite = (
+        globalThis as unknown as {
+          Bun?: { write: (path: string, data: string) => Promise<unknown> };
+        }
+      )?.Bun?.write;
+      if (bunWrite) {
+        mkdirSync(dirname(file), { recursive: true });
+        void bunWrite(file, data).catch(() => writeFileSync(file, data));
+      } else {
+        mkdirSync(dirname(file), { recursive: true });
+        writeFileSync(file, data);
+      }
     } catch {
       /* persistence is best-effort */
     }

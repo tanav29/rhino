@@ -38,38 +38,53 @@ export function GitPanel({ cwd }: { cwd?: string }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col ">
+    <div className="flex h-full min-h-0 flex-col bg-[#0f0f0f]">
       {error ? (
-        <p className="p-4 text-xs text-sidebar-foreground/60">{error}</p>
+        <p className="p-4 font-mono text-xs text-zinc-500">{error}</p>
       ) : files === null ? (
-        <div className="flex items-center gap-2 p-4 text-xs text-sidebar-foreground/50">
+        <div className="flex items-center gap-2 p-4 font-mono text-xs text-zinc-500">
           <Loader2 size={12} className="animate-spin" />
           Loading…
         </div>
       ) : files.length === 0 ? (
-        <div className="flex flex-col gap-1 p-4">
-          <p className="text-xs font-medium text-sidebar-foreground/80">Working tree clean</p>
-          <p className="text-[11px] text-sidebar-foreground/50">
+        <div className="flex flex-col gap-1.5 p-4">
+          <p className="text-[12.5px] font-semibold tracking-tight text-white">
+            Working tree clean
+          </p>
+          <p className="font-mono text-[11px] leading-relaxed text-zinc-500">
             No changed files in this workspace.
+          </p>
+          <div className="mt-3 h-px bg-white/10" />
+          <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+            All changes committed
           </p>
         </div>
       ) : (
         <div className="flex flex-1 flex-col overflow-y-auto p-2">
-          <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
-            Changed files · {files.length}
+          <div className="mb-2 flex items-center justify-between px-2">
+            <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              Changed files
+            </span>
+            <span className="rounded bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none text-black">
+              {files.length}
+            </span>
           </div>
           {files.map((f) => (
             <button
               key={f.path}
               type="button"
               onClick={() => setSelected(f.path)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-xs transition-colors hover:bg-sidebar-accent"
+              className="flex items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-left transition-colors hover:bg-white/10"
             >
               <span
-                className={`size-1.5 shrink-0 rounded-full ${f.status === "deleted" ? "bg-red-400" : f.status === "added" || f.status === "untracked" ? "bg-emerald-400" : "bg-amber-400"}`}
+                className={`size-1.5 shrink-0 rounded-full ${f.status === "deleted" ? "bg-red-500" : f.status === "added" || f.status === "untracked" ? "bg-emerald-500" : "bg-amber-500"}`}
               />
-              <span className="min-w-0 flex-1 truncate text-sidebar-foreground/80">{f.path}</span>
-              <span className="font-mono text-[10px] text-sidebar-foreground/45">{f.code}</span>
+              <span className="min-w-0 flex-1 truncate text-[12.5px] font-[450] tracking-tight text-zinc-200">
+                {f.path}
+              </span>
+              <span className="rounded bg-white/10 px-1 py-0.5 font-mono text-[10px] font-medium leading-none text-zinc-400">
+                {f.code}
+              </span>
             </button>
           ))}
         </div>
@@ -114,12 +129,12 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
   }, [cwd, path]);
 
   const renderHeader = (additions = 0, deletions = 0) => (
-    <div className="flex items-center gap-1 border-b border-sidebar-border px-2 py-1 font-mono text-xs">
+    <div className="flex items-center gap-1.5 border-b border-white/10 bg-[#1a1a1a] px-2 py-1.5 font-mono text-xs text-zinc-100">
       {onClose && (
         <button
           type="button"
           onClick={onClose}
-          className="rounded px-1 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          className="rounded-[5px] bg-white px-1.5 py-0.5 font-mono text-[11px] font-bold text-black hover:bg-zinc-100"
         >
           ←
         </button>
@@ -129,16 +144,22 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
         aria-label={`${collapsed ? "Expand" : "Collapse"} diff for ${path}`}
         aria-expanded={!collapsed}
         onClick={() => setCollapsed((value) => !value)}
-        className="rounded p-0.5 hover:bg-sidebar-accent"
+        className="rounded p-0.5 text-zinc-500 hover:bg-white/10 hover:text-zinc-100"
       >
         <ChevronDown
           className={`h-4 w-4 transition-transform ${collapsed ? "-rotate-90" : "rotate-0"}`}
         />
       </button>
-      <span className="truncate">{path}</span>
-      <span className="ml-auto flex shrink-0 gap-2">
-        {additions > 0 && <span className="text-green-500">+{additions}</span>}
-        {deletions > 0 && <span className="text-red-500">−{deletions}</span>}
+      <span className="truncate font-[500] tracking-tight">{path}</span>
+      <span className="ml-auto flex shrink-0 gap-1.5">
+        {additions > 0 && (
+          <span className="rounded bg-emerald-500/20 px-1 py-0.5 text-emerald-400">
+            +{additions}
+          </span>
+        )}
+        {deletions > 0 && (
+          <span className="rounded bg-red-500/20 px-1 py-0.5 text-red-400">−{deletions}</span>
+        )}
       </span>
     </div>
   );
@@ -152,14 +173,14 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
     );
 
   return (
-    <div className="h-full overflow-auto">
+    <div className="h-full overflow-auto bg-[#0f0f0f]">
       {!diff ? (
-        <div className="flex items-center gap-2 p-3 text-xs text-sidebar-foreground/50">
+        <div className="flex items-center gap-2 p-3 font-mono text-xs text-zinc-500">
           <Loader2 size={12} className="animate-spin" />
           Loading diff…
         </div>
       ) : "error" in diff ? (
-        <p className="p-3 text-xs text-sidebar-foreground/60">{diff.error}</p>
+        <p className="p-3 font-mono text-xs text-zinc-500">{diff.error}</p>
       ) : diff.kind === "added" ? (
         <PatchDiff
           patch={createAddedPatch(path, diff.contents)}
@@ -191,7 +212,7 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
       ) : (
         <>
           {renderHeader()}
-          <p className="p-3 text-xs text-sidebar-foreground/60">No changes to display.</p>
+          <p className="p-3 font-mono text-xs text-zinc-500">No changes to display.</p>
         </>
       )}
     </div>

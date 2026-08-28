@@ -86,7 +86,8 @@ export function createApiHandlers(): RequestHandlers {
         if (!stats.isFile()) throw new Error("Not a file");
         if (stats.size > MAX_PREVIEW_FILE_SIZE) return { error: "File is too large to preview" };
         const buffer = await readFile(target);
-        if (buffer.subarray(0, 8000).includes(0)) return { error: "Binary file cannot be previewed" };
+        if (buffer.subarray(0, 8000).includes(0))
+          return { error: "Binary file cannot be previewed" };
         return { contents: buffer.toString("utf-8") };
       } catch (error) {
         return { error: error instanceof Error ? error.message : "Unable to read file" };
