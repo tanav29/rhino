@@ -17,6 +17,7 @@ const SettingsDialog = lazy(() =>
 export type { Project } from "./store";
 
 export default function App() {
+  const [sidebarWidth, setSidebarWidth] = useState(220);
   const [agents, setAgents] = useState<{ sessionId: string; name: string }[]>([]);
   const [editingGroup, setEditingGroup] = useState<{
     id: string | null;
@@ -167,15 +168,36 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <aside className="flex w-[220px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-        <div className="flex h-9 shrink-0 items-center border-b border-sidebar-border px-3">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-            Groups
-          </span>
-          <span className="ml-auto rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none text-zinc-400">
-            {projects.length}
-          </span>
-        </div>
+      <aside
+        className="relative flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
+        style={{ width: sidebarWidth }}
+      >
+        <div
+          role="separator"
+          aria-label="Resize sidebar"
+          aria-orientation="vertical"
+          aria-valuemin={140}
+          aria-valuemax={480}
+          aria-valuenow={sidebarWidth}
+          tabIndex={0}
+          className="absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize touch-none focus-visible:bg-sidebar-ring/30"
+          onPointerDown={(event) => {
+            if (event.button !== 0) return;
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              setSidebarWidth(Math.max(140, Math.min(480, event.clientX)));
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            event.preventDefault();
+            setSidebarWidth((width) =>
+              Math.max(140, Math.min(480, width + (event.key === "ArrowRight" ? 10 : -10))),
+            );
+          }}
+        />
         <div className="flex flex-1 flex-col overflow-y-auto scrollbar-none">
           {projects.map((p) => {
             const isActive = p.id === activeProjectId;
@@ -194,7 +216,7 @@ export default function App() {
                     : "text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
                 }`}
               >
-                <div className="flex w-full items-center gap-2">
+                <div className="flex w-full items-center">
                   <span className="truncate text-[12.5px] font-[550] flex gap-1.5 items-center tracking-tight">
                     <Folder className="w-3.5 shrink-0" style={{ color: p.color || "#71717a" }} />
                     {p.name}
@@ -207,7 +229,7 @@ export default function App() {
                       e.stopPropagation();
                       setEditingGroup({ id: p.id, name: p.name, color: p.color || "#60a5fa" });
                     }}
-                    className="ml-auto flex size-5 items-center justify-center rounded text-zinc-500 hover:bg-white/10 hover:text-zinc-200"
+                    className="ml-auto flex size-5 items-center justify-center text-zinc-500 hover:text-zinc-200"
                   >
                     <Pencil size={12} />
                   </button>
@@ -219,7 +241,7 @@ export default function App() {
                       removeProject(p.id);
                     }}
                     title="Delete group"
-                    className={`flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${isActive ? "text-zinc-500 hover:bg-white/10 hover:text-zinc-200" : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-zinc-200 group-hover:opacity-100"}`}
+                    className={`flex size-5 shrink-0 items-center justify-center ${isActive ? "text-zinc-500 hover:text-zinc-200" : "text-zinc-600 opacity-0  hover:text-zinc-200 group-hover:opacity-100"}`}
                   >
                     <Trash2 size={12} />
                   </button>
@@ -244,10 +266,6 @@ export default function App() {
           </button>
         </div>
         <div className="flex max-h-[min(12rem,40%)] shrink-0 flex-col border-t border-sidebar-border">
-          <div className="flex items-center justify-between px-3 py-2 text-[11px] font-semibold text-zinc-400">
-            <span>Agents</span>
-            <span className="text-zinc-600">{agents.length}</span>
-          </div>
           <div className="min-h-0 overflow-y-auto">
             {agents.length === 0 && (
               <p className="px-3 pb-3 text-xs text-zinc-600">No running agents</p>
@@ -268,9 +286,7 @@ export default function App() {
                 >
                   <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
                   <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                    <span className="shrink-0 text-xs capitalize text-zinc-200">
-                      {agent.name}
-                    </span>
+                    <span className="shrink-0 text-xs capitalize text-zinc-200">{agent.name}</span>
                     <span className="min-w-0 truncate text-[11px] text-zinc-500">
                       {group.name} / {session.title}
                     </span>

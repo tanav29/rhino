@@ -62,11 +62,11 @@ export function SessionTabs({
               }`}
             >
               {agentTitle.test(session.title) ? (
-                <Bot size={13} aria-label="AI agent" />
+                <Bot size={14} aria-label="AI agent" />
               ) : (
-                <Terminal size={13} />
+                <Terminal size={14} />
               )}
-              <span className="max-w-[110px] truncate font-[550] tracking-tight">
+              <span className="max-w-[110px] truncate text-xs">
                 {session.title}
               </span>
               <button
@@ -76,10 +76,10 @@ export function SessionTabs({
                   e.stopPropagation();
                   onClose(session.id);
                 }}
-                className={`flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${
+                className={`flex size-5 shrink-0 items-center justify-center transition-colors ${
                   active
-                    ? "text-zinc-500 hover:bg-white/10 hover:text-zinc-100"
-                    : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-zinc-100 group-hover:opacity-100"
+                    ? "text-zinc-500  hover:text-zinc-100"
+                    : "text-zinc-600 opacity-0  hover:text-zinc-100 group-hover:opacity-100"
                 }`}
               >
                 <X size={11} strokeWidth={2.2} />
@@ -88,15 +88,15 @@ export function SessionTabs({
           );
         })}
       </div>
-      <div className="flex items-center gap-0.5 border-l border-white/10 pl-1 pr-1">
+      <div className="flex items-center pl-1 pr-1">
         <button
           type="button"
           aria-label="New terminal"
           onClick={() => onNew()}
-          className="flex size-7 items-center justify-center rounded-[6px] text-zinc-500 hover:bg-white/10 hover:text-zinc-100 transition-colors"
+          className="flex size-4 items-center justify-center text-zinc-500 hover:text-zinc-100 transition-colors"
           title="New terminal (Ctrl+T)"
         >
-          <Plus size={14} strokeWidth={2} />
+          <Plus size={14} />
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -104,9 +104,9 @@ export function SessionTabs({
               <button
                 type="button"
                 aria-label="Choose shell"
-                className="flex size-7 items-center justify-center rounded-[6px] text-zinc-500 hover:bg-white/10 hover:text-zinc-100 transition-colors"
+                className="flex size-4 items-center justify-center text-zinc-500  hover:text-zinc-100 transition-colors"
               >
-                <ChevronDown size={12} strokeWidth={2} />
+                <ChevronDown size={14} />
               </button>
             }
           />
@@ -123,12 +123,11 @@ export function SessionTabs({
         </DropdownMenu>
       </div>
       <div className="ml-auto flex items-center gap-1 pl-2 pr-2">
-        <div className="mr-1 hidden h-4 w-px bg-white/10 sm:block" />
         <button
           type="button"
           aria-label="Terminal settings"
           onClick={() => onSettings?.()}
-          className="flex size-7 items-center justify-center rounded-[6px] text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-100"
+          className="flex size-4 items-center justify-center  text-zinc-500 transition-colors  hover:text-zinc-100"
           title="Terminal settings"
         >
           <Settings size={14} strokeWidth={1.8} />
@@ -137,7 +136,7 @@ export function SessionTabs({
           type="button"
           aria-label={panel ? "Close workspace panel" : "Open workspace panel"}
           onClick={() => onPanelToggle?.(panel ? null : "files")}
-          className={`flex size-7 items-center justify-center rounded-[6px] transition-colors ${panel ? "bg-white/[0.08] text-zinc-100" : "text-zinc-500 hover:bg-white/10 hover:text-zinc-100"}`}
+          className={`flex size-4 items-center justify-center transition-colors ${panel ? " text-zinc-100" : "text-zinc-500  hover:text-zinc-100"}`}
           title={panel ? "Close workspace panel" : "Open workspace panel"}
         >
           <PanelLeftOpen size={14} strokeWidth={1.8} />
