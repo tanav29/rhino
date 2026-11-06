@@ -228,22 +228,10 @@ button,
   outline-offset: 1px;
 }
 
-/* Settings preview: blinking block cursor */
-@keyframes term-cursor-blink {
-  50% {
-    opacity: 0;
-  }
-}
-.animate-cursor-blink {
-  animation: term-cursor-blink 1s step-end infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+*,
+*::before,
+*::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0s !important;
+  animation: none !important;
 }

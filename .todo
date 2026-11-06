@@ -1,3 +1,2 @@
-[x] have tabs in right side bar as git, files
-[x] maek the file tree ui better like consistent to app and remvoe code viewer,
-[x] Upgrade wterm integration, refine terminal UI, and repair diff viewer @high #wterm
+[ ] for panels with codign agents like opencode, claude, codex, cursor, etc, show ai icon or badge
+[ ] keep the ui minimal, compact, and fast no animations

@@ -14,4 +14,7 @@ if (process.platform === "win32") {
   }
 }
 const res = spawnSync(hutchExe, process.argv.slice(2), { stdio: "inherit" });
-process.exit(res.status ?? 0);
+if (res.error) {
+  console.error(`Unable to start Hutch: ${res.error.message}. See README.md for installation instructions.`);
+}
+process.exit(res.status ?? 1);

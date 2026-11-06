@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, X, Terminal, ChevronDown, PanelLeftOpen, Settings } from "lucide-react";
+import { Plus, X, Terminal, ChevronDown, PanelLeftOpen, Settings, Bot } from "lucide-react";
 
 export interface SessionTab {
   id: string;
@@ -28,7 +28,7 @@ interface SessionTabsProps {
   onSettings?: () => void;
 }
 
-const ShellIcon = (_props: { shell?: string }) => <Terminal size={13} />;
+const agentTitle = /(?:^|[^a-z0-9])(opencode|claude|codex|cursor|gemini|aider)(?:$|[^a-z0-9])/i;
 
 export function SessionTabs({
   sessions,
@@ -61,7 +61,11 @@ export function SessionTabs({
                   : "border-white/10 bg-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
               }`}
             >
-              <ShellIcon shell={session.shell} />
+              {agentTitle.test(session.title) ? (
+                <Bot size={13} aria-label="AI agent" />
+              ) : (
+                <Terminal size={13} />
+              )}
               <span className="max-w-[148px] truncate font-[550] tracking-tight">
                 {session.title}
               </span>
