@@ -243,12 +243,12 @@ export default function App() {
             <span className="ml-auto font-mono text-[10px] text-zinc-600">⌘N</span>
           </button>
         </div>
-        <div className="shrink-0 border-t border-sidebar-border">
+        <div className="flex max-h-[min(12rem,40%)] shrink-0 flex-col border-t border-sidebar-border">
           <div className="flex items-center justify-between px-3 py-2 text-[11px] font-semibold text-zinc-400">
             <span>Agents</span>
             <span className="text-zinc-600">{agents.length}</span>
           </div>
-          <div className="max-h-48 overflow-y-auto">
+          <div className="min-h-0 overflow-y-auto">
             {agents.length === 0 && (
               <p className="px-3 pb-3 text-xs text-zinc-600">No running agents</p>
             )}
@@ -264,14 +264,14 @@ export default function App() {
                     selectProject(group.id);
                     selectSession(agent.sessionId);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-1 focus-visible:outline-blue-400"
+                  className="flex w-full items-center gap-2 px-3 py-1 text-left hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-1 focus-visible:outline-blue-400"
                 >
                   <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs capitalize text-zinc-200">
+                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                    <span className="shrink-0 text-xs capitalize text-zinc-200">
                       {agent.name}
                     </span>
-                    <span className="block truncate text-[11px] text-zinc-500">
+                    <span className="min-w-0 truncate text-[11px] text-zinc-500">
                       {group.name} / {session.title}
                     </span>
                   </span>

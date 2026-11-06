@@ -193,7 +193,7 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
             collapsed,
           }}
           className="h-full w-full font-mono"
-          style={{ fontFamily: "JetBrains Mono, monospace" }}
+          style={{ fontFamily: "ui-monospace, monospace" }}
         />
       ) : diff.kind === "diff" ? (
         <PatchDiff
@@ -207,7 +207,7 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
             collapsed,
           }}
           className="h-full w-full font-mono"
-          style={{ fontFamily: "JetBrains Mono, monospace" }}
+          style={{ fontFamily: "ui-monospace, monospace" }}
         />
       ) : (
         <>

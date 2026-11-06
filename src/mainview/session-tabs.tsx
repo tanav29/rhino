@@ -42,8 +42,8 @@ export function SessionTabs({
   onSettings,
 }: SessionTabsProps) {
   return (
-    <div className="flex h-9 shrink-0 items-center border-b border-white/10 bg-[#0f0f0f]">
-      <div className="flex h-full items-stretch gap-0 overflow-x-auto scrollbar-none">
+    <div className="flex h-8 shrink-0 items-center border-b border-white/10 bg-[#0f0f0f]">
+      <div className="flex h-full min-w-0 items-stretch gap-0 overflow-x-auto scrollbar-none">
         {sessions.map((session) => {
           const active = session.id === activeId;
           return (
@@ -55,7 +55,7 @@ export function SessionTabs({
               }}
               role="button"
               tabIndex={0}
-              className={`group relative flex shrink-0 cursor-pointer items-center gap-2 border-r px-3 text-xs transition-none select-none ${
+              className={`group relative flex shrink-0 cursor-pointer items-center gap-1.5 border-r px-2 text-xs transition-none select-none ${
                 active
                   ? "bg-white/[0.08] text-zinc-100 border-white/10"
                   : "border-white/10 bg-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
@@ -66,7 +66,7 @@ export function SessionTabs({
               ) : (
                 <Terminal size={13} />
               )}
-              <span className="max-w-[148px] truncate font-[550] tracking-tight">
+              <span className="max-w-[110px] truncate font-[550] tracking-tight">
                 {session.title}
               </span>
               <button
@@ -76,7 +76,7 @@ export function SessionTabs({
                   e.stopPropagation();
                   onClose(session.id);
                 }}
-                className={`ml-1 flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${
+                className={`flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${
                   active
                     ? "text-zinc-500 hover:bg-white/10 hover:text-zinc-100"
                     : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-zinc-100 group-hover:opacity-100"
