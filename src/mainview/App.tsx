@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Folder, X, Pencil } from "lucide-react";
 import { SessionTabs } from "./session-tabs";
 import { SessionView } from "./session-view";
@@ -18,6 +18,8 @@ export type { Project } from "./store";
 
 export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const resizeRef = useRef<{ x: number; width: number } | null>(null);
   const [agents, setAgents] = useState<{ sessionId: string; name: string }[]>([]);
   const [editingGroup, setEditingGroup] = useState<{
     id: string | null;
@@ -169,6 +171,7 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <aside
+        ref={sidebarRef}
         className="relative flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
         style={{ width: sidebarWidth }}
       >
@@ -180,15 +183,23 @@ export default function App() {
           aria-valuemax={480}
           aria-valuenow={sidebarWidth}
           tabIndex={0}
-          className="absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize touch-none focus-visible:bg-sidebar-ring/30"
+          className="absolute inset-y-0 right-0 z-10 w-1 cursor-col-resize touch-none focus-visible:bg-sidebar-ring/30"
           onPointerDown={(event) => {
             if (event.button !== 0) return;
+            resizeRef.current = { x: event.clientX, width: sidebarWidth };
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={(event) => {
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-              setSidebarWidth(Math.max(140, Math.min(480, event.clientX)));
+            if (resizeRef.current && sidebarRef.current) {
+              const width = resizeRef.current.width + event.clientX - resizeRef.current.x;
+              sidebarRef.current.style.width = `${Math.max(140, Math.min(480, width))}px`;
             }
+          }}
+          onLostPointerCapture={() => {
+            if (resizeRef.current && sidebarRef.current) {
+              setSidebarWidth(sidebarRef.current.offsetWidth);
+            }
+            resizeRef.current = null;
           }}
           onKeyDown={(event) => {
             if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -210,7 +221,7 @@ export default function App() {
                 }}
                 role="button"
                 tabIndex={0}
-                className={`group flex w-full flex-col items-start gap-0.5 border-b border-white/5 px-3 py-2 text-left text-sm cursor-pointer transition-none ${
+                className={`group flex w-full flex-col items-start gap-0.5 border-b border-white/5 text-left text-sm cursor-pointer transition-none ${
                   isActive
                     ? "bg-white/[0.08] text-zinc-100"
                     : "text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
@@ -258,7 +269,7 @@ export default function App() {
             type="button"
             aria-label="New group"
             onClick={() => setEditingGroup({ id: null, name: "", color: "#60a5fa" })}
-            className="flex w-full items-center gap-2 border-b border-white/10 bg-transparent px-2.5 py-2 font-mono text-xs font-medium text-zinc-500 hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors"
+            className="flex w-full items-center gap-2 border-b border-white/10 bg-transparent font-mono text-xs font-medium text-zinc-500 hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors"
           >
             <Plus size={13} strokeWidth={2.2} />
             <span>New group</span>
@@ -268,7 +279,7 @@ export default function App() {
         <div className="flex max-h-[min(12rem,40%)] shrink-0 flex-col border-t border-sidebar-border">
           <div className="min-h-0 overflow-y-auto">
             {agents.length === 0 && (
-              <p className="px-3 pb-3 text-xs text-zinc-600">No running agents</p>
+              <p className="text-xs text-zinc-600">No running agents</p>
             )}
             {agents.map((agent) => {
               const group = projects.find((p) => p.sessions.some((s) => s.id === agent.sessionId));
@@ -282,7 +293,7 @@ export default function App() {
                     selectProject(group.id);
                     selectSession(agent.sessionId);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-1 text-left hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-1 focus-visible:outline-blue-400"
+                  className="flex w-full items-center gap-2 text-left hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-1 focus-visible:outline-blue-400"
                 >
                   <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
                   <span className="flex min-w-0 flex-1 items-baseline gap-2">
