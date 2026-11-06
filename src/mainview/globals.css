@@ -142,6 +142,7 @@ body {
   --sidebar-ring: oklch(0.4 0 0);
 }
 
+:root,
 .dark {
   color-scheme: dark;
   --background: oklch(0.075 0 0);
@@ -158,7 +159,7 @@ body {
   --muted-foreground: oklch(0.64 0 0);
   --accent: oklch(0.18 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.62 0.2 25);
+  --destructive: oklch(0.7 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 13%);
   --ring: oklch(0.9 0 0);
@@ -210,7 +211,7 @@ button,
   background: var(--term-bg);
   box-shadow: inset 0 1px 0 0 oklch(1 0 0 / 6%);
   border-radius: 0;
-  padding: 10px 12px;
+  padding: 6px 8px;
   isolation: isolate;
 }
 
@@ -234,4 +235,15 @@ button,
   scroll-behavior: auto !important;
   transition-duration: 0s !important;
   animation: none !important;
+}
+
+/* UI typography stays neutral; terminal cells retain their own monospace font. */
+body,
+body * {
+  font-family: "Geist", sans-serif;
+  font-weight: 400;
+}
+.terminal-surface,
+.terminal-surface * {
+  font-family: "JetBrains Mono", monospace;
 }

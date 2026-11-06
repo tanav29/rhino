@@ -151,7 +151,7 @@ export default function App() {
             {projects.length}
           </span>
         </div>
-        <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-2 scrollbar-none">
+        <div className="flex flex-1 flex-col overflow-y-auto scrollbar-none">
           {projects.map((p) => {
             const isActive = p.id === activeProjectId;
             return (
@@ -163,16 +163,16 @@ export default function App() {
                 }}
                 role="button"
                 tabIndex={0}
-                className={`group flex w-full flex-col items-start gap-0.5 rounded-[8px] px-2.5 py-2 text-left text-sm cursor-pointer transition-none ${
+                className={`group flex w-full flex-col items-start gap-0.5 border-b border-white/5 px-3 py-2 text-left text-sm cursor-pointer transition-none ${
                   isActive
-                    ? "bg-white text-black shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                    ? "bg-white/[0.08] text-zinc-100"
                     : "text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
                 }`}
               >
                 <div className="flex w-full items-center gap-2">
                   <span className="truncate text-[12.5px] font-[550] flex gap-1.5 items-center tracking-tight">
                     <Folder
-                      className={`w-3.5 shrink-0 ${isActive ? "text-black/60" : "text-zinc-600 group-hover:text-zinc-400"}`}
+                      className={`w-3.5 shrink-0 ${isActive ? "text-zinc-400" : "text-zinc-600 group-hover:text-zinc-400"}`}
                     />
                     {p.name}
                   </span>
@@ -184,13 +184,13 @@ export default function App() {
                       removeProject(p.id);
                     }}
                     title="Delete workspace"
-                    className={`ml-auto flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${isActive ? "text-black/40 hover:bg-black/10 hover:text-red-600" : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-red-400 group-hover:opacity-100"}`}
+                    className={`ml-auto flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${isActive ? "text-zinc-500 hover:bg-white/10 hover:text-zinc-200" : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-zinc-200 group-hover:opacity-100"}`}
                   >
                     <Trash2 size={12} />
                   </button>
                 </div>
                 <span
-                  className={`truncate font-mono text-[11px] w-full pl-[20px] leading-none ${isActive ? "text-black/55" : "text-zinc-600 group-hover:text-zinc-500"}`}
+                  className={`truncate font-mono text-[11px] w-full pl-[20px] leading-none ${isActive ? "text-zinc-500" : "text-zinc-600 group-hover:text-zinc-500"}`}
                 >
                   {p.path}
                 </span>
@@ -201,7 +201,7 @@ export default function App() {
             type="button"
             aria-label="New project"
             onClick={() => useWorkspaceStore.getState().addProject()}
-            className="mt-1 flex w-full items-center gap-2 rounded-[8px] border border-white/10 bg-transparent px-2.5 py-2 font-mono text-xs font-medium text-zinc-500 hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors"
+            className="flex w-full items-center gap-2 border-b border-white/10 bg-transparent px-2.5 py-2 font-mono text-xs font-medium text-zinc-500 hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors"
           >
             <Plus size={13} strokeWidth={2.2} />
             <span>New project</span>
@@ -304,14 +304,14 @@ function WorkspacePanel({
   return (
     <aside className="flex w-[min(24rem,40vw)] shrink-0 flex-col overflow-hidden border-l border-white/10 bg-[#0f0f0f] text-sm text-foreground">
       <div className="flex h-9 shrink-0 items-center border-b border-white/10 bg-[#0f0f0f] px-2">
-        <div className="flex h-7 items-center gap-0.5 rounded-full bg-white/[0.06] p-1 ring-1 ring-white/5">
+        <div className="flex h-full items-center">
           {(["files", "git"] as const).map((item) => (
             <button
               key={item}
               type="button"
               aria-pressed={panel === item}
               onClick={() => onPanelToggle(item)}
-              className={`rounded-full px-3 py-1 text-[11px] font-[650] capitalize tracking-tight transition-none ${panel === item ? "bg-white text-black shadow-sm" : "text-zinc-500 hover:text-zinc-200"}`}
+              className={`h-full border-r border-white/10 px-3 text-[11px] font-[650] capitalize tracking-tight transition-none ${panel === item ? "bg-white/[0.08] text-zinc-100" : "text-zinc-500 hover:text-zinc-200"}`}
             >
               {item}
             </button>

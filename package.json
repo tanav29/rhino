@@ -13,7 +13,8 @@
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "dev:web": "concurrently -k \"bun src/bun/web.ts\" \"bunx vite\""
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -21,9 +22,9 @@
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@pierre/diffs": "^1.2.12",
     "@pierre/trees": "^1.0.0-beta.5",
-    "@wterm/dom": "^0.3.3",
-    "@wterm/ghostty": "^0.3.3",
-    "@wterm/react": "^0.3.3",
+    "@wterm/dom": "^0.5.9",
+    "@wterm/ghostty": "^0.5.9",
+    "@wterm/react": "^0.5.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.8.0",

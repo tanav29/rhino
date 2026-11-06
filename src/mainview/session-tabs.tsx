@@ -57,7 +57,7 @@ export function SessionTabs({
               tabIndex={0}
               className={`group relative flex shrink-0 cursor-pointer items-center gap-2 border-r px-3 text-xs transition-none select-none ${
                 active
-                  ? "bg-white text-black border-white"
+                  ? "bg-white/[0.08] text-zinc-100 border-white/10"
                   : "border-white/10 bg-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
               }`}
             >
@@ -78,7 +78,7 @@ export function SessionTabs({
                 }}
                 className={`ml-1 flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${
                   active
-                    ? "text-black/50 hover:bg-black/10 hover:text-black"
+                    ? "text-zinc-500 hover:bg-white/10 hover:text-zinc-100"
                     : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-zinc-100 group-hover:opacity-100"
                 }`}
               >
@@ -137,7 +137,7 @@ export function SessionTabs({
           type="button"
           aria-label={panel ? "Close workspace panel" : "Open workspace panel"}
           onClick={() => onPanelToggle?.(panel ? null : "files")}
-          className={`flex size-7 items-center justify-center rounded-[6px] transition-colors ${panel ? "bg-white text-black" : "text-zinc-500 hover:bg-white/10 hover:text-zinc-100"}`}
+          className={`flex size-7 items-center justify-center rounded-[6px] transition-colors ${panel ? "bg-white/[0.08] text-zinc-100" : "text-zinc-500 hover:bg-white/10 hover:text-zinc-100"}`}
           title={panel ? "Close workspace panel" : "Open workspace panel"}
         >
           <PanelLeftOpen size={14} strokeWidth={1.8} />

@@ -73,44 +73,87 @@ export const rpc: RpcShape = Electroview.defineRPC<AppRPC>({
 
 // Attach the browser side of the transport exactly once per page load.
 // In a plain browser (vite dev without Electrobun) this throws — fall back
-// to a no-op transport so the UI still renders for agent-browser and `vite` dev.
+// to the local Bun WebSocket transport.
 try {
   new Electroview({ rpc: rpc as unknown as ReturnType<typeof Electroview.defineRPC<AppRPC>> });
 } catch {
   // Running outside Electrobun (e.g. `vite` dev in a normal browser).
-  (rpc as unknown as { request: RpcShape["request"] }).request = {
-    loadWorkspace: async () => {
-      try {
-        const raw = localStorage.getItem("term.workspace:v1");
-        return raw ? (JSON.parse(raw) as import("../shared/rpc-schema").WorkspaceSnapshot) : null;
-      } catch {
+  const socket = new WebSocket("ws://127.0.0.1:5174");
+  const pending = new Map<
+    number,
+    { resolve: (value: unknown) => void; reject: (error: Error) => void }
+  >();
+  let nextId = 0;
+  const connected = new Promise<void>((resolve, reject) => {
+    socket.addEventListener("open", () => resolve(), { once: true });
+    socket.addEventListener("error", () => reject(new Error("Web backend unavailable")), {
+      once: true,
+    });
+  });
+  socket.addEventListener("message", ({ data }) => {
+    const message = JSON.parse(data);
+    if (message.event) {
+      const event = message.event;
+      if (event.kind === "output") notify(outputListeners, event.sessionId, event.data);
+      if (event.kind === "title") notify(titleListeners, event.sessionId, event.title);
+      if (event.kind === "exit") notify(exitListeners, event.sessionId, undefined);
+      return;
+    }
+    const request = pending.get(message.id);
+    if (!request) return;
+    pending.delete(message.id);
+    if (message.error) request.reject(new Error(message.error));
+    else request.resolve(message.result);
+  });
+  socket.addEventListener("close", () => {
+    for (const request of pending.values()) request.reject(new Error("Web backend disconnected"));
+    pending.clear();
+  });
+  const call = async (method: string, params: unknown) => {
+    await connected;
+    if (socket.readyState !== WebSocket.OPEN) throw new Error("Web backend disconnected");
+    const id = ++nextId;
+    return new Promise((resolve, reject) => {
+      pending.set(id, { resolve, reject });
+      socket.send(JSON.stringify({ id, method, params }));
+    });
+  };
+  (rpc as unknown as { request: RpcShape["request"] }).request = new Proxy(
+    {
+      loadWorkspace: async () => {
+        try {
+          return JSON.parse(localStorage.getItem("term.workspace:v1") ?? "null");
+        } catch {
+          return null;
+        }
+      },
+      saveWorkspace: async ({ workspace }: { workspace: unknown }) => {
+        localStorage.setItem("term.workspace:v1", JSON.stringify(workspace));
         return null;
-      }
+      },
     },
-    saveWorkspace: async () => null,
-    listShells: async () => [],
-    browseDirectory: async () => ({ path: "/", parent: null, entries: [] }),
-    listProjectFiles: async () => ({ paths: [] }),
-    readFilePreview: async () => ({ error: "Not available in browser" }),
-    readGitStatus: async () => "",
-    readGitDiff: async () => ({ kind: "empty" as const }),
-    attachSession: async () => ({ title: "Terminal", replay: "" }),
-  };
-  (rpc as unknown as { send: RpcShape["send"] }).send = {
-    ptyInput: () => {},
-    ptyResize: () => {},
-    killSession: () => {},
-  };
+    {
+      get: (target, key: string) =>
+        key in target ? target[key as keyof typeof target] : (params: unknown) => call(key, params),
+    },
+  ) as unknown as RpcShape["request"];
+  (rpc as unknown as { send: RpcShape["send"] }).send = new Proxy({} as RpcShape["send"], {
+    get: (_, method: string) => (params: unknown) => {
+      void connected
+        .then(() => {
+          if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ method, params }));
+        })
+        .catch(() => undefined);
+    },
+  });
 }
 
 export function subscribePtyOutput(sessionId: string, fn: Listener<string>) {
   return subscribe(outputListeners, sessionId, fn);
 }
-
 export function subscribePtyTitle(sessionId: string, fn: Listener<string>) {
   return subscribe(titleListeners, sessionId, fn);
 }
-
 export function subscribePtyExit(sessionId: string, fn: Listener<undefined>) {
   return subscribe(exitListeners, sessionId, fn);
 }
