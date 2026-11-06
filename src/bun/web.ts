@@ -1,6 +1,7 @@
 import { createApiHandlers } from "./api";
 import {
   attachSession,
+  listAgents,
   killAllSessions,
   killSession,
   resizePty,
@@ -8,7 +9,7 @@ import {
   writePtyInput,
 } from "./sessions";
 
-const handlers = { ...createApiHandlers(), attachSession };
+const handlers = { ...createApiHandlers(), attachSession, listAgents };
 const sockets = new Set<import("bun").ServerWebSocket<unknown>>();
 setSessionEventSink((event) => {
   for (const socket of sockets) socket.send(JSON.stringify({ event }));

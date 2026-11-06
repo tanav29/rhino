@@ -34,6 +34,7 @@ type RpcShape = {
     saveWorkspace: (p: {
       workspace: import("../shared/rpc-schema").WorkspaceSnapshot;
     }) => Promise<null>;
+    listAgents: (p: {}) => Promise<{ sessionId: string; name: string }[]>;
     listShells: (p: {}) => Promise<import("../shared/rpc-schema").ShellOption[]>;
     browseDirectory: (p: {
       path?: string;

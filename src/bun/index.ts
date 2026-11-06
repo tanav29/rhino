@@ -5,6 +5,7 @@ import {
   attachSession,
   killAllSessions,
   killSession,
+  listAgents,
   resizePty,
   setSessionEventSink,
   writePtyInput,
@@ -18,6 +19,7 @@ const rpc = BrowserView.defineRPC<AppRPC>({
   handlers: {
     requests: {
       ...createApiHandlers(),
+      listAgents: () => listAgents(),
       loadWorkspace: () => loadWorkspace(),
       saveWorkspace: ({ workspace }) => {
         saveWorkspace(workspace);

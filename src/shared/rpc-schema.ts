@@ -72,6 +72,7 @@ export type BunRequestHandlers = {
 export type AppRPC = {
   bun: RPCSchema<{
     requests: {
+      listAgents: { params: {}; response: { sessionId: string; name: string }[] };
       listShells: { params: {}; response: ShellOption[] };
       browseDirectory: { params: { path?: string }; response: DirectoryListing };
       listProjectFiles: { params: { cwd: string }; response: { paths: string[]; error?: string } };

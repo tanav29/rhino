@@ -3,6 +3,7 @@ import type { AppRPC } from "../shared/rpc-schema";
 import { getAvailableShells } from "./shells";
 
 interface ShellProcess {
+  pid: number;
   kill(): unknown;
   exited: Promise<unknown>;
 }
@@ -261,4 +262,67 @@ export function killSession(sessionId: string) {
 export function killAllSessions() {
   // Copy the key set: killSession mutates the map during iteration.
   for (const id of Array.from(sessions.keys())) killSession(id);
+}
+
+/** Find known local coding agents among descendants of each terminal shell. */
+export async function listAgents(): Promise<{ sessionId: string; name: string }[]> {
+  if (!sessions.size) return [];
+  try {
+    const command =
+      process.platform === "win32"
+        ? [
+            "powershell.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Compress",
+          ]
+        : ["ps", "-axo", "pid=,ppid=,command="];
+    const proc = Bun.spawn(command, { stdout: "pipe", stderr: "ignore" });
+    const output = await new Response(proc.stdout).text();
+    if ((await proc.exited) !== 0) return [];
+    let processes: { pid: number; parent: number; command: string }[];
+    if (process.platform === "win32") {
+      const data = JSON.parse(output || "[]");
+      processes = (Array.isArray(data) ? data : [data]).map(
+        (p: { ProcessId: number; ParentProcessId: number; CommandLine?: string }) => ({
+          pid: p.ProcessId,
+          parent: p.ParentProcessId,
+          command: p.CommandLine || "",
+        }),
+      );
+    } else {
+      processes = output.split("\n").flatMap((line) => {
+        const match = line.match(/^\s*(\d+)\s+(\d+)\s+(.+)$/);
+        return match
+          ? [{ pid: Number(match[1]), parent: Number(match[2]), command: match[3] }]
+          : [];
+      });
+    }
+    const byPid = new Map(processes.map((p) => [p.pid, p]));
+    const roots = new Map([...sessions].map(([id, session]) => [session.proc.pid, id]));
+    const result: { sessionId: string; name: string }[] = [];
+    for (const process of processes) {
+      const match = process.command.match(
+        /(?:^|[\s/\\"'])((?:claude|codex|gemini|opencode|aider|copilot))(?:\.exe|\.cmd|\.js)?(?=$|[\s"'])/i,
+      );
+      if (!match) continue;
+      let parent = process.parent;
+      const visited = new Set<number>();
+      while (parent && !visited.has(parent)) {
+        visited.add(parent);
+        const sessionId = roots.get(parent);
+        if (sessionId) {
+          const name = match[1].toLowerCase();
+          if (!result.some((item) => item.sessionId === sessionId && item.name === name))
+            result.push({ sessionId, name });
+          break;
+        }
+        parent = byPid.get(parent)?.parent ?? 0;
+      }
+    }
+    return result;
+  } catch {
+    return [];
+  }
 }

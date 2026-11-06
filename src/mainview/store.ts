@@ -6,6 +6,7 @@ export interface Project {
   id: string;
   name: string;
   path: string;
+  color?: string;
   sessions: SessionTab[];
 }
 
@@ -85,6 +86,8 @@ interface WorkspaceState {
   createProject: (shell: string | undefined, cwd: string) => void;
   split: (direction: "row" | "column") => void;
   addProject: () => void;
+  saveGroup: (id: string | null, name: string, color: string) => void;
+  moveSession: (targetId: string) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
@@ -265,7 +268,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const count = target.sessions.length;
     if (
       !window.confirm(
-        `Delete workspace "${target.name}"? This closes ${count} terminal${count === 1 ? "" : "s"}.`,
+        `Delete group "${target.name}"? This closes ${count} terminal${count === 1 ? "" : "s"}.`,
       )
     )
       return;
@@ -322,6 +325,44 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   addProject: () => set({ newOpen: true }),
+  saveGroup: (id, name, color) => {
+    if (!name.trim()) return;
+    if (id) {
+      set((s) => ({
+        projects: s.projects.map((p) => (p.id === id ? { ...p, name: name.trim(), color } : p)),
+      }));
+      return;
+    }
+    const session = newSession(undefined, get().defaultShell);
+    const group: Project = { id: uuid(), name: name.trim(), color, path: ".", sessions: [session] };
+    set((s) => ({
+      projects: [...s.projects, group],
+      activeProjectId: group.id,
+      activeSessionId: session.id,
+      panes: [{ id: uuid(), sessionId: session.id }],
+    }));
+  },
+  moveSession: (targetId) => {
+    const { projects, activeProjectId, activeSessionId } = get();
+    const source = projects.find((p) => p.id === activeProjectId);
+    const target = projects.find((p) => p.id === targetId);
+    const session = source?.sessions.find((s) => s.id === activeSessionId);
+    if (!source || !target || !session || source.id === target.id) return;
+    const remaining = source.sessions.filter((s) => s.id !== session.id);
+    if (!remaining.length) remaining.push(newSession(undefined, get().defaultShell));
+    set({
+      projects: projects.map((p) =>
+        p.id === source.id
+          ? { ...p, sessions: remaining }
+          : p.id === target.id
+            ? { ...p, sessions: [...p.sessions, session] }
+            : p,
+      ),
+      activeProjectId: target.id,
+      activeSessionId: session.id,
+      panes: [{ id: uuid(), sessionId: session.id }],
+    });
+  },
 }));
 
 export const selectProject = (state: WorkspaceState) =>

@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect } from "react";
-import { Plus, Trash2, Folder, X } from "lucide-react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Plus, Trash2, Folder, X, Pencil } from "lucide-react";
 import { SessionTabs } from "./session-tabs";
 import { SessionView } from "./session-view";
 import { rpc } from "./rpc";
@@ -17,6 +17,14 @@ const SettingsDialog = lazy(() =>
 export type { Project } from "./store";
 
 export default function App() {
+  const [agents, setAgents] = useState<{ sessionId: string; name: string }[]>([]);
+  const [editingGroup, setEditingGroup] = useState<{
+    id: string | null;
+    name: string;
+    color: string;
+  } | null>(null);
+  const saveGroup = useWorkspaceStore((s) => s.saveGroup);
+  const moveSession = useWorkspaceStore((s) => s.moveSession);
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
   const activeSessionId = useWorkspaceStore((s) => s.activeSessionId);
@@ -111,7 +119,7 @@ export default function App() {
       }
       if (mod && event.key.toLowerCase() === "n") {
         event.preventDefault();
-        useWorkspaceStore.getState().addProject();
+        setEditingGroup({ id: null, name: "", color: "#60a5fa" });
       }
       if (mod && /^[1-9]$/.test(event.key)) {
         event.preventDefault();
@@ -122,6 +130,23 @@ export default function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeSessionId, addSession, projects, sessions, split, selectSession, selectProject]);
+
+  useEffect(() => {
+    let disposed = false;
+    const refresh = () =>
+      void rpc.request
+        .listAgents({})
+        .then((items) => {
+          if (!disposed) setAgents(items);
+        })
+        .catch(() => undefined);
+    refresh();
+    const timer = setInterval(refresh, 5000);
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     void rpc.request
@@ -145,7 +170,7 @@ export default function App() {
       <aside className="flex w-[220px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
         <div className="flex h-9 shrink-0 items-center border-b border-sidebar-border px-3">
           <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-            Workspaces
+            Groups
           </span>
           <span className="ml-auto rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none text-zinc-400">
             {projects.length}
@@ -171,20 +196,30 @@ export default function App() {
               >
                 <div className="flex w-full items-center gap-2">
                   <span className="truncate text-[12.5px] font-[550] flex gap-1.5 items-center tracking-tight">
-                    <Folder
-                      className={`w-3.5 shrink-0 ${isActive ? "text-zinc-400" : "text-zinc-600 group-hover:text-zinc-400"}`}
-                    />
+                    <Folder className="w-3.5 shrink-0" style={{ color: p.color || "#71717a" }} />
                     {p.name}
                   </span>
                   <button
                     type="button"
-                    aria-label={`Delete workspace ${p.name}`}
+                    aria-label={`Edit group ${p.name}`}
+                    title="Edit group"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingGroup({ id: p.id, name: p.name, color: p.color || "#60a5fa" });
+                    }}
+                    className="ml-auto flex size-5 items-center justify-center rounded text-zinc-500 hover:bg-white/10 hover:text-zinc-200"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete group ${p.name}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       removeProject(p.id);
                     }}
-                    title="Delete workspace"
-                    className={`ml-auto flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${isActive ? "text-zinc-500 hover:bg-white/10 hover:text-zinc-200" : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-zinc-200 group-hover:opacity-100"}`}
+                    title="Delete group"
+                    className={`flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors ${isActive ? "text-zinc-500 hover:bg-white/10 hover:text-zinc-200" : "text-zinc-600 opacity-0 hover:bg-white/10 hover:text-zinc-200 group-hover:opacity-100"}`}
                   >
                     <Trash2 size={12} />
                   </button>
@@ -192,23 +227,114 @@ export default function App() {
                 <span
                   className={`truncate font-mono text-[11px] w-full pl-[20px] leading-none ${isActive ? "text-zinc-500" : "text-zinc-600 group-hover:text-zinc-500"}`}
                 >
-                  {p.path}
+                  {p.sessions.length} {p.sessions.length === 1 ? "session" : "sessions"}
                 </span>
               </div>
             );
           })}
           <button
             type="button"
-            aria-label="New project"
-            onClick={() => useWorkspaceStore.getState().addProject()}
+            aria-label="New group"
+            onClick={() => setEditingGroup({ id: null, name: "", color: "#60a5fa" })}
             className="flex w-full items-center gap-2 border-b border-white/10 bg-transparent px-2.5 py-2 font-mono text-xs font-medium text-zinc-500 hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors"
           >
             <Plus size={13} strokeWidth={2.2} />
-            <span>New project</span>
+            <span>New group</span>
             <span className="ml-auto font-mono text-[10px] text-zinc-600">⌘N</span>
           </button>
         </div>
+        <div className="shrink-0 border-t border-sidebar-border">
+          <div className="flex items-center justify-between px-3 py-2 text-[11px] font-semibold text-zinc-400">
+            <span>Agents</span>
+            <span className="text-zinc-600">{agents.length}</span>
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {agents.length === 0 && (
+              <p className="px-3 pb-3 text-xs text-zinc-600">No running agents</p>
+            )}
+            {agents.map((agent) => {
+              const group = projects.find((p) => p.sessions.some((s) => s.id === agent.sessionId));
+              const session = group?.sessions.find((s) => s.id === agent.sessionId);
+              if (!group || !session) return null;
+              return (
+                <button
+                  key={`${agent.sessionId}-${agent.name}`}
+                  type="button"
+                  onClick={() => {
+                    selectProject(group.id);
+                    selectSession(agent.sessionId);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-1 focus-visible:outline-blue-400"
+                >
+                  <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs capitalize text-zinc-200">
+                      {agent.name}
+                    </span>
+                    <span className="block truncate text-[11px] text-zinc-500">
+                      {group.name} / {session.title}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </aside>
+      {editingGroup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setEditingGroup(null)}
+        >
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!editingGroup.name.trim()) return;
+              saveGroup(editingGroup.id, editingGroup.name, editingGroup.color);
+              setEditingGroup(null);
+            }}
+            className="w-80 rounded-lg border border-white/15 bg-[#1b1b1e] p-4 shadow-2xl"
+          >
+            <h2 className="text-sm font-semibold">
+              {editingGroup.id ? "Edit group" : "New group"}
+            </h2>
+            <label className="mt-4 block text-xs text-zinc-400">
+              Name
+              <input
+                autoFocus
+                required
+                maxLength={80}
+                value={editingGroup.name}
+                onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+                className="mt-1.5 w-full rounded border border-white/15 bg-black/30 px-2.5 py-2 text-sm text-zinc-100 outline-none focus:border-blue-400"
+                placeholder="e.g. Backend"
+              />
+            </label>
+            <label className="mt-3 flex items-center gap-3 text-xs text-zinc-400">
+              Color
+              <input
+                type="color"
+                value={editingGroup.color}
+                onChange={(e) => setEditingGroup({ ...editingGroup, color: e.target.value })}
+                className="h-7 w-10 cursor-pointer bg-transparent"
+              />
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingGroup(null)}
+                className="rounded px-3 py-1.5 text-xs text-zinc-400 hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button className="rounded bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-400">
+                Save group
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
       <main className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
         <SessionTabs
           sessions={sessions}
@@ -221,6 +347,29 @@ export default function App() {
           onPanelToggle={setPanel}
           onSettings={() => setSettingsOpen(true)}
         />
+        {projects.length > 1 && (
+          <div className="flex h-7 items-center justify-end border-b border-white/5 px-3 text-xs text-zinc-500">
+            <label>
+              Move current session to{" "}
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) moveSession(e.target.value);
+                }}
+                className="ml-2 bg-transparent text-zinc-400 outline-none"
+              >
+                <option value="">Select group?</option>
+                {projects
+                  .filter((p) => p.id !== activeProjectId)
+                  .map((p) => (
+                    <option className="bg-zinc-900" key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+        )}
         <div className="relative isolate min-h-0 flex-1 overflow-hidden bg-[#0e0e0e]">
           {allSessions.map((session) => {
             const paneIndex = paneSessions.findIndex((pane) => pane.session?.id === session.id);
