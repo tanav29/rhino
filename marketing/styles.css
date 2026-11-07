@@ -1,27 +1,27 @@
 @font-face {
   font-family: Geist;
-  src: url("../node_modules/@fontsource/geist/files/geist-latin-400-normal.woff2") format("woff2");
+  src: url("./node_modules/@fontsource/geist/files/geist-latin-400-normal.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 
 @font-face {
   font-family: Geist;
-  src: url("../node_modules/@fontsource/geist/files/geist-latin-500-normal.woff2") format("woff2");
+  src: url("./node_modules/@fontsource/geist/files/geist-latin-500-normal.woff2") format("woff2");
   font-weight: 500;
   font-display: swap;
 }
 
 @font-face {
   font-family: Geist;
-  src: url("../node_modules/@fontsource/geist/files/geist-latin-600-normal.woff2") format("woff2");
+  src: url("./node_modules/@fontsource/geist/files/geist-latin-600-normal.woff2") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 
 @font-face {
   font-family: "JetBrains Mono";
-  src: url("../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2")
+  src: url("./node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2")
     format("woff2");
   font-weight: 400;
   font-display: swap;

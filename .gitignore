@@ -47,3 +47,6 @@ yarn-error.log*
 /artifacts/
 
 /.cottontail-tmp/
+
+/marketing/node_modules/
+/marketing/dist/

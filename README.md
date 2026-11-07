@@ -10,8 +10,10 @@ The standalone landing page lives in `marketing/` and does not connect to the te
 
 ```bash
 bun run dev:marketing   # http://127.0.0.1:4173
-bun run build:marketing # static site in dist/marketing
+bun run build:marketing # static site in marketing/dist
 ```
+
+Deploy on Vercel by importing the repository and setting the project root to `marketing`. Vercel can use the Vite framework preset and Bun lockfile. Run `bun install` in `marketing` before building locally.
 
 ## Features
 
