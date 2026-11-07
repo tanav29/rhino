@@ -18,7 +18,9 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "type-check": "tsc --noEmit",
-    "dev:web": "concurrently -k \"bun src/bun/web.ts\" \"bunx vite\""
+    "dev:web": "concurrently -k \"bun src/bun/web.ts\" \"bunx vite\"",
+    "dev:marketing": "bunx --bun vite marketing --config marketing/vite.config.ts",
+    "build:marketing": "bunx --bun vite build marketing --config marketing/vite.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

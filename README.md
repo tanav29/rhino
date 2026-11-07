@@ -4,6 +4,15 @@ Native desktop terminal — [wterm](https://wterm.dev) + [Ghostty](https://ghost
 
 ![term icon](src/mainview/logo.png)
 
+## Marketing page
+
+The standalone landing page lives in `marketing/` and does not connect to the terminal backend. The machine selector shows illustrative sessions; the Download button is a placeholder.
+
+```bash
+bun run dev:marketing   # http://127.0.0.1:4173
+bun run build:marketing # static site in dist/marketing
+```
+
 ## Features
 
 - **Real shell** — PTYs via `Bun.Terminal` (ConPTY on Windows)
