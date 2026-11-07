@@ -4,7 +4,7 @@ const isDev = process.env.ELECTROBUN_BUILD_ENV === "dev";
 
 export default {
   app: {
-    name: isDev ? "term (dev)" : "term",
+    name: isDev ? "Rhino (dev)" : "Rhino",
     identifier: "dev.10xdevs.term",
     version: "0.2.0",
   },

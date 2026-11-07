@@ -89,7 +89,7 @@ const url = await resolveMainViewUrl();
 const isDevWindow = BuildConfig.getSync().buildEnvironment === "dev";
 
 const window = new BrowserWindow({
-  title: isDevWindow ? "term — DEV" : "term",
+  title: isDevWindow ? "Rhino — DEV" : "Rhino",
   url,
   rpc,
   frame: {

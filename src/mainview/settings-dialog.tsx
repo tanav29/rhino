@@ -186,9 +186,9 @@ export function SettingsDialog({
             aria-hidden
           >
             <span className="text-foreground">$</span>{" "}
-            <span className="text-foreground">echo &quot;Hello, term&quot;</span>
+            <span className="text-foreground">echo &quot;Hello, Rhino&quot;</span>
             <br />
-            <span className="text-success">Hello, term</span>
+            <span className="text-success">Hello, Rhino</span>
             <span
               className={`ml-1 inline-block h-[1.1em] w-[0.55em] translate-y-[2px] bg-ring ${
                 cursorBlink ? "animate-cursor-blink" : ""

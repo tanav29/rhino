@@ -1,8 +1,8 @@
-# term
+# Rhino
 
 Native desktop terminal — [wterm](https://wterm.dev) + [Ghostty](https://ghostty.org) rendering, [Bun.Terminal](https://bun.com/reference/bun/Terminal) PTYs, packaged with [Electrobun](https://blackboard.sh/electrobun/).
 
-![term icon](src/mainview/logo.png)
+![Rhino icon](src/mainview/logo.png)
 
 ## Marketing page
 
@@ -25,7 +25,7 @@ bun run build:marketing # static site in dist/marketing
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4+
-- Hutch — Electrobun's CLI. `term` pins `electrobun@2.0.1` in `hutch.config.ts`.
+- Hutch — Electrobun's CLI. `Rhino` pins `electrobun@2.0.1` in `hutch.config.ts`.
 
 ```powershell
 # Windows PowerShell

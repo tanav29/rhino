@@ -102,7 +102,7 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    if (activeSession) document.title = `${activeSession.title} — ${project?.name ?? "Terminal"}`;
+    if (activeSession) document.title = `${activeSession.title} — ${project?.name ?? "Rhino"}`;
   }, [activeSession, project]);
 
   useEffect(() => {
@@ -216,7 +216,7 @@ export default function App() {
         />
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
           <img src={logo} alt="" className="size-6" />
-          <h1 className="text-sm font-semibold tracking-tight">term</h1>
+          <h1 className="text-sm font-semibold tracking-tight">Rhino</h1>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2 scrollbar-none">
           {projects.map((p) => {
