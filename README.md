@@ -2,7 +2,7 @@
 
 Native desktop terminal — [wterm](https://wterm.dev) + [Ghostty](https://ghostty.org) rendering, [Bun.Terminal](https://bun.com/reference/bun/Terminal) PTYs, packaged with [Electrobun](https://blackboard.sh/electrobun/).
 
-![Rhino icon](src/mainview/logo.png)
+![Rhino icon](assets/logo.png)
 
 ## Marketing page
 
@@ -63,7 +63,7 @@ bun run build:canary      # canary channel (separate install)
 
 Builds type-check the app, bundle the webview and WASM, and package the native runtime. App bundles are written to `build/`; distributable installers and update bundles are written to `artifacts/`. Windows uses the multi-size icon at `assets/icon.ico`, configured in `electrobun.config.ts`.
 
-Regenerate the Windows and webview icons from `logo.png` with `bun scripts/make-icon.ts` on Windows.
+Regenerate the Windows icon and shared app/marketing logo in `assets/` from `logo.png` with `bun scripts/make-icon.ts` on Windows.
 
 Close a running development app before packaging: Hutch holds a project lock while it is running.
 
@@ -79,7 +79,9 @@ src/mainview/App.tsx     workspace hydration/persistence via rpc
 src/mainview/session-view.tsx  Ghostty + rpc attach/input/resize
 ```
 
-`vite.config.ts` has a `slimShiki` plugin that trims shiki to ~40 common languages + `github-dark-default`, keeping `dist/assets` ~5MB.
+`vite.config.ts` trims shiki to common languages and `github-dark-default`, and loads panels and dialogs on demand. The webview build is about 9.4 MB, including Ghostty WASM and all four terminal font styles. The fonts use WOFF2 compression with their full Nerd Font glyph coverage; to convert a replacement TTF, run `bunx wawoff2 input.ttf output.woff2` and retain the font license.
+
+UI components are checked in under `components/ui/`; run `bunx shadcn add <component>` when adding one. The app keeps the CSS state variants it uses in `src/mainview/globals.css`, so the CLI is not an install dependency.
 
 Workspace layout and terminal preferences are saved atomically and flushed on app exit. Shell processes are new on relaunch; terminal scrollback is retained while the app is running. Exited shells and startup failures show a **Restart terminal** action. Closing the last tab creates a fresh terminal.
 

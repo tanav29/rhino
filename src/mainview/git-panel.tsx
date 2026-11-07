@@ -3,12 +3,7 @@ import { ChevronDown, Loader2 } from "lucide-react";
 import { PatchDiff } from "@pierre/diffs/react";
 import { parseGitStatus, type GitChangedFile } from "./git-status";
 import { rpc } from "./rpc";
-
-type DiffResponse =
-  | { kind: "added"; contents: string }
-  | { kind: "diff"; patch: string }
-  | { kind: "empty" }
-  | { error: string };
+import type { GitDiffResult } from "../shared/rpc-schema";
 
 export function GitPanel({ cwd }: { cwd?: string }) {
   const [files, setFiles] = useState<GitChangedFile[] | null>(null);
@@ -104,7 +99,7 @@ function createAddedPatch(path: string, contents: string) {
 }
 
 function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClose?: () => void }) {
-  const [diff, setDiff] = useState<DiffResponse | null>(null);
+  const [diff, setDiff] = useState<GitDiffResult | null>(null);
   // A selected file should show its patch immediately; collapsing remains
   // available for large diffs without making the panel look empty.
   const [collapsed, setCollapsed] = useState(false);
@@ -178,22 +173,9 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
         </div>
       ) : "error" in diff ? (
         <p className="p-3 font-mono text-xs text-muted-foreground">{diff.error}</p>
-      ) : diff.kind === "added" ? (
+      ) : diff.kind === "added" || diff.kind === "diff" ? (
         <PatchDiff
-          patch={createAddedPatch(path, diff.contents)}
-          renderCustomHeader={renderPatchHeader}
-          options={{
-            themeType: "dark",
-            diffStyle: "unified",
-            theme: "github-dark-default",
-            collapsed,
-          }}
-          className="h-full w-full font-mono"
-          style={{ fontFamily: "ui-monospace, monospace" }}
-        />
-      ) : diff.kind === "diff" ? (
-        <PatchDiff
-          patch={diff.patch}
+          patch={diff.kind === "added" ? createAddedPatch(path, diff.contents) : diff.patch}
           renderCustomHeader={renderPatchHeader}
           options={{
             themeType: "dark",

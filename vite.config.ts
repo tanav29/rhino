@@ -59,7 +59,6 @@ const HIGHLIGHT_LANGUAGES = new Set([
   "svelte",
   "graphql",
   "diff",
-  "graphql",
   "haskell",
   "elixir",
   "erlang",
@@ -102,6 +101,11 @@ function slimShiki(): Plugin {
       }
       if (normalized.endsWith("shiki/dist/themes.mjs")) {
         return filterShikiRegistry(code, (theme) => theme === "github-dark-default");
+      }
+      // The app explicitly selects GitHub Dark, so no Pierre themes are used.
+      if (normalized.endsWith("pierre/theming/dist/collections/pierre.js")) {
+        return `import { createThemeCollection } from "../modules/createThemeCollection.js";
+export const pierreThemes = createThemeCollection({ themes: [] });`;
       }
       if (normalized.endsWith("pierre/theming/dist/collections/shiki.js")) {
         return `import { createThemeCollection } from "../modules/createThemeCollection.js";
@@ -174,29 +178,6 @@ export default defineConfig(({ command }) => ({
       treeshake: true,
       output: {
         compact: true,
-        manualChunks(id) {
-          const n = id.replaceAll("\\", "/");
-          // Split large static vendors, keep shiki/pierre dynamic imports as separate async chunks
-          if (n.includes("node_modules")) {
-            if (n.includes("/zustand/")) return "zustand";
-            if (n.includes("/@wterm/")) return "terminal";
-            if (n.includes("/@base-ui")) return "ui";
-            // Keep shiki & pierre as auto-split dynamic chunks (do not bundle)
-            if (n.includes("/shiki") || n.includes("/@shikijs/") || n.includes("/@pierre/"))
-              return undefined;
-            if (n.includes("/react")) return undefined; // keep react in main to avoid circular
-            // lucide-react (icons) stays in vendor: at ~11KB a dedicated chunk
-            // isn't worth it and split it off created an icons↔vendor cycle.
-            return "vendor";
-          }
-          if (n.includes("/src/mainview/file-tree") || n.includes("/src/mainview/git-panel"))
-            return "panels";
-          if (
-            n.includes("/src/mainview/new-terminal") ||
-            n.includes("/src/mainview/settings-dialog")
-          )
-            return "dialogs";
-        },
       },
     },
   },

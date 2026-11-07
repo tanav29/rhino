@@ -12,6 +12,7 @@ export default {
     mainProcess: "bun",
     bun: {
       entrypoint: "src/bun/index.ts",
+      minify: !isDev,
     },
     // Vite builds the React webview to dist/, we copy its output.
     copy: {

@@ -40,10 +40,6 @@ type RpcShape = {
       path?: string;
     }) => Promise<import("../shared/rpc-schema").DirectoryListing>;
     listProjectFiles: (p: { cwd: string }) => Promise<{ paths: string[]; error?: string }>;
-    readFilePreview: (p: {
-      cwd: string;
-      path: string;
-    }) => Promise<import("../shared/rpc-schema").FilePreview>;
     readGitStatus: (p: { cwd: string }) => Promise<string>;
     readGitDiff: (p: {
       cwd: string;

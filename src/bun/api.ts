@@ -1,13 +1,12 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { BunRequestHandlers } from "../shared/rpc-schema";
 import { getAvailableShells } from "./shells";
 import { listProjectFiles } from "./files";
 
 const execFileAsync = promisify(execFile);
-const MAX_PREVIEW_FILE_SIZE = 2_000_000;
 const IGNORED_DIR_NAMES = new Set([
   "node_modules",
   ".git",
@@ -74,23 +73,6 @@ export function createApiHandlers(): RequestHandlers {
           paths: [],
           error: error instanceof Error ? error.message : "Unable to list files",
         };
-      }
-    },
-
-    readFilePreview: async ({ cwd, path }) => {
-      const root = resolve(cwd || process.cwd());
-      const target = resolveWithinCwd(root, path);
-      if (!target) return { error: "Invalid path" };
-      try {
-        const stats = await stat(target);
-        if (!stats.isFile()) throw new Error("Not a file");
-        if (stats.size > MAX_PREVIEW_FILE_SIZE) return { error: "File is too large to preview" };
-        const buffer = await readFile(target);
-        if (buffer.subarray(0, 8000).includes(0))
-          return { error: "Binary file cannot be previewed" };
-        return { contents: buffer.toString("utf-8") };
-      } catch (error) {
-        return { error: error instanceof Error ? error.message : "Unable to read file" };
       }
     },
 

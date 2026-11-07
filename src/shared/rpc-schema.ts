@@ -17,8 +17,6 @@ export interface DirectoryListing {
   error?: string;
 }
 
-export type FilePreview = { contents: string } | { error: string };
-
 export type GitDiffResult =
   | { kind: "added"; contents: string }
   | { kind: "diff"; patch: string }
@@ -76,7 +74,6 @@ export type AppRPC = {
       listShells: { params: {}; response: ShellOption[] };
       browseDirectory: { params: { path?: string }; response: DirectoryListing };
       listProjectFiles: { params: { cwd: string }; response: { paths: string[]; error?: string } };
-      readFilePreview: { params: { cwd: string; path: string }; response: FilePreview };
       readGitStatus: { params: { cwd: string }; response: string };
       readGitDiff: { params: { cwd: string; path: string }; response: GitDiffResult };
       loadWorkspace: { params: {}; response: WorkspaceSnapshot | null };

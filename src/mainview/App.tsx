@@ -6,7 +6,7 @@ import { rpc } from "./rpc";
 import { useWorkspaceStore, selectActiveSession } from "./store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import logo from "./logo.png";
+import logo from "../../assets/logo.png";
 
 const FilesPanel = lazy(() => import("./file-tree-panel").then((m) => ({ default: m.FilesPanel })));
 const GitPanel = lazy(() => import("./git-panel").then((m) => ({ default: m.GitPanel })));
