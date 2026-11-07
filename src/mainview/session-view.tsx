@@ -4,10 +4,6 @@ import { GhosttyCore } from "@wterm/ghostty";
 import type { SessionTab } from "./session-tabs";
 import { rpc, subscribePtyExit, subscribePtyOutput, subscribePtyTitle } from "./rpc";
 
-// Sessions whose scrollback replay has already been written in this page
-// lifetime. Guards against duplicate attach flows re-writing history.
-const replayWritten = new Set<string>();
-
 export function SessionView({
   session,
   onTitle,
@@ -28,27 +24,37 @@ export function SessionView({
   const { ref, write, focus } = useTerminal();
   const [core, setCore] = useState<GhosttyCore | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [exited, setExited] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const replayWritten = useRef(false);
   const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const onTitleRef = useRef(onTitle);
 
   useEffect(() => {
     let cancelled = false;
     // Keep a useful local history while preserving Ghostty's complete VT support.
-    void GhosttyCore.load({ scrollbackLimit: 8 * 1024 * 1024 }).then((loadedCore) => {
-      if (!cancelled) setCore(loadedCore);
-    });
+    setError(null);
+    void GhosttyCore.load({ scrollbackLimit: 8 * 1024 * 1024 })
+      .then((loadedCore) => {
+        if (!cancelled) setCore(loadedCore);
+      })
+      .catch((cause) => {
+        if (!cancelled)
+          setError(cause instanceof Error ? cause.message : "Unable to load terminal");
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
   useEffect(() => {
     onTitleRef.current = onTitle;
   }, [onTitle]);
 
   useLayoutEffect(() => {
-    if (visible && active) focus();
-  }, [active, focus, visible]);
+    if (ready && visible && active) focus();
+  }, [active, focus, ready, visible]);
 
   useLayoutEffect(() => {
     if (!visible || !ready) return;
@@ -61,6 +67,8 @@ export function SessionView({
     if (!core || !ready) return;
 
     let disposed = false;
+    setExited(false);
+    setError(null);
 
     void (async () => {
       try {
@@ -76,14 +84,16 @@ export function SessionView({
           rows: size.rows,
         });
         if (disposed) return;
-        pendingSizeRef.current = null;
         if (attached.title) onTitleRef.current(session.id, attached.title);
-        if (attached.replay && !replayWritten.has(session.id)) {
-          replayWritten.add(session.id);
+        if (attached.replay && !replayWritten.current) {
+          replayWritten.current = true;
           write(attached.replay);
         }
-      } catch {
-        if (!disposed) write("\r\n\x1b[91m[failed to attach terminal]\x1b[0m\r\n");
+        const latestSize = pendingSizeRef.current;
+        if (latestSize) rpc.send.ptyResize({ sessionId: session.id, ...latestSize });
+        pendingSizeRef.current = null;
+      } catch (cause) {
+        if (!disposed) setError(cause instanceof Error ? cause.message : "Unable to start shell");
       }
     })();
 
@@ -96,7 +106,7 @@ export function SessionView({
       onTitleRef.current(session.id, title),
     );
     const unsubExit = subscribePtyExit(session.id, () => {
-      if (!disposed) write("\r\n\x1b[90m[process exited]\x1b[0m\r\n");
+      if (!disposed) setExited(true);
     });
 
     return () => {
@@ -138,40 +148,67 @@ export function SessionView({
     if (cols !== wt.cols || rows !== wt.rows) wt.resize(cols, rows);
   }, [fontSize, rowHeight, ready, ref]);
 
-  if (!core) {
-    return (
-      <div
-        className="h-full min-h-0"
-        style={{ background: "oklch(0.105 0 0)", fontSize: `${fontSize}px` } as React.CSSProperties}
-      />
-    );
-  }
-
   return (
-    <Terminal
-      ref={ref}
-      core={core}
-      autoResize
-      className="terminal-surface h-full min-h-0"
-      style={
-        {
-          borderRadius: 0,
-          height: "100%",
-          minHeight: 0,
-          "--term-font-size": `${fontSize}px`,
-          "--term-line-height": `${lineHeight}`,
-          "--term-row-height": `${rowHeight}px`,
-        } as React.CSSProperties
-      }
-      cursorBlink={cursorBlink}
-      onData={(data) => rpc.send.ptyInput({ sessionId: session.id, data })}
-      onResize={(cols, rows) => {
-        pendingSizeRef.current = { cols, rows };
-        rpc.send.ptyResize({ sessionId: session.id, cols, rows });
-      }}
-      onReady={() => setReady(true)}
-      onError={(error) => console.error("Unable to initialize terminal", error)}
-      onTitle={(title) => onTitleRef.current(session.id, title)}
-    />
+    <div className="relative h-full min-h-0 bg-background">
+      {!core && !error && (
+        <div role="status" className="p-4 font-mono text-xs text-muted-foreground">
+          Starting terminal…
+        </div>
+      )}
+      {core && (
+        <Terminal
+          ref={ref}
+          core={core}
+          autoResize
+          className="terminal-surface h-full min-h-0"
+          style={
+            {
+              borderRadius: 0,
+              height: "100%",
+              minHeight: 0,
+              "--term-font-size": `${fontSize}px`,
+              "--term-line-height": `${lineHeight}`,
+              "--term-row-height": `${rowHeight}px`,
+            } as React.CSSProperties
+          }
+          cursorBlink={cursorBlink}
+          renderingPaused={!visible}
+          onData={(data) => rpc.send.ptyInput({ sessionId: session.id, data })}
+          onResize={(cols, rows) => {
+            pendingSizeRef.current = { cols, rows };
+            rpc.send.ptyResize({ sessionId: session.id, cols, rows });
+          }}
+          onReady={() => setReady(true)}
+          onError={(cause) =>
+            setError(cause instanceof Error ? cause.message : "Unable to initialize terminal")
+          }
+          onTitle={(title) => onTitleRef.current(session.id, title)}
+        />
+      )}
+      {(error || exited) && (
+        <div
+          role="status"
+          className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 border-t border-border bg-popover px-4 py-3 text-xs text-muted-foreground"
+        >
+          <span className="min-w-0 truncate" title={error ?? undefined}>
+            {error ?? "Shell exited"}
+          </span>
+          <button
+            type="button"
+            className="shrink-0 rounded border border-border px-3 py-1.5 text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            onClick={() => {
+              replayWritten.current = false;
+              setCore(null);
+              setReady(false);
+              setExited(false);
+              rpc.send.killSession({ sessionId: session.id });
+              setAttempt((value) => value + 1);
+            }}
+          >
+            Restart terminal
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

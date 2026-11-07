@@ -52,10 +52,10 @@ function Stepper({
 }) {
   const lower = label.toLowerCase();
   return (
-    <div className="flex flex-col gap-3 rounded-[10px] border border-white/10 bg-white/[0.04] p-3">
+    <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-card p-3">
       <div className="flex items-center justify-between">
-        <span className="text-[12.5px] font-[600] tracking-tight text-white">{label}</span>
-        <span className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] font-bold leading-none text-black">
+        <span className="text-[12.5px] font-[600] tracking-tight text-foreground">{label}</span>
+        <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[11px] font-bold leading-none text-primary-foreground">
           {display}
         </span>
       </div>
@@ -81,7 +81,7 @@ function Stepper({
           value={value}
           aria-label={label}
           onChange={(event) => onChange(Number(event.target.value))}
-          className="h-1 flex-1 accent-white cursor-pointer"
+          className="h-4 min-w-0 flex-1 accent-ring cursor-pointer"
         />
 
         <Button
@@ -100,7 +100,7 @@ function Stepper({
       <button
         type="button"
         onClick={onReset}
-        className="inline-flex items-center gap-1 self-end rounded bg-white/10 px-2 py-1 font-mono text-[11px] font-semibold text-zinc-200 transition-colors hover:bg-white/20"
+        className="inline-flex items-center gap-1 self-end rounded bg-accent px-2 py-1 font-mono text-[11px] font-semibold text-foreground transition-colors hover:bg-secondary"
       >
         <RotateCcw size={11} />
         Reset
@@ -124,7 +124,9 @@ export function SettingsDialog({
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Terminal settings</DialogTitle>
-          <DialogDescription>Adjust appearance · stored in workspace.json</DialogDescription>
+          <DialogDescription>
+            Make your terminal feel right. Changes save automatically.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4 px-5 pb-5 pt-3">
@@ -155,21 +157,23 @@ export function SettingsDialog({
             role="switch"
             aria-checked={cursorBlink}
             onClick={() => onCursorBlinkChange(!cursorBlink)}
-            className="flex items-center justify-between rounded-[10px] border border-white/10 bg-white/[0.04] p-3 text-left transition-colors hover:bg-white/[0.06]"
+            className="flex items-center justify-between gap-4 rounded-[10px] border border-border bg-card p-3 text-left transition-colors hover:bg-accent"
           >
             <span className="flex flex-col">
-              <span className="text-[12.5px] font-[600] tracking-tight text-white">
+              <span className="text-[12.5px] font-[600] tracking-tight text-foreground">
                 Cursor blink
               </span>
-              <span className="font-mono text-[11px] text-zinc-500">Blink the block cursor</span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                Blink the block cursor
+              </span>
             </span>
             <span
               className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                cursorBlink ? "bg-white" : "bg-white/15"
+                cursorBlink ? "bg-primary" : "bg-secondary"
               }`}
             >
               <span
-                className={`absolute top-0.5 size-4 rounded-full bg-black transition-transform ${
+                className={`absolute top-0.5 size-4 rounded-full bg-foreground transition-transform ${
                   cursorBlink ? "translate-x-[18px]" : "translate-x-0.5"
                 }`}
               />
@@ -177,28 +181,20 @@ export function SettingsDialog({
           </button>
 
           <div
-            className="rounded-[10px] border border-white/10 bg-[#0e0e0e] p-3 font-mono shadow-inner"
+            className="rounded-[10px] border border-border bg-background p-3 font-mono shadow-inner [&_*]:font-mono"
             style={{ fontSize: `${fontSize}px`, lineHeight }}
             aria-hidden
           >
-            <span className="text-zinc-300">$</span>{" "}
-            <span className="text-white">echo &quot;Hello, term&quot;</span>
+            <span className="text-foreground">$</span>{" "}
+            <span className="text-foreground">echo &quot;Hello, term&quot;</span>
             <br />
-            <span className="text-emerald-400">Hello, term</span>
+            <span className="text-success">Hello, term</span>
             <span
-              className={`ml-1 inline-block h-[1.1em] w-[0.55em] translate-y-[2px] bg-white/90 ${
+              className={`ml-1 inline-block h-[1.1em] w-[0.55em] translate-y-[2px] bg-ring ${
                 cursorBlink ? "animate-cursor-blink" : ""
               }`}
             />
           </div>
-
-          <p className="font-mono text-[11px] leading-relaxed text-zinc-500">
-            Stored via Bun in{" "}
-            <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-zinc-200">
-              workspace.json
-            </code>{" "}
-            under userData.
-          </p>
         </div>
       </DialogContent>
     </Dialog>

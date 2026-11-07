@@ -42,33 +42,33 @@ export function SessionTabs({
   onSettings,
 }: SessionTabsProps) {
   return (
-    <div className="flex h-8 shrink-0 items-center border-b border-white/10 bg-[#0f0f0f]">
-      <div className="flex h-full min-w-0 items-stretch gap-0 overflow-x-auto scrollbar-none">
+    <div className="flex h-10 shrink-0 items-center border-b border-border bg-sidebar">
+      <div className="flex h-full min-w-0 flex-1 items-stretch overflow-x-auto scrollbar-none">
         {sessions.map((session) => {
           const active = session.id === activeId;
           return (
             <div
               key={session.id}
-              onClick={() => onSelect(session.id)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") onSelect(session.id);
-              }}
-              role="button"
-              tabIndex={0}
-              className={`group relative flex shrink-0 cursor-pointer items-center gap-1.5 border-r px-2 text-xs transition-none select-none ${
+              className={`group relative flex shrink-0 items-center gap-1 border-r border-b-2 pr-2 text-xs transition-colors select-none ${
                 active
-                  ? "bg-white/[0.08] text-zinc-100 border-white/10"
-                  : "border-white/10 bg-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
+                  ? "border-r-border border-b-ring bg-background text-foreground"
+                  : "border-r-border border-b-transparent bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >
-              {agentTitle.test(session.title) ? (
-                <Bot size={14} aria-label="AI agent" />
-              ) : (
-                <Terminal size={14} />
-              )}
-              <span className="max-w-[110px] truncate text-xs">
-                {session.title}
-              </span>
+              <button
+                type="button"
+                onClick={() => onSelect(session.id)}
+                title={session.cwd ? `${session.title} — ${session.cwd}` : session.title}
+                aria-pressed={active}
+                className="flex h-full min-w-0 items-center gap-2 px-3 text-left"
+              >
+                {agentTitle.test(session.title) ? (
+                  <Bot size={14} aria-label="AI agent" />
+                ) : (
+                  <Terminal size={14} />
+                )}
+                <span className="max-w-40 truncate text-xs">{session.title}</span>
+              </button>
               <button
                 type="button"
                 aria-label={`Close ${session.title}`}
@@ -78,8 +78,8 @@ export function SessionTabs({
                 }}
                 className={`flex size-5 shrink-0 items-center justify-center transition-colors ${
                   active
-                    ? "text-zinc-500  hover:text-zinc-100"
-                    : "text-zinc-600 opacity-0  hover:text-zinc-100 group-hover:opacity-100"
+                    ? "text-muted-foreground  hover:text-foreground"
+                    : "text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100 group-focus-within:opacity-100"
                 }`}
               >
                 <X size={11} strokeWidth={2.2} />
@@ -88,12 +88,12 @@ export function SessionTabs({
           );
         })}
       </div>
-      <div className="flex items-center pl-1 pr-1">
+      <div className="flex shrink-0 items-center px-1">
         <button
           type="button"
           aria-label="New terminal"
           onClick={() => onNew()}
-          className="flex size-4 items-center justify-center text-zinc-500 hover:text-zinc-100 transition-colors"
+          className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           title="New terminal (Ctrl+T)"
         >
           <Plus size={14} />
@@ -104,7 +104,7 @@ export function SessionTabs({
               <button
                 type="button"
                 aria-label="Choose shell"
-                className="flex size-4 items-center justify-center text-zinc-500  hover:text-zinc-100 transition-colors"
+                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
                 <ChevronDown size={14} />
               </button>
@@ -122,12 +122,12 @@ export function SessionTabs({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="ml-auto flex items-center gap-1 pl-2 pr-2">
+      <div className="ml-auto flex shrink-0 items-center gap-1 border-l border-border px-2">
         <button
           type="button"
           aria-label="Terminal settings"
           onClick={() => onSettings?.()}
-          className="flex size-4 items-center justify-center  text-zinc-500 transition-colors  hover:text-zinc-100"
+          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           title="Terminal settings"
         >
           <Settings size={14} strokeWidth={1.8} />
@@ -136,7 +136,8 @@ export function SessionTabs({
           type="button"
           aria-label={panel ? "Close workspace panel" : "Open workspace panel"}
           onClick={() => onPanelToggle?.(panel ? null : "files")}
-          className={`flex size-4 items-center justify-center transition-colors ${panel ? " text-zinc-100" : "text-zinc-500  hover:text-zinc-100"}`}
+          aria-pressed={!!panel}
+          className={`flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent ${panel ? "bg-accent text-ring" : "text-muted-foreground hover:text-foreground"}`}
           title={panel ? "Close workspace panel" : "Open workspace panel"}
         >
           <PanelLeftOpen size={14} strokeWidth={1.8} />

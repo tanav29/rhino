@@ -1,0 +1,5 @@
+Generated with the built-in image_gen tool. Source: logo.png.
+Regenerate the ICO and webview PNG with: bun scripts/make-icon.ts
+
+Prompt:
+Use case: logo-brand. Asset type: production desktop app icon for a terminal named term. Create one cool Gen Z terminal mascot icon: a chunky soft-square midnight navy terminal tile (#161b22), subtly tilted personality but front-facing square silhouette, with an oversized bold mint-green > chevron and short blue underscore composing a cheeky friendly face. Tiny confident blue sparkle at upper right within the tile, no other decorations. Premium tactile soft 3D sticker aesthetic, lightly beveled edges, crisp large shapes, restrained soft lighting, no external cast shadow. GitHub-inspired dark navy, fresh green #3fb950, electric blue #58a6ff, white highlights. Centered icon occupies 88 percent of square canvas, all four rounded corners fully visible, transparent outside the icon. Strong readable silhouette at 16, 32, 48 pixels. No lettering, no wordmark, no border frame, no multiple icons, no mockup background, no watermark. Save generated asset to disk and return its local path for the current project.

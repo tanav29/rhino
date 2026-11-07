@@ -62,19 +62,17 @@ export function NewSessionDialog({
 
         <div className="flex flex-col gap-4 px-5 pb-4 pt-3">
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-              Shell
-            </span>
+            <span className="text-xs font-medium text-muted-foreground">Shell</span>
             <select
               value={shell}
               onChange={(event) => setShell(event.target.value)}
-              className="h-8 rounded-[8px] border border-white/15 bg-white/[0.06] px-2.5 font-mono text-[12.5px] text-white outline-none focus-visible:border-white/30 focus-visible:ring-2 focus-visible:ring-white/20"
+              className="h-8 rounded-[8px] border border-border bg-accent px-2.5 font-mono text-[12.5px] text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
             >
-              <option value="" className="bg-[#1a1a1a]">
+              <option value="" className="bg-popover">
                 Default shell
               </option>
               {shells.map((option) => (
-                <option key={option.value} value={option.value} className="bg-[#1a1a1a]">
+                <option key={option.value} value={option.value} className="bg-popover">
                   {option.name}
                 </option>
               ))}
@@ -82,9 +80,12 @@ export function NewSessionDialog({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+            <label
+              htmlFor="workspace-directory"
+              className="text-xs font-medium text-muted-foreground"
+            >
               Directory
-            </span>
+            </label>
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -93,23 +94,24 @@ export function NewSessionDialog({
               className="flex items-center gap-1.5"
             >
               <input
+                id="workspace-directory"
                 value={pathInput}
                 onChange={(event) => setPathInput(event.target.value)}
                 spellCheck={false}
-                className="h-8 flex-1 rounded-[8px] border border-white/15 bg-white/[0.06] px-2.5 font-mono text-[12.5px] text-white placeholder:text-zinc-500 outline-none focus-visible:border-white/30 focus-visible:ring-2 focus-visible:ring-white/20"
+                className="h-8 min-w-0 flex-1 rounded-[8px] border border-border bg-background px-2.5 font-mono text-[12.5px] text-foreground placeholder:text-muted-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
                 placeholder="/path/to/project"
               />
               <Button type="submit" variant="outline" size="sm">
                 Go
               </Button>
             </form>
-            <div className="h-52 overflow-y-auto rounded-[8px] border border-white/10 bg-white/[0.03]">
+            <div className="h-52 overflow-y-auto rounded-[8px] border border-border bg-sidebar">
               {loading ? (
-                <div className="flex h-full items-center justify-center text-zinc-500">
+                <div className="flex h-full items-center justify-center text-muted-foreground">
                   <Loader2 size={16} className="animate-spin" />
                 </div>
               ) : browse?.error ? (
-                <p className="p-3 font-mono text-xs text-red-400">{browse.error}</p>
+                <p className="p-3 font-mono text-xs text-destructive">{browse.error}</p>
               ) : (
                 <>
                   {browse?.parent && (
@@ -117,14 +119,14 @@ export function NewSessionDialog({
                       type="button"
                       aria-label="Go to parent directory"
                       onClick={() => loadPath(browse.parent!)}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[12.5px] text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-100"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[12.5px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     >
                       <ChevronUp size={13} />
                       Up a level
                     </button>
                   )}
                   {browse?.entries.length === 0 && (
-                    <p className="p-3 font-mono text-xs text-zinc-500">No subfolders</p>
+                    <p className="p-3 font-mono text-xs text-muted-foreground">No subfolders</p>
                   )}
                   {browse?.entries.map((entry) => (
                     <button
@@ -132,9 +134,9 @@ export function NewSessionDialog({
                       aria-label={`Open ${entry.name}`}
                       key={entry.path}
                       onClick={() => loadPath(entry.path)}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] transition-colors hover:bg-white/10 hover:text-white"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] transition-colors hover:bg-accent hover:text-foreground"
                     >
-                      <Folder size={13} className="shrink-0 text-zinc-600" />
+                      <Folder size={13} className="shrink-0 text-muted-foreground" />
                       <span className="truncate font-[450] tracking-tight">{entry.name}</span>
                     </button>
                   ))}
@@ -150,6 +152,7 @@ export function NewSessionDialog({
           </Button>
           <Button
             type="button"
+            disabled={loading || !!browse?.error || !browse?.path}
             onClick={() => {
               onCreate(shell || undefined, browse?.path ?? pathInput);
               onOpenChange(false);

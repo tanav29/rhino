@@ -146,12 +146,15 @@ function finishSession(id: string, session: PtySession) {
     clearTimeout(session.flushTimer);
     session.flushTimer = null;
   }
+  const tail = session.decoder.decode();
+  if (tail) session.pendingOutput.push(tail);
+  flushPending(id, session);
   try {
     session.terminal.close();
   } catch {
     /* already closed */
   }
-  sessions.delete(id);
+  if (sessions.get(id) === session) sessions.delete(id);
   emit({ kind: "exit", sessionId: id });
 }
 
@@ -167,7 +170,7 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
   const { shell, args } = getShell(shellValue);
   const safeCwd = shellValue?.startsWith("ssh:") ? undefined : getWorkingDirectory(cwd);
 
-  let terminal: Bun.Terminal;
+  let terminal: Bun.Terminal | undefined;
   let proc: ShellProcess;
   try {
     // The PTY exists independently of the shell; the shell attaches to it.
@@ -177,7 +180,7 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
       name: "xterm-256color",
       data(term, chunk) {
         const session = sessions.get(sessionId);
-        if (!session) return;
+        if (!session || session.terminal !== term || session.finished) return;
         // Streaming decode handles multibyte sequences split across chunks.
         const text = session.decoder.decode(chunk, { stream: true });
         if (!text) return;
@@ -193,9 +196,9 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
           emit({ kind: "title", sessionId, title });
         }
       },
-      exit() {
+      exit(term) {
         const session = sessions.get(sessionId);
-        if (session) finishSession(sessionId, session);
+        if (session?.terminal === term) finishSession(sessionId, session);
       },
     });
 
@@ -205,6 +208,7 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
       stdin: "ignore",
     }) as unknown as ShellProcess;
   } catch (error) {
+    terminal?.close();
     throw new Error(
       `Unable to spawn ${shell}: ${error instanceof Error ? error.message : String(error)}`,
     );
@@ -223,10 +227,11 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
   };
   sessions.set(sessionId, session);
 
-  // Belt and braces: the subprocess may die while the PTY stays open.
+  // Let the PTY drain its final data before closing it on process exit.
   void proc.exited.then(() => {
-    const current = sessions.get(sessionId);
-    if (current) finishSession(sessionId, current);
+    setTimeout(() => {
+      if (sessions.get(sessionId) === session) finishSession(sessionId, session);
+    }, FLUSH_INTERVAL_MS * 4);
   });
 
   return { title: session.title, replay: "" };
@@ -235,7 +240,7 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
 export function writePtyInput(sessionId: string, data: string) {
   const session = sessions.get(sessionId);
   if (!session || session.finished) return;
-  session.terminal.write(stripTerminalResponses(data));
+  session.terminal.write(data);
 }
 
 export function resizePty(sessionId: string, cols: number, rows: number) {

@@ -8,16 +8,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-white text-black hover:bg-zinc-100 active:bg-zinc-200 shadow-sm",
+        default:
+          "border-success/30 bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 shadow-sm",
         outline:
-          "border-white/15 bg-white/[0.06] text-zinc-200 hover:bg-white/10 hover:text-white hover:border-white/20 aria-expanded:bg-white/10 aria-expanded:text-white",
+          "border-border bg-accent text-foreground hover:bg-accent hover:text-foreground hover:border-input aria-expanded:bg-accent aria-expanded:text-foreground",
         secondary:
-          "bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-white/5 aria-expanded:bg-zinc-700 aria-expanded:text-zinc-100",
+          "bg-secondary text-foreground hover:bg-accent border border-border aria-expanded:bg-accent aria-expanded:text-foreground",
         ghost:
-          "text-zinc-400 hover:bg-white/10 hover:text-zinc-100 aria-expanded:bg-white/10 aria-expanded:text-zinc-100",
+          "text-muted-foreground hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground",
         destructive:
-          "bg-red-500/15 text-red-400 hover:bg-red-500/25 hover:text-red-300 border border-red-500/20 focus-visible:border-red-500/40 focus-visible:ring-red-500/20",
-        link: "text-zinc-100 underline-offset-4 hover:underline",
+          "bg-destructive/15 text-destructive hover:bg-destructive/25 border border-destructive/30 focus-visible:border-destructive/50 focus-visible:ring-destructive/30",
+        link: "text-ring underline-offset-4 hover:underline",
       },
       size: {
         default:

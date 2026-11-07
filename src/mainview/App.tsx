@@ -4,6 +4,9 @@ import { SessionTabs } from "./session-tabs";
 import { SessionView } from "./session-view";
 import { rpc } from "./rpc";
 import { useWorkspaceStore, selectActiveSession } from "./store";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import logo from "./logo.png";
 
 const FilesPanel = lazy(() => import("./file-tree-panel").then((m) => ({ default: m.FilesPanel })));
 const GitPanel = lazy(() => import("./git-panel").then((m) => ({ default: m.GitPanel })));
@@ -50,6 +53,7 @@ export default function App() {
   const hydrate = useWorkspaceStore((s) => s.hydrate);
   const addSession = useWorkspaceStore((s) => s.addSession);
   const selectSession = useWorkspaceStore((s) => s.selectSession);
+  const focusSession = useWorkspaceStore((s) => s.focusSession);
   const updateTitle = useWorkspaceStore((s) => s.updateTitle);
   const closeSession = useWorkspaceStore((s) => s.closeSession);
   const selectProject = useWorkspaceStore((s) => s.selectProject);
@@ -122,7 +126,7 @@ export default function App() {
       }
       if (mod && event.key.toLowerCase() === "n") {
         event.preventDefault();
-        setEditingGroup({ id: null, name: "", color: "#60a5fa" });
+        setEditingGroup({ id: null, name: "", color: "#58a6ff" });
       }
       if (mod && /^[1-9]$/.test(event.key)) {
         event.preventDefault();
@@ -171,6 +175,7 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <aside
+        aria-label="Workspaces"
         ref={sidebarRef}
         className="relative flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
         style={{ width: sidebarWidth }}
@@ -209,77 +214,78 @@ export default function App() {
             );
           }}
         />
-        <div className="flex flex-1 flex-col overflow-y-auto scrollbar-none">
+        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
+          <img src={logo} alt="" className="size-6" />
+          <h1 className="text-sm font-semibold tracking-tight">term</h1>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2 scrollbar-none">
           {projects.map((p) => {
             const isActive = p.id === activeProjectId;
             return (
               <div
                 key={p.id}
-                onClick={() => selectProject(p.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") selectProject(p.id);
-                }}
-                role="button"
-                tabIndex={0}
-                className={`group flex w-full flex-col items-start gap-0.5 border-b border-white/5 text-left text-sm cursor-pointer transition-none ${
+                className={`group flex w-full items-start rounded-md border px-2 py-2 text-sm transition-colors ${
                   isActive
-                    ? "bg-white/[0.08] text-zinc-100"
-                    : "text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
+                    ? "border-border bg-accent text-foreground"
+                    : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
-                <div className="flex w-full items-center">
-                  <span className="truncate text-[12.5px] font-[550] flex gap-1.5 items-center tracking-tight">
-                    <Folder className="w-3.5 shrink-0" style={{ color: p.color || "#71717a" }} />
-                    {p.name}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={`Edit group ${p.name}`}
-                    title="Edit group"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingGroup({ id: p.id, name: p.name, color: p.color || "#60a5fa" });
-                    }}
-                    className="ml-auto flex size-5 items-center justify-center text-zinc-500 hover:text-zinc-200"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Delete group ${p.name}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeProject(p.id);
-                    }}
-                    title="Delete group"
-                    className={`flex size-5 shrink-0 items-center justify-center ${isActive ? "text-zinc-500 hover:text-zinc-200" : "text-zinc-600 opacity-0  hover:text-zinc-200 group-hover:opacity-100"}`}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-                <span
-                  className={`truncate font-mono text-[11px] w-full pl-[20px] leading-none ${isActive ? "text-zinc-500" : "text-zinc-600 group-hover:text-zinc-500"}`}
+                <button
+                  type="button"
+                  onClick={() => selectProject(p.id)}
+                  aria-pressed={isActive}
+                  className="flex min-w-0 flex-1 flex-col gap-1 rounded px-1 py-0.5 text-left"
                 >
-                  {p.sessions.length} {p.sessions.length === 1 ? "session" : "sessions"}
-                </span>
+                  <span className="truncate text-[12.5px] font-[550] flex gap-1.5 items-center tracking-tight">
+                    <Folder className="w-3.5 shrink-0" style={{ color: p.color || "#9198a1" }} />
+                    <span className="truncate">{p.name}</span>
+                  </span>
+                  <span className="w-full truncate pl-5 text-[11px] leading-4 text-muted-foreground">
+                    {p.sessions.length} {p.sessions.length === 1 ? "session" : "sessions"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Edit group ${p.name}`}
+                  title="Edit group"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingGroup({ id: p.id, name: p.name, color: p.color || "#58a6ff" });
+                  }}
+                  className="ml-auto flex size-6 shrink-0 items-center justify-center rounded hover:bg-secondary hover:text-foreground text-muted-foreground"
+                >
+                  <Pencil size={12} />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete group ${p.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeProject(p.id);
+                  }}
+                  title="Delete group"
+                  className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                >
+                  <Trash2 size={12} />
+                </button>
               </div>
             );
           })}
           <button
             type="button"
             aria-label="New group"
-            onClick={() => setEditingGroup({ id: null, name: "", color: "#60a5fa" })}
-            className="flex w-full items-center gap-2 border-b border-white/10 bg-transparent font-mono text-xs font-medium text-zinc-500 hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors"
+            onClick={() => setEditingGroup({ id: null, name: "", color: "#58a6ff" })}
+            className="flex min-h-9 w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
             <Plus size={13} strokeWidth={2.2} />
             <span>New group</span>
-            <span className="ml-auto font-mono text-[10px] text-zinc-600">⌘N</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">Ctrl+N</span>
           </button>
         </div>
         <div className="flex max-h-[min(12rem,40%)] shrink-0 flex-col border-t border-sidebar-border">
           <div className="min-h-0 overflow-y-auto">
             {agents.length === 0 && (
-              <p className="text-xs text-zinc-600">No running agents</p>
+              <p className="px-4 py-3 text-xs text-muted-foreground">No running agents</p>
             )}
             {agents.map((agent) => {
               const group = projects.find((p) => p.sessions.some((s) => s.id === agent.sessionId));
@@ -293,12 +299,14 @@ export default function App() {
                     selectProject(group.id);
                     selectSession(agent.sessionId);
                   }}
-                  className="flex w-full items-center gap-2 text-left hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-1 focus-visible:outline-blue-400"
+                  className="flex min-h-9 w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-ring"
                 >
-                  <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
+                  <span className="size-1.5 shrink-0 rounded-full bg-success" />
                   <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                    <span className="shrink-0 text-xs capitalize text-zinc-200">{agent.name}</span>
-                    <span className="min-w-0 truncate text-[11px] text-zinc-500">
+                    <span className="shrink-0 text-xs capitalize text-foreground">
+                      {agent.name}
+                    </span>
+                    <span className="min-w-0 truncate text-[11px] text-muted-foreground">
                       {group.name} / {session.title}
                     </span>
                   </span>
@@ -309,58 +317,55 @@ export default function App() {
         </div>
       </aside>
       {editingGroup && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setEditingGroup(null)}
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditingGroup(null);
+          }}
         >
-          <form
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!editingGroup.name.trim()) return;
-              saveGroup(editingGroup.id, editingGroup.name, editingGroup.color);
-              setEditingGroup(null);
-            }}
-            className="w-80 rounded-lg border border-white/15 bg-[#1b1b1e] p-4 shadow-2xl"
-          >
-            <h2 className="text-sm font-semibold">
-              {editingGroup.id ? "Edit group" : "New group"}
-            </h2>
-            <label className="mt-4 block text-xs text-zinc-400">
-              Name
-              <input
-                autoFocus
-                required
-                maxLength={80}
-                value={editingGroup.name}
-                onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
-                className="mt-1.5 w-full rounded border border-white/15 bg-black/30 px-2.5 py-2 text-sm text-zinc-100 outline-none focus:border-blue-400"
-                placeholder="e.g. Backend"
-              />
-            </label>
-            <label className="mt-3 flex items-center gap-3 text-xs text-zinc-400">
-              Color
-              <input
-                type="color"
-                value={editingGroup.color}
-                onChange={(e) => setEditingGroup({ ...editingGroup, color: e.target.value })}
-                className="h-7 w-10 cursor-pointer bg-transparent"
-              />
-            </label>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditingGroup(null)}
-                className="rounded px-3 py-1.5 text-xs text-zinc-400 hover:bg-white/10"
-              >
-                Cancel
-              </button>
-              <button className="rounded bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-400">
-                Save group
-              </button>
-            </div>
-          </form>
-        </div>
+          <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!editingGroup.name.trim()) return;
+                saveGroup(editingGroup.id, editingGroup.name, editingGroup.color);
+                setEditingGroup(null);
+              }}
+              className="p-5"
+            >
+              <DialogTitle>{editingGroup.id ? "Edit group" : "New group"}</DialogTitle>
+              <label className="mt-4 block text-xs text-muted-foreground">
+                Name
+                <input
+                  autoFocus
+                  required
+                  maxLength={80}
+                  value={editingGroup.name}
+                  onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+                  className="mt-1.5 w-full rounded border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none focus:border-ring"
+                  placeholder="e.g. Backend"
+                />
+              </label>
+              <label className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+                Color
+                <input
+                  type="color"
+                  value={editingGroup.color}
+                  onChange={(e) => setEditingGroup({ ...editingGroup, color: e.target.value })}
+                  className="h-7 w-10 cursor-pointer bg-transparent"
+                />
+              </label>
+              <div className="mt-5 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setEditingGroup(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={!editingGroup.name.trim()}>
+                  Save group
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
       <main className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
         <SessionTabs
@@ -375,7 +380,7 @@ export default function App() {
           onSettings={() => setSettingsOpen(true)}
         />
         {projects.length > 1 && (
-          <div className="flex h-7 items-center justify-end border-b border-white/5 px-3 text-xs text-zinc-500">
+          <div className="flex h-7 items-center justify-end border-b border-border px-3 text-xs text-muted-foreground">
             <label>
               Move current session to{" "}
               <select
@@ -383,13 +388,13 @@ export default function App() {
                 onChange={(e) => {
                   if (e.target.value) moveSession(e.target.value);
                 }}
-                className="ml-2 bg-transparent text-zinc-400 outline-none"
+                className="ml-2 bg-transparent text-muted-foreground outline-none"
               >
                 <option value="">Select group?</option>
                 {projects
                   .filter((p) => p.id !== activeProjectId)
                   .map((p) => (
-                    <option className="bg-zinc-900" key={p.id} value={p.id}>
+                    <option className="bg-popover" key={p.id} value={p.id}>
                       {p.name}
                     </option>
                   ))}
@@ -397,7 +402,7 @@ export default function App() {
             </label>
           </div>
         )}
-        <div className="relative isolate min-h-0 flex-1 overflow-hidden bg-[#0e0e0e]">
+        <div className="relative isolate min-h-0 flex-1 overflow-hidden bg-background">
           {allSessions.map((session) => {
             const paneIndex = paneSessions.findIndex((pane) => pane.session?.id === session.id);
             const visible = paneIndex >= 0 && paneCount > 0;
@@ -407,6 +412,7 @@ export default function App() {
               <div
                 key={session.id}
                 aria-hidden={visible ? undefined : true}
+                onPointerDown={() => focusSession(session.id)}
                 className="absolute overflow-hidden"
                 style={{
                   visibility: visible ? "visible" : "hidden",
@@ -417,15 +423,17 @@ export default function App() {
                   height: visible ? (splitColumn ? size : "100%") : "100%",
                   width: visible ? (splitColumn ? "100%" : size) : "100%",
                   borderRight:
-                    visible && !isLast && !splitColumn ? "1px solid oklch(1 0 0 / 10%)" : undefined,
+                    visible && !isLast && !splitColumn ? "1px solid var(--border)" : undefined,
                   borderBottom:
-                    visible && !isLast && splitColumn ? "1px solid oklch(1 0 0 / 10%)" : undefined,
+                    visible && !isLast && splitColumn ? "1px solid var(--border)" : undefined,
                 }}
               >
                 <SessionView
                   session={session}
                   onTitle={updateTitle}
-                  active={session.id === activeSessionId}
+                  active={
+                    session.id === activeSessionId && !newOpen && !settingsOpen && !editingGroup
+                  }
                   visible={visible}
                   fontSize={termFontSize}
                   lineHeight={termLineHeight}
@@ -439,7 +447,7 @@ export default function App() {
       {panel && (
         <Suspense
           fallback={
-            <div className="w-[min(24rem,40vw)] shrink-0 border-l border-white/10 bg-[#0f0f0f]" />
+            <div className="w-[min(24rem,40vw)] shrink-0 border-l border-border bg-sidebar" />
           }
         >
           <WorkspacePanel project={project} panel={panel} onPanelToggle={setPanel} />
@@ -478,8 +486,11 @@ function WorkspacePanel({
   onPanelToggle: (panel: "files" | "git" | null) => void;
 }) {
   return (
-    <aside className="flex w-[min(24rem,40vw)] shrink-0 flex-col overflow-hidden border-l border-white/10 bg-[#0f0f0f] text-sm text-foreground">
-      <div className="flex h-9 shrink-0 items-center border-b border-white/10 bg-[#0f0f0f] px-2">
+    <aside
+      aria-label="Workspace panel"
+      className="flex w-[min(24rem,40vw)] shrink-0 flex-col overflow-hidden border-l border-border bg-sidebar text-sm text-foreground"
+    >
+      <div className="flex h-10 shrink-0 items-center border-b border-border bg-sidebar px-2">
         <div className="flex h-full items-center">
           {(["files", "git"] as const).map((item) => (
             <button
@@ -487,7 +498,7 @@ function WorkspacePanel({
               type="button"
               aria-pressed={panel === item}
               onClick={() => onPanelToggle(item)}
-              className={`h-full border-r border-white/10 px-3 text-[11px] font-[650] capitalize tracking-tight transition-none ${panel === item ? "bg-white/[0.08] text-zinc-100" : "text-zinc-500 hover:text-zinc-200"}`}
+              className={`h-full border-b-2 px-3 text-xs font-medium capitalize transition-colors ${panel === item ? "border-ring text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
               {item}
             </button>
@@ -498,12 +509,12 @@ function WorkspacePanel({
           aria-label="Close workspace panel"
           title="Close panel"
           onClick={() => onPanelToggle(null)}
-          className="ml-auto flex size-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-100"
+          className="ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <X size={14} />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden bg-[#0f0f0f]">
+      <div className="min-h-0 flex-1 overflow-hidden bg-sidebar">
         <Suspense
           fallback={
             <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">

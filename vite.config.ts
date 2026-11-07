@@ -90,7 +90,7 @@ function filterShikiRegistry(code: string, keep: (id: string) => boolean): strin
 /**
  * Build-time slimming: shiki's full bundle registers 200+ language grammars
  * and 60+ themes as dynamic imports, each emitting a chunk. The app only
- * needs a common language subset and the aurora-x theme.
+ * needs a common language subset and the github-dark-default theme.
  */
 function slimShiki(): Plugin {
   return {
@@ -100,15 +100,15 @@ function slimShiki(): Plugin {
       if (/shiki\/dist\/langs-bundle-full-.*\.mjs$/.test(normalized)) {
         return filterShikiRegistry(code, (lang) => HIGHLIGHT_LANGUAGES.has(lang));
       }
-      if (/shiki\/dist\/themes\.mjs$/.test(normalized)) {
-        return filterShikiRegistry(code, (theme) => theme === "aurora-x");
+      if (normalized.endsWith("shiki/dist/themes.mjs")) {
+        return filterShikiRegistry(code, (theme) => theme === "github-dark-default");
       }
-      if (/pierre\/theming\/dist\/collections\/shiki\.js$/.test(normalized)) {
+      if (normalized.endsWith("pierre/theming/dist/collections/shiki.js")) {
         return `import { createThemeCollection } from "../modules/createThemeCollection.js";
 import { createTheme } from "../modules/createTheme.js";
 const SHIKI_COLLECTION = "shiki";
 const SHIKI_THEME_IMPORTS = {
-	"aurora-x": () => import("@shikijs/themes/aurora-x"),
+	"github-dark-default": () => import("@shikijs/themes/github-dark-default"),
 };
 function createShikiTheme(name) {
 	return createTheme({
@@ -118,15 +118,15 @@ function createShikiTheme(name) {
 		load: SHIKI_THEME_IMPORTS[name],
 	});
 }
-const shikiThemes = createThemeCollection({ themes: Object.freeze([createShikiTheme("aurora-x")]) });
+const shikiThemes = createThemeCollection({ themes: Object.freeze([createShikiTheme("github-dark-default")]) });
 export { shikiThemes };
 `;
       }
       // The oniguruma WASM engine is never used (js engine is the default);
       // dropping the dynamic import keeps its 600KB payload out.
       if (
-        /pierre\/diffs\/dist\/highlighter\/shared_highlighter\.js$/.test(normalized) ||
-        /shiki\/dist\/bundle-full\.mjs$/.test(normalized)
+        normalized.endsWith("pierre/diffs/dist/highlighter/shared_highlighter.js") ||
+        normalized.endsWith("shiki/dist/bundle-full.mjs")
       ) {
         if (!code.includes('import("shiki/wasm")')) return null;
         return code.replaceAll(

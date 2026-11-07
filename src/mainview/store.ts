@@ -79,6 +79,7 @@ interface WorkspaceState {
   hydrate: (snapshot: unknown) => void;
   addSession: (shell?: string, cwd?: string) => void;
   selectSession: (id: string) => void;
+  focusSession: (id: string) => void;
   updateTitle: (id: string, title: string) => void;
   closeSession: (id: string) => void;
   selectProject: (id: string) => void;
@@ -137,9 +138,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const valid =
       snap?.projects &&
       Array.isArray(snap.projects) &&
+      snap.projects.length > 0 &&
       (snap.projects as unknown[]).every((p) => {
         const project = p as Project;
-        return Boolean(project?.id && Array.isArray(project.sessions));
+        return Boolean(
+          typeof project?.id === "string" &&
+          typeof project.name === "string" &&
+          typeof project.path === "string" &&
+          Array.isArray(project.sessions) &&
+          project.sessions.length > 0 &&
+          project.sessions.every(
+            (session) => typeof session?.id === "string" && typeof session.title === "string",
+          ),
+        );
       });
     const loaded = valid ? (snap!.projects as Project[]) : [newProject()];
     const snapshotProjectId =
@@ -154,15 +165,31 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const sessionId = selectedProject.sessions.some((s) => s.id === snapshotSessionId)
       ? snapshotSessionId!
       : selectedProject.sessions[0].id;
-    const panes =
-      Array.isArray(snap?.panes) && (snap.panes as Pane[]).length
-        ? (snap.panes as Pane[])
-        : [{ id: uuid(), sessionId }];
+    const seenSessions = new Set<string>();
+    const savedPanes = Array.isArray(snap?.panes)
+      ? (snap.panes as Pane[]).filter((pane) => {
+          if (
+            !pane ||
+            typeof pane.id !== "string" ||
+            seenSessions.has(pane.sessionId) ||
+            !selectedProject.sessions.some((session) => session.id === pane.sessionId)
+          )
+            return false;
+          seenSessions.add(pane.sessionId);
+          return true;
+        })
+      : [];
+    const panes = savedPanes.length ? savedPanes : [{ id: uuid(), sessionId }];
     const rawSize = snap?.termFontSize;
-    const parsedSize = typeof rawSize === "number" ? clampFontSize(rawSize) : FONT_SIZE_DEFAULT;
+    const parsedSize =
+      typeof rawSize === "number" && Number.isFinite(rawSize)
+        ? clampFontSize(rawSize)
+        : FONT_SIZE_DEFAULT;
     const rawLineHeight = snap?.termLineHeight;
     const parsedLineHeight =
-      typeof rawLineHeight === "number" ? clampLineHeight(rawLineHeight) : LINE_HEIGHT_DEFAULT;
+      typeof rawLineHeight === "number" && Number.isFinite(rawLineHeight)
+        ? clampLineHeight(rawLineHeight)
+        : LINE_HEIGHT_DEFAULT;
     set({
       projects: loaded,
       activeProjectId: projectId,
@@ -187,17 +214,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ),
       activeSessionId: session.id,
       panes: s.panes.length
-        ? s.panes.map((pane, index) => (index === 0 ? { ...pane, sessionId: session.id } : pane))
+        ? s.panes.map((pane) =>
+            pane.sessionId === s.activeSessionId ? { ...pane, sessionId: session.id } : pane,
+          )
         : s.panes,
       defaultShell: shell ? shell : s.defaultShell,
     }));
   },
 
+  focusSession: (id) => set({ activeSessionId: id }),
+
   selectSession: (id) =>
     set((s) => ({
       activeSessionId: id,
       lastSessionByProject: { ...s.lastSessionByProject, [s.activeProjectId]: id },
-      panes: s.panes.map((pane, index) => (index === 0 ? { ...pane, sessionId: id } : pane)),
+      panes: s.panes.some((pane) => pane.sessionId === id)
+        ? s.panes
+        : s.panes.map((pane) =>
+            pane.sessionId === s.activeSessionId ? { ...pane, sessionId: id } : pane,
+          ),
     })),
 
   updateTitle: (id, title) =>
@@ -212,13 +247,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const { projects, activeProjectId } = get();
     const project = projects.find((p) => p.id === activeProjectId);
     const sessions = project?.sessions ?? [];
-    if (sessions.length <= 1) return;
+    if (!sessions.some((session) => session.id === id)) return;
     rpc.send.killSession({ sessionId: id });
-    const next = sessions.find((s) => s.id !== id);
+    const replacement =
+      sessions.length === 1 ? newSession(project?.path, get().defaultShell) : undefined;
+    const next = replacement ?? sessions.find((s) => s.id !== id);
     set((s) => {
       const filteredProjects = s.projects.map((p) =>
         p.id === s.activeProjectId
-          ? { ...p, sessions: p.sessions.filter((sess) => sess.id !== id) }
+          ? {
+              ...p,
+              sessions: replacement ? [replacement] : p.sessions.filter((sess) => sess.id !== id),
+            }
           : p,
       );
       const remainingPanes = s.panes.filter((pane) => pane.sessionId !== id);
@@ -227,23 +267,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         : next
           ? [{ id: uuid(), sessionId: next.id }]
           : [];
-      const shouldSwitch = s.activeSessionId === id && next;
+      const nextId = nextPanes[0]?.sessionId;
+      const shouldSwitch = s.activeSessionId === id && nextId;
       return {
         projects: filteredProjects,
         panes: nextPanes,
         ...(shouldSwitch
           ? {
-              activeSessionId: next!.id,
-              lastSessionByProject: { ...s.lastSessionByProject, [s.activeProjectId]: next!.id },
-              panes: nextPanes.map((pane, index) =>
-                index === 0 ? { ...pane, sessionId: next!.id } : pane,
-              ),
+              activeSessionId: nextId,
+              lastSessionByProject: { ...s.lastSessionByProject, [s.activeProjectId]: nextId },
             }
           : {}),
       };
     });
-    // handle pane mapping for switched session - already done above, but ensure panes reflect next if needed
-    // if activeSessionId === id, the set above already switched
   },
 
   selectProject: (id) =>

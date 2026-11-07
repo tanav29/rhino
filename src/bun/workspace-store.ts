@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { Utils } from "electrobun/main";
@@ -13,6 +13,7 @@ function storageFile(): string {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingWorkspace: WorkspaceSnapshot | null = null;
 const SAVE_DEBOUNCE_MS = 300;
 
 export function loadWorkspace(): WorkspaceSnapshot | null {
@@ -34,27 +35,23 @@ export function loadWorkspace(): WorkspaceSnapshot | null {
 }
 
 export function saveWorkspace(workspace: WorkspaceSnapshot) {
+  pendingWorkspace = workspace;
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    const file = storageFile();
-    const data = JSON.stringify(workspace, null, 2);
-    try {
-      // Use Bun.write when running under Bun (preferred), fallback to node:fs
-      const bunWrite = (
-        globalThis as unknown as {
-          Bun?: { write: (path: string, data: string) => Promise<unknown> };
-        }
-      )?.Bun?.write;
-      if (bunWrite) {
-        mkdirSync(dirname(file), { recursive: true });
-        void bunWrite(file, data).catch(() => writeFileSync(file, data));
-      } else {
-        mkdirSync(dirname(file), { recursive: true });
-        writeFileSync(file, data);
-      }
-    } catch {
-      /* persistence is best-effort */
-    }
-  }, SAVE_DEBOUNCE_MS);
+  saveTimer = setTimeout(flushWorkspace, SAVE_DEBOUNCE_MS);
+}
+
+/** Synchronous and atomic so closing the last window cannot interrupt a save. */
+export function flushWorkspace() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  if (!pendingWorkspace) return;
+  const file = storageFile();
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(`${file}.tmp`, JSON.stringify(pendingWorkspace, null, 2));
+    renameSync(`${file}.tmp`, file);
+    pendingWorkspace = null;
+  } catch (error) {
+    console.error("Unable to save workspace", error);
+  }
 }

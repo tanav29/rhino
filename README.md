@@ -2,14 +2,14 @@
 
 Native desktop terminal — [wterm](https://wterm.dev) + [Ghostty](https://ghostty.org) rendering, [Bun.Terminal](https://bun.com/reference/bun/Terminal) PTYs, packaged with [Electrobun](https://blackboard.sh/electrobun/).
 
-![term icon](assets/icon.ico)
+![term icon](src/mainview/logo.png)
 
 ## Features
 
 - **Real shell** — PTYs via `Bun.Terminal` (ConPTY on Windows)
 - **Multi-session tabs & split panes** — row/column splits with per-pane terminals
 - **File tree** — project files with git-aware status
-- **Git panel** — changed files + inline diffs (aurora-x, shiki)
+- **Git panel** — changed files + inline diffs (GitHub Dark, shiki)
 - **Shell detection** — cmd / PowerShell / pwsh / git-bash / WSL / bash / zsh
 - **Workspaces** — multiple projects, persisted under the app's `userData` dir
 
@@ -24,7 +24,7 @@ Native desktop terminal — [wterm](https://wterm.dev) + [Ghostty](https://ghost
 hutch --version
 ```
 
-`hutch electrobun prepare` projects the devkit into `.hutch/devkit` (tsconfig paths + Vite aliases). Run `bun install && hutch electrobun prepare` after cloning.
+`bun run prepare:desktop` projects the devkit into `.hutch/devkit` (tsconfig paths + Vite aliases). Run it after installing dependencies on a fresh clone. The launcher also finds Hutch in `~/.hutch/bin` when it is not on PATH.
 
 > **Windows + broken IPv6:** if `hutch electrobun prepare` fails with `ReleaseDownloadFailed` on a host that has IPv6 routes but no IPv6 egress, prefer IPv4:
 >
@@ -36,7 +36,7 @@ hutch --version
 
 ```bash
 bun install
-hutch electrobun prepare
+bun run prepare:desktop
 
 # HMR (Vite on :5173, app loads from http://localhost:5173)
 bun run dev
@@ -48,17 +48,15 @@ bun run dev:bundled
 ## Build installers
 
 ```bash
-bun run build              # --env=stable  → build/canary-win-x64/term-Setup-*.exe etc.
-hutch run build:canary     # canary channel (separate install)
+bun run build             # stable channel
+bun run build:canary      # canary channel (separate install)
 ```
 
-The Windows icon is `assets/icon.ico` (multi-size, generated from `logo.png`). Rebuild it with:
+Builds type-check the app, bundle the webview and WASM, and package the native runtime. App bundles are written to `build/`; distributable installers and update bundles are written to `artifacts/`. Windows uses the multi-size icon at `assets/icon.ico`, configured in `electrobun.config.ts`.
 
-```bash
-bun /tmp/*/make-ico.ts  # or: bun scripts/make-ico.ts after adding it
-```
+Regenerate the Windows and webview icons from `logo.png` with `bun scripts/make-icon.ts` on Windows.
 
-and `electrobun.config.ts` (`win.icon`) picks it up.
+Close a running development app before packaging: Hutch holds a project lock while it is running.
 
 ## How it works
 
@@ -72,7 +70,9 @@ src/mainview/App.tsx     workspace hydration/persistence via rpc
 src/mainview/session-view.tsx  Ghostty + rpc attach/input/resize
 ```
 
-`vite.config.ts` has a `slimShiki` plugin that trims shiki to ~40 common languages + `aurora-x`, keeping `dist/assets` ~5MB.
+`vite.config.ts` has a `slimShiki` plugin that trims shiki to ~40 common languages + `github-dark-default`, keeping `dist/assets` ~5MB.
+
+Workspace layout and terminal preferences are saved atomically and flushed on app exit. Shell processes are new on relaunch; terminal scrollback is retained while the app is running. Exited shells and startup failures show a **Restart terminal** action. Closing the last tab creates a fresh terminal.
 
 ## Keyboard shortcuts
 
@@ -87,8 +87,9 @@ src/mainview/session-view.tsx  Ghostty + rpc attach/input/resize
 
 ## Scripts
 
-| Script                      | What it does   |
-| --------------------------- | -------------- |
-| `bun run type-check`        | `tsc --noEmit` |
-| `bun run lint` / `lint:fix` | `oxlint`       |
-| `bun run fmt` / `fmt:check` | `oxfmt`        |
+| Script                      | What it does                                    |
+| --------------------------- | ----------------------------------------------- |
+| `bun run type-check`        | `tsc --noEmit`                                  |
+| `bun test ./tests`          | Native PTY, workspace and pane regression tests |
+| `bun run lint` / `lint:fix` | `oxlint`                                        |
+| `bun run fmt` / `fmt:check` | `oxfmt`                                         |

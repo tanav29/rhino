@@ -1,4 +1,4 @@
-import { BrowserView, BrowserWindow, Updater } from "electrobun/main";
+import { app, BrowserView, BrowserWindow, BuildConfig, Updater } from "electrobun/main";
 import type { AppRPC } from "../shared/rpc-schema";
 import { createApiHandlers } from "./api";
 import {
@@ -10,7 +10,8 @@ import {
   setSessionEventSink,
   writePtyInput,
 } from "./sessions";
-import { loadWorkspace, saveWorkspace } from "./workspace-store";
+import { flushWorkspace, loadWorkspace, saveWorkspace } from "./workspace-store";
+import { setWindowAppearance } from "./window-appearance";
 
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
@@ -60,7 +61,11 @@ async function resolveMainViewUrl(): Promise<string> {
     const channel = await Updater.localInfo.channel();
     if (channel === "dev") {
       try {
-        await fetch(DEV_SERVER_URL, { method: "HEAD" });
+        const response = await fetch(DEV_SERVER_URL, {
+          method: "HEAD",
+          signal: AbortSignal.timeout(1500),
+        });
+        if (!response.ok) throw new Error("Vite server unavailable");
         console.log(`HMR enabled: using Vite dev server at ${DEV_SERVER_URL}`);
         return DEV_SERVER_URL;
       } catch {
@@ -73,13 +78,17 @@ async function resolveMainViewUrl(): Promise<string> {
   return "views://mainview/index.html";
 }
 
-process.on("exit", killAllSessions);
+const cleanup = () => {
+  flushWorkspace();
+  killAllSessions();
+};
+app.on("before-quit", cleanup);
+process.on("exit", cleanup);
 
 const url = await resolveMainViewUrl();
-const isDevWindow =
-  process.env.ELECTROBUN_BUILD_ENV === "dev" || process.env.NODE_ENV === "development";
+const isDevWindow = BuildConfig.getSync().buildEnvironment === "dev";
 
-new BrowserWindow({
+const window = new BrowserWindow({
   title: isDevWindow ? "term — DEV" : "term",
   url,
   rpc,
@@ -88,3 +97,4 @@ new BrowserWindow({
     height: 800,
   },
 });
+setWindowAppearance(window);
