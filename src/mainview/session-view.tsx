@@ -3,7 +3,15 @@ import { Terminal, useTerminal } from "@wterm/react";
 import { GhosttyCore } from "@wterm/ghostty";
 import { TerminalFind } from "./terminal-find";
 import type { SessionTab } from "./session-tabs";
-import { rpc, subscribePtyExit, subscribePtyOutput, subscribePtyTitle } from "./rpc";
+import {
+  desktopRpc,
+  getConnection,
+  rpc,
+  subscribePtyExit,
+  subscribePtyOutput,
+  subscribePtyTitle,
+} from "./rpc";
+import { installTerminalInteractions } from "./terminal-interactions";
 
 export function SessionView({
   session,
@@ -29,6 +37,7 @@ export function SessionView({
   const [exited, setExited] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [findOpen, setFindOpen] = useState(false);
+  const [linkError, setLinkError] = useState("");
   const findInputRef = useRef<HTMLInputElement>(null);
   const replayWritten = useRef(false);
   const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
@@ -98,6 +107,25 @@ export function SessionView({
     if (!el) return;
     void el.offsetHeight;
   }, [visible, ready, ref]);
+
+  useEffect(() => {
+    const terminal = ref.current?.instance;
+    if (!ready || !terminal) return;
+    return installTerminalInteractions(terminal, (target) => {
+      setLinkError("");
+      if (desktopRpc && (/^(https?|mailto):/i.test(target) || !getConnection().url)) {
+        void desktopRpc.request
+          .openTerminalLink({ sessionId: session.id, target })
+          .catch((cause) =>
+            setLinkError(cause instanceof Error ? cause.message : "Unable to open link"),
+          );
+      } else if (/^https?:\/\//i.test(target)) {
+        window.open(target, "_blank", "noopener,noreferrer");
+      } else {
+        setLinkError("File links require a local desktop session");
+      }
+    });
+  }, [ready, ref, session.id]);
 
   useEffect(() => {
     if (!core || !ready) return;
@@ -227,6 +255,22 @@ export function SessionView({
           inputRef={findInputRef}
           onClose={() => setFindOpen(false)}
         />
+      )}
+      {linkError && (
+        <div
+          role="alert"
+          className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-3 rounded border border-border bg-popover px-3 py-2 text-xs text-foreground"
+        >
+          <span>{linkError}</span>
+          <button
+            type="button"
+            aria-label="Dismiss link error"
+            onClick={() => setLinkError("")}
+            className="shrink-0 px-2 py-1 hover:bg-accent"
+          >
+            Dismiss
+          </button>
+        </div>
       )}
       {(error || exited) && (
         <div

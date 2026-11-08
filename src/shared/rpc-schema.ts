@@ -5,6 +5,14 @@ export interface ShellOption {
   value: string;
 }
 
+export type AgentStatus = "working" | "blocked" | "idle" | "needs-attention";
+export interface AgentInfo {
+  sessionId: string;
+  name: string;
+  status: AgentStatus;
+  source: "reported" | "activity";
+}
+
 export interface BrowseEntry {
   name: string;
   path: string;
@@ -33,6 +41,7 @@ export interface WorkspaceSnapshot {
   termFontSize?: number;
   termLineHeight?: number;
   termCursorBlink?: boolean;
+  sidebarCollapsed?: boolean;
 }
 
 export interface AttachSessionParams {
@@ -95,7 +104,8 @@ export type AppRPC = {
         params: { shared: boolean; port: number; regeneratePin?: boolean };
         response: BackendStatus;
       };
-      listAgents: { params: {}; response: { sessionId: string; name: string }[] };
+      listAgents: { params: {}; response: AgentInfo[] };
+      openTerminalLink: { params: { sessionId: string; target: string }; response: null };
       listShells: { params: {}; response: ShellOption[] };
       browseDirectory: { params: { path?: string }; response: DirectoryListing };
       listProjectFiles: { params: { cwd: string }; response: { paths: string[]; error?: string } };
@@ -109,6 +119,7 @@ export type AppRPC = {
       ptyInput: { sessionId: string; data: string };
       ptyResize: { sessionId: string; cols: number; rows: number };
       killSession: { sessionId: string };
+      focusedSession: { sessionId: string | null };
     };
   }>;
   webview: RPCSchema<{

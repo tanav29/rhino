@@ -38,3 +38,17 @@ test("closing the last terminal creates a working replacement", () => {
   expect(state.projects[0].sessions).toHaveLength(1);
   expect(state.panes[0].sessionId).toBe(state.activeSessionId);
 });
+
+test("sidebar visibility restores from saved workspaces and defaults open for older snapshots", () => {
+  const store = useWorkspaceStore.getState();
+  store.setSidebarCollapsed(true);
+  const snapshot = JSON.parse(JSON.stringify(useWorkspaceStore.getState()));
+  store.hydrate(null);
+  expect(useWorkspaceStore.getState().sidebarCollapsed).toBe(false);
+  store.hydrate(snapshot);
+  expect(useWorkspaceStore.getState().sidebarCollapsed).toBe(true);
+  for (const value of [false, undefined, "true"]) {
+    store.hydrate({ ...snapshot, sidebarCollapsed: value });
+    expect(useWorkspaceStore.getState().sidebarCollapsed).toBe(false);
+  }
+});

@@ -6,8 +6,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useRef } from "react";
-import { Plus, X, Terminal, ChevronDown, PanelRight, Settings } from "lucide-react";
+import {
+  Plus,
+  X,
+  Terminal,
+  ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRight,
+  Settings,
+} from "lucide-react";
 import { AgentIcon } from "./agent-icon";
+import type { AgentInfo, AgentStatus } from "../shared/rpc-schema";
 
 export interface SessionTab {
   id: string;
@@ -18,7 +28,7 @@ export interface SessionTab {
 
 interface SessionTabsProps {
   sessions: SessionTab[];
-  agents: { sessionId: string; name: string }[];
+  agents: AgentInfo[];
   activeId: string;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
@@ -27,10 +37,19 @@ interface SessionTabsProps {
   panel?: "files" | "git" | null;
   onPanelToggle?: (panel: "files" | "git" | null) => void;
   onSettings?: () => void;
+  sidebarCollapsed: boolean;
+  onSidebarToggle: () => void;
 }
 
 const agentTitle =
   /(?:^|[^a-z0-9])(opencode|claude|codex|cursor|gemini|aider|copilot)(?:$|[^a-z0-9])/i;
+
+const statusColors: Record<AgentStatus, string> = {
+  working: "bg-sky-400",
+  blocked: "bg-red-400",
+  idle: "bg-muted-foreground",
+  "needs-attention": "bg-amber-400",
+};
 
 export function SessionTabs({
   sessions,
@@ -43,6 +62,8 @@ export function SessionTabs({
   panel,
   onPanelToggle,
   onSettings,
+  sidebarCollapsed,
+  onSidebarToggle,
 }: SessionTabsProps) {
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +83,19 @@ export function SessionTabs({
 
   return (
     <div className="flex h-10 shrink-0 items-center border-b border-border bg-sidebar">
+      <div className="flex h-full shrink-0 items-center border-r border-border px-1.5">
+        <button
+          type="button"
+          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!sidebarCollapsed}
+          aria-controls="workspace-sidebar"
+          onClick={onSidebarToggle}
+          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          {sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+        </button>
+      </div>
       <div
         ref={tabsRef}
         role="group"
@@ -74,9 +108,8 @@ export function SessionTabs({
           const title =
             shells.find((shell) => shell.value.split(/[\\/]/).pop()?.toLowerCase() === executable)
               ?.name ?? session.title;
-          const agent =
-            agents.find((item) => item.sessionId === session.id)?.name ??
-            session.title.match(agentTitle)?.[1];
+          const agentInfo = agents.find((item) => item.sessionId === session.id);
+          const agent = agentInfo?.name ?? session.title.match(agentTitle)?.[1];
           return (
             <div
               key={session.id}
@@ -89,13 +122,34 @@ export function SessionTabs({
               <button
                 type="button"
                 onClick={() => onSelect(session.id)}
-                aria-label={agent ? `${agent}: ${title}` : undefined}
+                aria-label={
+                  agent
+                    ? `${agent}: ${title}${agentInfo ? `, ${agentInfo.status.replaceAll("-", " ")}` : ""}`
+                    : undefined
+                }
                 title={session.cwd ? `${session.title} — ${session.cwd}` : session.title}
                 aria-pressed={active}
                 className="flex h-full min-w-0 items-center gap-2 px-3 text-left"
               >
                 {agent ? <AgentIcon name={agent} /> : <Terminal size={14} />}
                 <span className="max-w-40 truncate text-xs">{title}</span>
+                {agentInfo && (
+                  <span
+                    className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
+                    title={
+                      agentInfo.source === "reported"
+                        ? "Reported by agent hook"
+                        : "Inferred from terminal activity; quiet agents may still be working"
+                    }
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`size-1.5 rounded-full ${statusColors[agentInfo.status]}`}
+                    />
+                    {agentInfo.status.replaceAll("-", " ")}
+                    {agentInfo.source === "activity" ? " (inferred)" : ""}
+                  </span>
+                )}
               </button>
               <button
                 type="button"

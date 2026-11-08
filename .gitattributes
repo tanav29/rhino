@@ -1,0 +1,2 @@
+scripts/*.bash text eol=lf
+scripts/*.zsh text eol=lf

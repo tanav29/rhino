@@ -218,6 +218,11 @@ button,
 .scrollbar-none {
   scrollbar-width: none;
 }
+
+.terminal-link-hover .term-row,
+.terminal-link-hover .term-row * {
+  cursor: pointer;
+}
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }

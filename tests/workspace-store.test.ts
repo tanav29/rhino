@@ -15,6 +15,7 @@ test("shutdown flush writes the latest pending workspace", () => {
     activeProjectId: "first",
     activeSessionId: "session",
     panes: [],
+    sidebarCollapsed: true,
   };
   saveWorkspace(snapshot);
   saveWorkspace({ ...snapshot, activeProjectId: "latest" });
@@ -24,4 +25,5 @@ test("shutdown flush writes the latest pending workspace", () => {
   expect(JSON.parse(readFileSync(join(directory, "workspace.json"), "utf8")).activeProjectId).toBe(
     "latest",
   );
+  expect(loadWorkspace()?.sidebarCollapsed).toBe(true);
 });

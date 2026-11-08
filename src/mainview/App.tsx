@@ -3,7 +3,8 @@ import { Plus, Trash2, Folder, X, Pencil, Ellipsis } from "lucide-react";
 import { SessionTabs } from "./session-tabs";
 import { AgentIcon } from "./agent-icon";
 import { SessionView } from "./session-view";
-import { getBackendClient, getConnection } from "./rpc";
+import { desktopRpc, getBackendClient, getConnection } from "./rpc";
+import type { AgentInfo } from "../shared/rpc-schema";
 import { useWorkspaceStore, selectActiveSession } from "./store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const sidebarRef = useRef<HTMLElement>(null);
   const resizeRef = useRef<{ x: number; width: number } | null>(null);
-  const [agents, setAgents] = useState<{ sessionId: string; name: string }[]>([]);
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [editingGroup, setEditingGroup] = useState<{
     id: string | null;
     name: string;
@@ -46,6 +47,7 @@ export default function App() {
   const activeSessionId = useWorkspaceStore((s) => s.activeSessionId);
   const panes = useWorkspaceStore((s) => s.panes);
   const panel = useWorkspaceStore((s) => s.panel);
+  const sidebarCollapsed = useWorkspaceStore((s) => s.sidebarCollapsed);
   const hydrated = useWorkspaceStore((s) => s.hydrated);
   const termFontSize = useWorkspaceStore((s) => s.termFontSize);
   const termLineHeight = useWorkspaceStore((s) => s.termLineHeight);
@@ -54,6 +56,7 @@ export default function App() {
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
   const shells = useWorkspaceStore((s) => s.shells);
   const setPanel = useWorkspaceStore((s) => s.setPanel);
+  const setSidebarCollapsed = useWorkspaceStore((s) => s.setSidebarCollapsed);
   const setNewOpen = useWorkspaceStore((s) => s.setNewOpen);
   const setSettingsOpen = useWorkspaceStore((s) => s.setSettingsOpen);
   const setTermFontSize = useWorkspaceStore((s) => s.setTermFontSize);
@@ -76,6 +79,24 @@ export default function App() {
   const activeSession = useWorkspaceStore(selectActiveSession);
   const defaultShell = useWorkspaceStore((s) => s.defaultShell);
   const panelCwd = activeSession?.cwd || project?.path;
+
+  useEffect(() => {
+    const reportFocus = () =>
+      desktopRpc?.send.focusedSession({
+        sessionId:
+          !getConnection().url && document.hasFocus() && !document.hidden ? activeSessionId : null,
+      });
+    reportFocus();
+    window.addEventListener("focus", reportFocus);
+    window.addEventListener("blur", reportFocus);
+    document.addEventListener("visibilitychange", reportFocus);
+    return () => {
+      window.removeEventListener("focus", reportFocus);
+      window.removeEventListener("blur", reportFocus);
+      document.removeEventListener("visibilitychange", reportFocus);
+      desktopRpc?.send.focusedSession({ sessionId: null });
+    };
+  }, [activeSessionId]);
 
   useEffect(() => {
     let disposed = false;
@@ -114,6 +135,7 @@ export default function App() {
           termFontSize,
           termLineHeight,
           termCursorBlink,
+          sidebarCollapsed,
         },
       })
       .catch(() => undefined);
@@ -129,6 +151,7 @@ export default function App() {
     termFontSize,
     termLineHeight,
     termCursorBlink,
+    sidebarCollapsed,
   ]);
 
   useEffect(() => {
@@ -191,18 +214,21 @@ export default function App() {
 
   useEffect(() => {
     let disposed = false;
+    let timer: ReturnType<typeof setTimeout>;
     const refresh = () =>
       void backendRpc.request
         .listAgents({})
         .then((items) => {
           if (!disposed) setAgents(items);
         })
-        .catch(() => undefined);
+        .catch(() => undefined)
+        .finally(() => {
+          if (!disposed) timer = setTimeout(refresh, 5000);
+        });
     refresh();
-    const timer = setInterval(refresh, 5000);
     return () => {
       disposed = true;
-      clearInterval(timer);
+      clearTimeout(timer);
     };
   }, [backendRpc]);
 
@@ -247,10 +273,11 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <aside
+        id="workspace-sidebar"
         aria-label="Workspaces"
         ref={sidebarRef}
         className="@container relative flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
-        style={{ width: sidebarWidth }}
+        style={{ width: sidebarWidth, display: sidebarCollapsed ? "none" : undefined }}
       >
         <div
           role="separator"
@@ -505,6 +532,8 @@ export default function App() {
           panel={panel}
           onPanelToggle={setPanel}
           onSettings={() => setSettingsOpen(true)}
+          sidebarCollapsed={sidebarCollapsed}
+          onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
         <div className="relative isolate min-h-0 flex-1 overflow-hidden bg-background">
           {allSessions.map((session) => {

@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
-import type { AppRPC } from "../shared/rpc-schema";
+import type { AgentInfo, AppRPC } from "../shared/rpc-schema";
 import { getAvailableShells } from "./shells";
+import { TerminalMetadata } from "./terminal-metadata";
 
 interface ShellProcess {
   pid: number;
@@ -13,7 +14,9 @@ interface PtySession {
   proc: ShellProcess;
   decoder: TextDecoder;
   title: string;
-  titleBuffer: string;
+  metadata: TerminalMetadata;
+  cwd: string;
+  remote: boolean;
   outputBuffer: string;
   pendingOutput: string[];
   flushTimer: ReturnType<typeof setTimeout> | null;
@@ -28,6 +31,7 @@ const ESC = String.fromCharCode(27);
 export type SessionEvent =
   | { kind: "output"; sessionId: string; data: string }
   | { kind: "title"; sessionId: string; title: string }
+  | { kind: "commandFinished"; sessionId: string; durationMs: number; exitCode: number | null }
   | { kind: "exit"; sessionId: string };
 
 let eventSink: ((event: SessionEvent) => void) | null = null;
@@ -58,46 +62,6 @@ function stripReplayControlSequences(value: string) {
   return stripTerminalResponses(value)
     .replace(/\^\[\[\?[0-9;]*c/g, "")
     .replace(new RegExp(`${ESC}\\[(?:[0-9]+;)?[356]n|${ESC}\\[(?:>|=)?c`, "g"), "");
-}
-
-/** Extracts OSC 0/1/2 title sequences from raw output chunks. */
-function captureTitleChanges(state: PtySession, chunk: string): string[] {
-  const buffer = state.titleBuffer + chunk;
-  const titles: string[] = [];
-  let cursor = 0,
-    lastCompleteEnd = 0,
-    partialStart = -1;
-  while (cursor < buffer.length) {
-    const start = buffer.indexOf("\x1b]", cursor);
-    if (start === -1) break;
-    const sep = buffer.indexOf(";", start + 2);
-    if (sep === -1) {
-      partialStart = start;
-      break;
-    }
-    const code = buffer.slice(start + 2, sep);
-    if (code !== "0" && code !== "1" && code !== "2") {
-      cursor = sep + 1;
-      continue;
-    }
-    const bell = buffer.indexOf("\x07", sep + 1);
-    const st = buffer.indexOf("\x1b\\", sep + 1);
-    if (bell === -1 && st === -1) {
-      partialStart = start;
-      break;
-    }
-    const useBell = bell !== -1 && (st === -1 || bell < st);
-    const endIdx = useBell ? bell : st;
-    titles.push(buffer.slice(sep + 1, endIdx));
-    cursor = endIdx + (useBell ? 1 : 2);
-    lastCompleteEnd = cursor;
-  }
-  state.titleBuffer =
-    partialStart >= 0
-      ? buffer.slice(partialStart)
-      : buffer.slice(Math.max(lastCompleteEnd, buffer.length - 2));
-  if (state.titleBuffer.length > 4096) state.titleBuffer = state.titleBuffer.slice(-1024);
-  return titles;
 }
 
 function getShell(shellValue?: string): { shell: string; args: string[] } {
@@ -196,11 +160,12 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
         );
         session.pendingOutput.push(text);
         scheduleFlush(sessionId, session);
-        const titles = captureTitleChanges(session, text);
-        const title = titles[titles.length - 1];
-        if (title && title !== session.title) {
-          session.title = title;
-          emit({ kind: "title", sessionId, title });
+        for (const event of session.metadata.write(text)) {
+          if (event.kind === "title") {
+            if (!event.title || event.title === session.title) continue;
+            session.title = event.title;
+          }
+          emit({ ...event, sessionId });
         }
       },
       exit(term) {
@@ -226,7 +191,9 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
     proc,
     decoder: new TextDecoder("utf-8"),
     title: shell.split(/[\\/]/).pop() || shell,
-    titleBuffer: "",
+    metadata: new TerminalMetadata(),
+    cwd: safeCwd ?? process.cwd(),
+    remote: Boolean(shellValue?.startsWith("ssh:") || /(?:^|[\\/])wsl(?:\.exe)?$/i.test(shell)),
     outputBuffer: "",
     pendingOutput: [],
     flushTimer: null,
@@ -247,6 +214,7 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
 export function writePtyInput(sessionId: string, data: string) {
   const session = sessions.get(sessionId);
   if (!session || session.finished) return;
+  if (data && !data.startsWith("\x1b[")) session.metadata.input();
   session.terminal.write(data);
 }
 
@@ -277,8 +245,13 @@ export function killAllSessions() {
 }
 
 /** Find known local coding agents among descendants of each terminal shell. */
-export async function listAgents(): Promise<{ sessionId: string; name: string }[]> {
+export async function listAgents(): Promise<AgentInfo[]> {
   if (!sessions.size) return [];
+  const result: AgentInfo[] = [];
+  for (const [id, session] of sessions) {
+    const name = session.metadata.agentName;
+    if (name) result.push(session.metadata.agent(id, name));
+  }
   try {
     const command =
       process.platform === "win32"
@@ -292,7 +265,7 @@ export async function listAgents(): Promise<{ sessionId: string; name: string }[
         : ["ps", "-axo", "pid=,ppid=,command="];
     const proc = Bun.spawn(command, { stdout: "pipe", stderr: "ignore" });
     const output = await new Response(proc.stdout).text();
-    if ((await proc.exited) !== 0) return [];
+    if ((await proc.exited) !== 0) return result;
     let processes: { pid: number; parent: number; command: string }[];
     if (process.platform === "win32") {
       const data = JSON.parse(output || "[]");
@@ -313,7 +286,6 @@ export async function listAgents(): Promise<{ sessionId: string; name: string }[
     }
     const byPid = new Map(processes.map((p) => [p.pid, p]));
     const roots = new Map([...sessions].map(([id, session]) => [session.proc.pid, id]));
-    const result: { sessionId: string; name: string }[] = [];
     for (const process of processes) {
       const match = process.command.match(
         /(?:^|[\s/\\"'])((?:claude|codex|gemini|opencode|aider|copilot))(?:\.exe|\.cmd|\.js)?(?=$|[\s"'])/i,
@@ -327,7 +299,7 @@ export async function listAgents(): Promise<{ sessionId: string; name: string }[
         if (sessionId) {
           const name = match[1].toLowerCase();
           if (!result.some((item) => item.sessionId === sessionId && item.name === name))
-            result.push({ sessionId, name });
+            result.push(sessions.get(sessionId)!.metadata.agent(sessionId, name));
           break;
         }
         parent = byPid.get(parent)?.parent ?? 0;
@@ -335,6 +307,18 @@ export async function listAgents(): Promise<{ sessionId: string; name: string }[
     }
     return result;
   } catch {
-    return [];
+    return result;
   }
+}
+
+/** OSC 7 is metadata only; the native opener still checks that the path exists. */
+export function getSessionDirectory(sessionId: string) {
+  const session = sessions.get(sessionId);
+  if (!session) throw new Error("Terminal session no longer exists");
+  if (session.remote) throw new Error("File links are unavailable for remote shells");
+  return { cwd: session.cwd, uri: session.metadata.workingDirectory };
+}
+
+export function getSessionTitle(sessionId: string) {
+  return sessions.get(sessionId)?.title ?? "Terminal";
 }

@@ -54,6 +54,7 @@ interface WorkspaceState {
   activeSessionId: string;
   panes: Pane[];
   panel: Panel;
+  sidebarCollapsed: boolean;
   hydrated: boolean;
   defaultShell?: string;
   termFontSize: number;
@@ -68,6 +69,7 @@ interface WorkspaceState {
   setActiveSessionId: (id: string) => void;
   setPanes: (panes: Pane[] | ((prev: Pane[]) => Pane[])) => void;
   setPanel: (panel: Panel) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
   setHydrated: (hydrated: boolean) => void;
   setDefaultShell: (shell?: string) => void;
   setTermFontSize: (size: number) => void;
@@ -97,6 +99,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeSessionId: "",
   panes: [],
   panel: null,
+  sidebarCollapsed: false,
   hydrated: false,
   defaultShell: undefined,
   termFontSize: FONT_SIZE_DEFAULT,
@@ -115,6 +118,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       panes: typeof panes === "function" ? (panes as (prev: Pane[]) => Pane[])(s.panes) : panes,
     })),
   setPanel: (panel) => set({ panel }),
+  setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
   setHydrated: (hydrated) => set({ hydrated }),
   setDefaultShell: (defaultShell) => set({ defaultShell }),
   setTermFontSize: (termFontSize) => set({ termFontSize: clampFontSize(termFontSize) }),
@@ -134,6 +138,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       termFontSize?: unknown;
       termLineHeight?: unknown;
       termCursorBlink?: unknown;
+      sidebarCollapsed?: unknown;
     } | null;
     const valid =
       snap?.projects &&
@@ -199,6 +204,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       termFontSize: parsedSize,
       termLineHeight: parsedLineHeight,
       termCursorBlink: typeof snap?.termCursorBlink === "boolean" ? snap.termCursorBlink : true,
+      sidebarCollapsed: snap?.sidebarCollapsed === true,
       hydrated: true,
     });
   },

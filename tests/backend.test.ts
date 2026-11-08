@@ -123,6 +123,9 @@ test("authenticated client controls a real PTY, reattaches with scrollback, and 
 test("network clients cannot manage sharing or send malformed PTY requests", async () => {
   const client = await connect(start());
   await expect(client.request.getBackendStatus({})).rejects.toThrow("Invalid request");
+  await expect(
+    client.request.openTerminalLink({ sessionId: "local", target: "https://example.com" }),
+  ).rejects.toThrow("Invalid request");
   await expect(client.request.configureBackend({ shared: true, port: 1234 })).rejects.toThrow(
     "Invalid request",
   );

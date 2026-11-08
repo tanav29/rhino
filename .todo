@@ -1,0 +1,1 @@
+- [ ] MCP support: let agents discover sessions, read output, send input, and manage terminals through an authenticated MCP server. Define permissions and local/remote access before exposing tools.
