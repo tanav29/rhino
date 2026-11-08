@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Terminal, useTerminal } from "@wterm/react";
 import { GhosttyCore } from "@wterm/ghostty";
+import { TerminalFind } from "./terminal-find";
 import type { SessionTab } from "./session-tabs";
 import { rpc, subscribePtyExit, subscribePtyOutput, subscribePtyTitle } from "./rpc";
 
@@ -27,6 +28,8 @@ export function SessionView({
   const [error, setError] = useState<string | null>(null);
   const [exited, setExited] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [findOpen, setFindOpen] = useState(false);
+  const findInputRef = useRef<HTMLInputElement>(null);
   const replayWritten = useRef(false);
   const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const onTitleRef = useRef(onTitle);
@@ -53,8 +56,41 @@ export function SessionView({
   }, [onTitle]);
 
   useLayoutEffect(() => {
-    if (ready && visible && active) focus();
-  }, [active, focus, ready, visible]);
+    if (!ready || !visible || !active) return;
+    if (findOpen) {
+      findInputRef.current?.focus();
+      findInputRef.current?.select();
+    } else {
+      focus();
+    }
+  }, [active, findOpen, focus, ready, visible]);
+
+  useEffect(() => {
+    if (!ready || !visible || !active) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing) return;
+      if (
+        event.ctrlKey &&
+        event.altKey &&
+        !event.metaKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === "f"
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        setFindOpen(true);
+        findInputRef.current?.focus();
+        findInputRef.current?.select();
+      } else if (findOpen && event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        setFindOpen(false);
+      }
+    };
+    // Capture shortcuts before wterm turns them into PTY input.
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [active, findOpen, ready, visible]);
 
   useLayoutEffect(() => {
     if (!visible || !ready) return;
@@ -183,6 +219,13 @@ export function SessionView({
             setError(cause instanceof Error ? cause.message : "Unable to initialize terminal")
           }
           onTitle={(title) => onTitleRef.current(session.id, title)}
+        />
+      )}
+      {findOpen && ready && ref.current?.instance && (
+        <TerminalFind
+          terminal={ref.current.instance}
+          inputRef={findInputRef}
+          onClose={() => setFindOpen(false)}
         />
       )}
       {(error || exited) && (
