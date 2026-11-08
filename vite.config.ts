@@ -1,3 +1,4 @@
+import { DEV_FRONTEND_PORT } from "./src/shared/ports";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { dirname, resolve } from "node:path";
@@ -182,7 +183,8 @@ export default defineConfig(({ command }) => ({
     },
   },
   server: {
-    port: 5173,
+    port: DEV_FRONTEND_PORT,
     strictPort: true,
   },
 }));
+

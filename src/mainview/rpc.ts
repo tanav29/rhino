@@ -1,3 +1,4 @@
+import { DEV_BACKEND_PORT } from "../shared/ports";
 import { Electroview } from "electrobun/view";
 import type { AppRPC } from "../shared/rpc-schema";
 
@@ -75,7 +76,7 @@ try {
   new Electroview({ rpc: rpc as unknown as ReturnType<typeof Electroview.defineRPC<AppRPC>> });
 } catch {
   // Running outside Electrobun (e.g. `vite` dev in a normal browser).
-  const socket = new WebSocket("ws://127.0.0.1:5174");
+  const socket = new WebSocket(`ws://127.0.0.1:${DEV_BACKEND_PORT}`);
   const pending = new Map<
     number,
     { resolve: (value: unknown) => void; reject: (error: Error) => void }

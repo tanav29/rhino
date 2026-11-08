@@ -9,8 +9,8 @@ export default {
       "hutch electrobun prepare && bun node_modules/vite/bin/vite.js build && hutch electrobun dev",
     dev: "hutch electrobun prepare && bun node_modules/vite/bin/vite.js build && hutch electrobun dev --watch",
     "dev:hmr":
-      'hutch electrobun prepare && bun node_modules/vite/bin/vite.js build && bun node_modules/concurrently/dist/bin/index.js -k "bun node_modules/vite/bin/vite.js --port 5173" "hutch electrobun dev"',
-    hmr: "bun node_modules/vite/bin/vite.js --port 5173",
+      'hutch electrobun prepare && bun node_modules/vite/bin/vite.js build && bun node_modules/concurrently/dist/bin/index.js -k "bun node_modules/vite/bin/vite.js" "hutch electrobun dev"',
+    hmr: "bun node_modules/vite/bin/vite.js",
     build:
       "hutch electrobun prepare && bun run type-check && bun node_modules/vite/bin/vite.js build && hutch electrobun build --env=stable",
     "build:canary":

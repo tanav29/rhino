@@ -1,3 +1,4 @@
+import { DEV_BACKEND_PORT, DEV_FRONTEND_PORT } from "../shared/ports";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import {
   Dialog,
@@ -121,7 +122,7 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Terminal settings</DialogTitle>
           <DialogDescription>
@@ -179,6 +180,38 @@ export function SettingsDialog({
               />
             </span>
           </button>
+
+          <details className="rounded-[10px] border border-border bg-card p-3 text-sm">
+            <summary className="cursor-pointer font-semibold">Help</summary>
+            <div className="mt-3 space-y-3 text-xs leading-relaxed text-muted-foreground">
+              <div>
+                <p className="font-semibold text-foreground">Keyboard shortcuts</p>
+                <p>Ctrl/? + T: New terminal</p>
+                <p>Ctrl/? + N: New group</p>
+                <p>Ctrl/? + D: Split pane</p>
+                <p>Ctrl/? + Shift + D: Split pane vertically</p>
+                <p>Ctrl + Tab / Ctrl + Shift + Tab: Next / previous terminal</p>
+                <p>Ctrl/? + 1?9: Select group</p>
+                <p>Ctrl + F: Find in terminal; Escape closes find</p>
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Connections</p>
+                <p>
+                  The packaged app loads its interface from its bundle. Development uses frontend
+                  port {DEV_FRONTEND_PORT}; browser development also uses local backend port{" "}
+                  {DEV_BACKEND_PORT}.
+                </p>
+                <p>
+                  If a development port is occupied, stop the other application before starting
+                  Rhino.
+                </p>
+              </div>
+              <p>
+                Groups and terminal layout are saved automatically. Terminal processes stop when the
+                app exits.
+              </p>
+            </div>
+          </details>
 
           <div
             className="rounded-[10px] border border-border bg-background p-3 font-mono shadow-inner [&_*]:font-mono"

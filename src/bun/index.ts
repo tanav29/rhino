@@ -1,3 +1,4 @@
+import { DEV_FRONTEND_PORT } from "../shared/ports";
 import { app, BrowserView, BrowserWindow, BuildConfig, Updater } from "electrobun/main";
 import type { AppRPC } from "../shared/rpc-schema";
 import { createApiHandlers } from "./api";
@@ -13,8 +14,7 @@ import {
 import { flushWorkspace, loadWorkspace, saveWorkspace } from "./workspace-store";
 import { setWindowAppearance } from "./window-appearance";
 
-const DEV_SERVER_PORT = 5173;
-const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
+const DEV_SERVER_URL = `http://localhost:${DEV_FRONTEND_PORT}`;
 
 const rpc = BrowserView.defineRPC<AppRPC>({
   handlers: {

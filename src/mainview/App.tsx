@@ -6,7 +6,6 @@ import { rpc } from "./rpc";
 import { useWorkspaceStore, selectActiveSession } from "./store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import logo from "../../assets/logo.png";
 
 const FilesPanel = lazy(() => import("./file-tree-panel").then((m) => ({ default: m.FilesPanel })));
 const GitPanel = lazy(() => import("./git-panel").then((m) => ({ default: m.GitPanel })));
@@ -29,8 +28,8 @@ export default function App() {
     name: string;
     color: string;
   } | null>(null);
+  const [deletingGroup, setDeletingGroup] = useState<string | null>(null);
   const saveGroup = useWorkspaceStore((s) => s.saveGroup);
-  const moveSession = useWorkspaceStore((s) => s.moveSession);
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
   const activeSessionId = useWorkspaceStore((s) => s.activeSessionId);
@@ -216,7 +215,6 @@ export default function App() {
           }}
         />
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
-          <img src={logo} alt="" className="size-6" />
           <h1 className="text-sm font-semibold tracking-tight">Rhino</h1>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2 scrollbar-none">
@@ -235,13 +233,13 @@ export default function App() {
                   type="button"
                   onClick={() => selectProject(p.id)}
                   aria-pressed={isActive}
-                  className="flex min-w-0 flex-1 flex-col gap-1 rounded px-1 py-0.5 text-left"
+                  className="flex min-w-0 flex-1 flex-col gap-1 rounded px-1 text-left"
                 >
                   <span className="truncate text-[12.5px] font-[550] flex gap-1.5 items-center tracking-tight">
-                    <Folder className="w-3.5 shrink-0" style={{ color: p.color || "#9198a1" }} />
+                    <Folder className="w-3 shrink-0" style={{ color: p.color || "#9198a1" }} />
                     <span className="truncate">{p.name}</span>
                   </span>
-                  <span className="w-full truncate pl-5 text-[11px] leading-4 text-muted-foreground">
+                  <span className="w-full truncate pl-4.5 -mt-2 text-[11px] leading-4 text-muted-foreground">
                     {p.sessions.length} {p.sessions.length === 1 ? "session" : "sessions"}
                   </span>
                 </button>
@@ -262,7 +260,7 @@ export default function App() {
                   aria-label={`Delete group ${p.name}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    removeProject(p.id);
+                    setDeletingGroup(p.id);
                   }}
                   title="Delete group"
                   className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
@@ -302,13 +300,13 @@ export default function App() {
                   }}
                   className="flex min-h-9 w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-ring"
                 >
-                  <span className="size-1.5 shrink-0 rounded-full bg-success" />
                   <span className="flex min-w-0 flex-1 items-baseline gap-2">
                     <span className="shrink-0 text-xs capitalize text-foreground">
                       {agent.name}
                     </span>
                     <span className="min-w-0 truncate text-[11px] text-muted-foreground">
-                      {group.name} / {session.title}
+                      {/*{group.name} /*/}
+                      {session.title}
                     </span>
                   </span>
                 </button>
@@ -317,6 +315,43 @@ export default function App() {
           </div>
         </div>
       </aside>
+      {deletingGroup &&
+        (() => {
+          const group = projects.find((p) => p.id === deletingGroup);
+          if (!group) return null;
+          return (
+            <Dialog
+              open
+              onOpenChange={(open) => {
+                if (!open) setDeletingGroup(null);
+              }}
+            >
+              <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+                <div className="p-5">
+                  <DialogTitle>Delete group?</DialogTitle>
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Delete "{group.name}"? This closes {group.sessions.length} terminal
+                    {group.sessions.length === 1 ? "" : "s"}.
+                  </p>
+                  <div className="mt-5 flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setDeletingGroup(null)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        removeProject(group.id);
+                        setDeletingGroup(null);
+                      }}
+                    >
+                      Delete group
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
       {editingGroup && (
         <Dialog
           open
@@ -380,29 +415,6 @@ export default function App() {
           onPanelToggle={setPanel}
           onSettings={() => setSettingsOpen(true)}
         />
-        {projects.length > 1 && (
-          <div className="flex h-7 items-center justify-end border-b border-border px-3 text-xs text-muted-foreground">
-            <label>
-              Move current session to{" "}
-              <select
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) moveSession(e.target.value);
-                }}
-                className="ml-2 bg-transparent text-muted-foreground outline-none"
-              >
-                <option value="">Select group?</option>
-                {projects
-                  .filter((p) => p.id !== activeProjectId)
-                  .map((p) => (
-                    <option className="bg-popover" key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-        )}
         <div className="relative isolate min-h-0 flex-1 overflow-hidden bg-background">
           {allSessions.map((session) => {
             const paneIndex = paneSessions.findIndex((pane) => pane.session?.id === session.id);

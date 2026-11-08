@@ -304,13 +304,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const { projects, activeProjectId } = get();
     const target = projects.find((p) => p.id === id);
     if (!target) return;
-    const count = target.sessions.length;
-    if (
-      !window.confirm(
-        `Delete group "${target.name}"? This closes ${count} terminal${count === 1 ? "" : "s"}.`,
-      )
-    )
-      return;
     target.sessions.forEach((sess) => rpc.send.killSession({ sessionId: sess.id }));
     const remaining = projects.filter((p) => p.id !== id);
     const fallback = remaining.length ? remaining : [newProject()];

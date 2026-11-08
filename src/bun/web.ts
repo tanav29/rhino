@@ -1,3 +1,4 @@
+import { DEV_BACKEND_PORT, DEV_FRONTEND_PORT } from "../shared/ports";
 import { createApiHandlers } from "./api";
 import {
   attachSession,
@@ -17,10 +18,13 @@ setSessionEventSink((event) => {
 process.on("exit", killAllSessions);
 Bun.serve({
   hostname: "127.0.0.1",
-  port: 5174,
+  port: DEV_BACKEND_PORT,
   fetch(req, server) {
     const origin = req.headers.get("origin");
-    if (origin !== "http://localhost:5173" && origin !== "http://127.0.0.1:5173")
+    if (
+      origin !== `http://localhost:${DEV_FRONTEND_PORT}` &&
+      origin !== `http://127.0.0.1:${DEV_FRONTEND_PORT}`
+    )
       return new Response("Forbidden", { status: 403 });
     if (server.upgrade(req)) return;
     return new Response("WebSocket required", { status: 426 });
@@ -54,4 +58,4 @@ Bun.serve({
     },
   },
 });
-console.log("Web backend listening on 127.0.0.1:5174");
+console.log(`Web backend listening on 127.0.0.1:${DEV_BACKEND_PORT}`);
