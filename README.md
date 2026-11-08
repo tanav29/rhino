@@ -69,6 +69,17 @@ Regenerate the Windows icon and shared app/marketing logo in `assets/` from `log
 
 Close a running development app before packaging: Hutch holds a project lock while it is running.
 
+## Release
+
+Set the same version in `package.json` and `electrobun.config.ts`, then commit and push the changes and a matching `vX.Y.Z` tag. The **Release Rhino** GitHub Actions workflow installs the pinned toolchain, runs lint and tests, and type-checks and builds installers for Windows x64, macOS Apple Silicon, and Linux x64/ARM64. After every build succeeds, it publishes a GitHub Release with generated notes and all files from `artifacts/`. Branch pushes do not publish releases.
+
+```bash
+git tag v0.0.1
+git push origin main v0.0.1
+```
+
+The workflow also supports **Run workflow** with an existing version tag. Installers are currently unsigned. Publishing releases does not enable automatic updates in installed apps.
+
 ## How it works
 
 ```
