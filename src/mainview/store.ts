@@ -204,10 +204,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   addSession: (shell, cwd) => {
-    const { projects, activeProjectId, defaultShell } = get();
+    const { projects, activeProjectId, activeSessionId, defaultShell } = get();
     const project = projects.find((p) => p.id === activeProjectId);
     if (!project) return;
-    const session = newSession(cwd || project.path, shell ?? defaultShell);
+    const previous = project.sessions.find((s) => s.id === activeSessionId);
+    const session = newSession(cwd || previous?.cwd || project.path, shell ?? defaultShell);
     set((s) => ({
       projects: s.projects.map((p) =>
         p.id === project.id ? { ...p, sessions: [...p.sessions, session] } : p,
@@ -250,7 +251,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     if (!sessions.some((session) => session.id === id)) return;
     rpc.send.killSession({ sessionId: id });
     const replacement =
-      sessions.length === 1 ? newSession(project?.path, get().defaultShell) : undefined;
+      sessions.length === 1
+        ? newSession(sessions[0]?.cwd || project?.path, get().defaultShell)
+        : undefined;
     const next = replacement ?? sessions.find((s) => s.id !== id);
     set((s) => {
       const filteredProjects = s.projects.map((p) =>

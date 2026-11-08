@@ -65,6 +65,7 @@ export default function App() {
   const sessions = project?.sessions ?? [];
   const activeSession = useWorkspaceStore(selectActiveSession);
   const defaultShell = useWorkspaceStore((s) => s.defaultShell);
+  const panelCwd = activeSession?.cwd || project?.path;
 
   useEffect(() => {
     void rpc.request
@@ -450,7 +451,7 @@ export default function App() {
             <div className="w-[min(24rem,40vw)] shrink-0 border-l border-border bg-sidebar" />
           }
         >
-          <WorkspacePanel project={project} panel={panel} onPanelToggle={setPanel} />
+          <WorkspacePanel cwd={panelCwd} panel={panel} onPanelToggle={setPanel} />
         </Suspense>
       )}
       <Suspense fallback={null}>
@@ -477,11 +478,11 @@ export default function App() {
 }
 
 function WorkspacePanel({
-  project,
+  cwd,
   panel,
   onPanelToggle,
 }: {
-  project?: { path: string };
+  cwd?: string;
   panel: "files" | "git";
   onPanelToggle: (panel: "files" | "git" | null) => void;
 }) {
@@ -524,12 +525,12 @@ function WorkspacePanel({
           }
         >
           {panel === "files" &&
-            (project ? (
-              <FilesPanel cwd={project.path} />
+            (cwd ? (
+              <FilesPanel cwd={cwd} />
             ) : (
               <p className="p-4 text-muted-foreground">No project selected.</p>
             ))}
-          {panel === "git" && <GitPanel cwd={project?.path} />}
+          {panel === "git" && <GitPanel cwd={cwd} />}
         </Suspense>
       </div>
     </aside>
