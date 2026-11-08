@@ -67,8 +67,24 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Prepare pinned Electrobun toolchain
-        run: bunx --bun electrobun@2.0.1 prepare
+      - name: Install Hutch on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'hutch-install.ps1'
+          Invoke-WebRequest https://hutch.blackboard.sh/hutch/install.ps1 -OutFile $installer
+          & $installer -Version 0.29.0 -NoModifyPath
+          Add-Content $env:GITHUB_PATH "$env:USERPROFILE\.hutch\bin"
+
+      - name: Install Hutch on macOS and Linux
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL https://hutch.blackboard.sh/hutch/install.sh -o "$RUNNER_TEMP/hutch-install.sh"
+          sh "$RUNNER_TEMP/hutch-install.sh" --version 0.29.0 --no-modify-path
+          echo "$HOME/.hutch/bin" >> "$GITHUB_PATH"
+
+      - name: Prepare pinned Electrobun devkit
+        run: bun run prepare:desktop
 
       - name: Lint
         run: bun run lint
