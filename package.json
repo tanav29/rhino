@@ -19,6 +19,8 @@
     "fmt:check": "oxfmt --check",
     "type-check": "tsc --noEmit",
     "dev:web": "concurrently -k \"bun src/bun/web.ts\" \"bunx vite\"",
+    "start:backend": "bun src/bun/web.ts",
+    "build:web": "bun node_modules/vite/bin/vite.js build",
     "dev:marketing": "bun --cwd marketing run dev",
     "build:marketing": "bun --cwd marketing run build"
   },

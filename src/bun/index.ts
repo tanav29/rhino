@@ -1,37 +1,43 @@
 import { DEV_FRONTEND_PORT } from "../shared/ports";
-import { app, BrowserView, BrowserWindow, BuildConfig, Updater } from "electrobun/main";
-import type { AppRPC } from "../shared/rpc-schema";
-import { createApiHandlers } from "./api";
 import {
-  attachSession,
+  app,
+  BrowserView,
+  BrowserWindow,
+  BuildConfig,
+  Updater,
+  PATHS,
+  Utils,
+} from "electrobun/main";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import type { AppRPC } from "../shared/rpc-schema";
+import { createBackendHandlers } from "./backend-handlers";
+import { createBackendController } from "./backend-controller";
+import {
   killAllSessions,
   killSession,
-  listAgents,
   resizePty,
   setSessionEventSink,
   writePtyInput,
 } from "./sessions";
-import { flushWorkspace, loadWorkspace, saveWorkspace } from "./workspace-store";
+import { flushWorkspace, setWorkspaceDirectory } from "./workspace-store";
 import { setWindowAppearance } from "./window-appearance";
 
 const DEV_SERVER_URL = `http://localhost:${DEV_FRONTEND_PORT}`;
+setWorkspaceDirectory(Utils.paths.userData);
+const handlers = createBackendHandlers();
+const bundledView = resolve(PATHS.VIEWS_FOLDER, "mainview");
+const backend = createBackendController(
+  handlers,
+  existsSync(bundledView) ? bundledView : resolve("dist"),
+);
 
 const rpc = BrowserView.defineRPC<AppRPC>({
   handlers: {
     requests: {
-      ...createApiHandlers(),
-      listAgents: () => listAgents(),
-      loadWorkspace: () => loadWorkspace(),
-      saveWorkspace: ({ workspace }) => {
-        saveWorkspace(workspace);
-        return null;
-      },
-      attachSession: (params) => {
-        console.log(
-          `[pty] attach ${params.sessionId} shell=${params.shell ?? "default"} cwd=${params.cwd ?? "~"}`,
-        );
-        return attachSession(params);
-      },
+      ...handlers,
+      getBackendStatus: () => backend.status(),
+      configureBackend: (options) => backend.configure(options),
     },
     messages: {
       ptyInput: ({ sessionId, data }) => writePtyInput(sessionId, data),
@@ -79,6 +85,7 @@ async function resolveMainViewUrl(): Promise<string> {
 }
 
 const cleanup = () => {
+  backend.stop();
   flushWorkspace();
   killAllSessions();
 };

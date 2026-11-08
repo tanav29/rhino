@@ -1,61 +1,29 @@
-import { DEV_BACKEND_PORT, DEV_FRONTEND_PORT } from "../shared/ports";
-import { createApiHandlers } from "./api";
-import {
-  attachSession,
-  listAgents,
-  killAllSessions,
-  killSession,
-  resizePty,
-  setSessionEventSink,
-  writePtyInput,
-} from "./sessions";
+import { resolve } from "node:path";
+import { DEV_BACKEND_PORT } from "../shared/ports";
+import { createBackendHandlers } from "./backend-handlers";
+import { generatePin, startBackendServer } from "./backend-server";
+import { killAllSessions } from "./sessions";
+import { flushWorkspace } from "./workspace-store";
 
-const handlers = { ...createApiHandlers(), attachSession, listAgents };
-const sockets = new Set<import("bun").ServerWebSocket<unknown>>();
-setSessionEventSink((event) => {
-  for (const socket of sockets) socket.send(JSON.stringify({ event }));
+const port = Number(process.env.TERM_PORT ?? DEV_BACKEND_PORT);
+if (!Number.isInteger(port) || port < 1 || port > 65535)
+  throw new Error("TERM_PORT must be between 1 and 65535");
+const hostname = process.env.TERM_HOST ?? "127.0.0.1";
+const pin = process.env.TERM_PIN ?? generatePin();
+const backend = startBackendServer({
+  port,
+  hostname,
+  pin,
+  handlers: createBackendHandlers(),
+  staticDirectory: resolve("dist"),
 });
-process.on("exit", killAllSessions);
-Bun.serve({
-  hostname: "127.0.0.1",
-  port: DEV_BACKEND_PORT,
-  fetch(req, server) {
-    const origin = req.headers.get("origin");
-    if (
-      origin !== `http://localhost:${DEV_FRONTEND_PORT}` &&
-      origin !== `http://127.0.0.1:${DEV_FRONTEND_PORT}`
-    )
-      return new Response("Forbidden", { status: 403 });
-    if (server.upgrade(req)) return;
-    return new Response("WebSocket required", { status: 426 });
-  },
-  websocket: {
-    open(socket) {
-      sockets.add(socket);
-    },
-    close(socket) {
-      sockets.delete(socket);
-    },
-    async message(socket, message) {
-      try {
-        const { id, method, params } = JSON.parse(String(message));
-        if (method === "ptyInput") return writePtyInput(params.sessionId, params.data);
-        if (method === "ptyResize") return resizePty(params.sessionId, params.cols, params.rows);
-        if (method === "killSession") return killSession(params.sessionId);
-        if (!Object.hasOwn(handlers, method)) throw new Error("Unknown request");
-        const handler = handlers[method as keyof typeof handlers] as (params: never) => unknown;
-        const result = await handler(params as never);
-        socket.send(JSON.stringify({ id, result }));
-      } catch (error) {
-        let id: unknown;
-        try {
-          id = JSON.parse(String(message)).id;
-        } catch {}
-        socket.send(
-          JSON.stringify({ id, error: error instanceof Error ? error.message : String(error) }),
-        );
-      }
-    },
-  },
-});
-console.log(`Web backend listening on 127.0.0.1:${DEV_BACKEND_PORT}`);
+const cleanup = () => {
+  backend.stop();
+  flushWorkspace();
+  killAllSessions();
+};
+process.on("exit", cleanup);
+process.on("SIGINT", () => process.exit(0));
+process.on("SIGTERM", () => process.exit(0));
+console.log(`Terminal backend listening on http://${hostname}:${backend.port}`);
+console.log(`Connection PIN: ${pin}`);
