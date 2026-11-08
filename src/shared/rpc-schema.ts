@@ -49,6 +49,26 @@ export interface AttachSessionResult {
   replay: string;
 }
 
+export interface BackendStatus {
+  running: boolean;
+  shared: boolean;
+  port: number;
+  pin: string;
+  urls: string[];
+  error?: string;
+}
+
+export type RpcClient = {
+  request: {
+    [M in keyof AppRPC["bun"]["requests"]]: (
+      params: AppRPC["bun"]["requests"][M]["params"],
+    ) => Promise<AppRPC["bun"]["requests"][M]["response"]>;
+  };
+  send: {
+    [M in keyof AppRPC["bun"]["messages"]]: (params: AppRPC["bun"]["messages"][M]) => void;
+  };
+};
+
 /**
  * Typed RPC contract between the Bun main process (`bun`) and the React
  * webview (`webview`).
@@ -70,6 +90,11 @@ export type BunRequestHandlers = {
 export type AppRPC = {
   bun: RPCSchema<{
     requests: {
+      getBackendStatus: { params: {}; response: BackendStatus };
+      configureBackend: {
+        params: { shared: boolean; port: number; regeneratePin?: boolean };
+        response: BackendStatus;
+      };
       listAgents: { params: {}; response: { sessionId: string; name: string }[] };
       listShells: { params: {}; response: ShellOption[] };
       browseDirectory: { params: { path?: string }; response: DirectoryListing };

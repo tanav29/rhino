@@ -3,7 +3,7 @@ import { Plus, Trash2, Folder, X, Pencil, Ellipsis } from "lucide-react";
 import { SessionTabs } from "./session-tabs";
 import { AgentIcon } from "./agent-icon";
 import { SessionView } from "./session-view";
-import { rpc } from "./rpc";
+import { getBackendClient, getConnection } from "./rpc";
 import { useWorkspaceStore, selectActiveSession } from "./store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,10 @@ const SettingsDialog = lazy(() =>
 export type { Project } from "./store";
 
 export default function App() {
+  // Keep in-flight workspace operations bound to the machine that mounted this view.
+  const [backendRpc] = useState(getBackendClient);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const sidebarRef = useRef<HTMLElement>(null);
   const resizeRef = useRef<{ x: number; width: number } | null>(null);
@@ -74,15 +78,32 @@ export default function App() {
   const panelCwd = activeSession?.cwd || project?.path;
 
   useEffect(() => {
-    void rpc.request
+    let disposed = false;
+    useWorkspaceStore.setState({
+      settingsOpen: false,
+      newOpen: false,
+      panel: null,
+      lastSessionByProject: {},
+    });
+    void backendRpc.request
       .loadWorkspace({})
-      .catch(() => null)
-      .then((snapshot) => hydrate(snapshot));
-  }, [hydrate]);
+      .then((snapshot) => {
+        if (disposed) return;
+        hydrate(snapshot);
+        setLoaded(true);
+      })
+      .catch((cause) => {
+        if (!disposed)
+          setLoadError(cause instanceof Error ? cause.message : "Unable to load workspace");
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [backendRpc, hydrate]);
 
   useEffect(() => {
-    if (!hydrated || !projects.length) return;
-    void rpc.request
+    if (!loaded || !hydrated || !projects.length) return;
+    void backendRpc.request
       .saveWorkspace({
         workspace: {
           projects,
@@ -97,6 +118,8 @@ export default function App() {
       })
       .catch(() => undefined);
   }, [
+    backendRpc,
+    loaded,
     hydrated,
     projects,
     activeProjectId,
@@ -169,7 +192,7 @@ export default function App() {
   useEffect(() => {
     let disposed = false;
     const refresh = () =>
-      void rpc.request
+      void backendRpc.request
         .listAgents({})
         .then((items) => {
           if (!disposed) setAgents(items);
@@ -181,16 +204,37 @@ export default function App() {
       disposed = true;
       clearInterval(timer);
     };
-  }, []);
+  }, [backendRpc]);
 
   useEffect(() => {
-    void rpc.request
+    let disposed = false;
+    void backendRpc.request
       .listShells({})
-      .then(setShells)
-      .catch(() => setShells([]));
-  }, [setShells]);
+      .then((items) => {
+        if (!disposed) setShells(items);
+      })
+      .catch(() => {
+        if (!disposed) setShells([]);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [backendRpc, setShells]);
 
-  if (!hydrated) return <div className="h-screen bg-background" />;
+  if (!loaded || !hydrated)
+    return (
+      <div
+        role={loadError ? "alert" : "status"}
+        className="h-screen bg-background p-6 text-sm text-foreground"
+      >
+        {loadError || "Loading workspace…"}
+        {loadError && (
+          <Button className="ml-3" onClick={() => location.reload()}>
+            Retry
+          </Button>
+        )}
+      </div>
+    );
 
   const paneSessions = panes.map((pane) => {
     const s = sessions.find((sess) => sess.id === pane.sessionId) ?? activeSession;
@@ -244,6 +288,16 @@ export default function App() {
         />
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
           <h1 className="text-sm font-semibold tracking-tight">Rhino</h1>
+          {getConnection().url && (
+            <button
+              type="button"
+              title={getConnection().url}
+              onClick={() => setSettingsOpen(true)}
+              className="ml-auto truncate text-xs text-muted-foreground hover:text-foreground"
+            >
+              {new URL(getConnection().url).hostname}
+            </button>
+          )}
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
           {projects.map((p) => {

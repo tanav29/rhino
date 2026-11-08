@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { BackendSettings } from "./backend-settings";
 import {
   FONT_SIZE_MIN,
   FONT_SIZE_MAX,
@@ -126,7 +127,7 @@ export function SettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Terminal settings</DialogTitle>
+          <DialogTitle>Settings</DialogTitle>
           <DialogDescription>Changes save automatically.</DialogDescription>
         </DialogHeader>
 
@@ -218,6 +219,7 @@ export function SettingsDialog({
               ))}
             </dl>
           </details>
+          <BackendSettings />
         </div>
       </DialogContent>
     </Dialog>

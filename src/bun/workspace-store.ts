@@ -1,15 +1,17 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { Utils } from "electrobun/main";
 import type { WorkspaceSnapshot } from "../shared/rpc-schema";
 
+let storageDirectory = join(homedir(), ".term");
+
+export function setWorkspaceDirectory(directory: string) {
+  flushWorkspace();
+  storageDirectory = directory;
+}
+
 function storageFile(): string {
-  try {
-    return join(Utils.paths.userData, "workspace.json");
-  } catch {
-    return join(homedir(), ".term", "workspace.json");
-  }
+  return join(storageDirectory, "workspace.json");
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -17,6 +19,7 @@ let pendingWorkspace: WorkspaceSnapshot | null = null;
 const SAVE_DEBOUNCE_MS = 300;
 
 export function loadWorkspace(): WorkspaceSnapshot | null {
+  if (pendingWorkspace) return pendingWorkspace;
   const file = storageFile();
   try {
     const parsed = JSON.parse(readFileSync(file, "utf-8")) as WorkspaceSnapshot;

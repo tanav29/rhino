@@ -1,16 +1,13 @@
-import { DEV_BACKEND_PORT } from "../shared/ports";
+import { DEV_BACKEND_PORT, DEV_FRONTEND_PORT } from "../shared/ports";
 import { Electroview } from "electrobun/view";
-import type { AppRPC } from "../shared/rpc-schema";
+import type { AppRPC, RpcClient } from "../shared/rpc-schema";
+import type { SessionEvent } from "../bun/sessions";
+import { connectBackendSocket, normalizeBackendUrl } from "./backend-client";
 
 type Listener<T> = (payload: T) => void;
-
-function listenerMap<T>() {
-  return new Map<string, Set<Listener<T>>>();
-}
-
-const outputListeners = listenerMap<string>();
-const titleListeners = listenerMap<string>();
-const exitListeners = listenerMap<undefined>();
+const outputListeners = new Map<string, Set<Listener<string>>>();
+const titleListeners = new Map<string, Set<Listener<string>>>();
+const exitListeners = new Map<string, Set<Listener<undefined>>>();
 
 function subscribe<T>(map: Map<string, Set<Listener<T>>>, sessionId: string, fn: Listener<T>) {
   let listeners = map.get(sessionId);
@@ -24,127 +21,162 @@ function subscribe<T>(map: Map<string, Set<Listener<T>>>, sessionId: string, fn:
     if (!listeners.size) map.delete(sessionId);
   };
 }
-
 function notify<T>(map: Map<string, Set<Listener<T>>>, sessionId: string, payload: T) {
   for (const fn of map.get(sessionId) ?? []) fn(payload);
 }
+function dispatch(event: SessionEvent) {
+  if (event.kind === "output") notify(outputListeners, event.sessionId, event.data);
+  if (event.kind === "title") notify(titleListeners, event.sessionId, event.title);
+  if (event.kind === "exit") notify(exitListeners, event.sessionId, undefined);
+}
 
-type RpcShape = {
-  request: {
-    loadWorkspace: (p: {}) => Promise<import("../shared/rpc-schema").WorkspaceSnapshot | null>;
-    saveWorkspace: (p: {
-      workspace: import("../shared/rpc-schema").WorkspaceSnapshot;
-    }) => Promise<null>;
-    listAgents: (p: {}) => Promise<{ sessionId: string; name: string }[]>;
-    listShells: (p: {}) => Promise<import("../shared/rpc-schema").ShellOption[]>;
-    browseDirectory: (p: {
-      path?: string;
-    }) => Promise<import("../shared/rpc-schema").DirectoryListing>;
-    listProjectFiles: (p: { cwd: string }) => Promise<{ paths: string[]; error?: string }>;
-    readGitStatus: (p: { cwd: string }) => Promise<string>;
-    readGitDiff: (p: {
-      cwd: string;
-      path: string;
-    }) => Promise<import("../shared/rpc-schema").GitDiffResult>;
-    attachSession: (
-      p: import("../shared/rpc-schema").AttachSessionParams,
-    ) => Promise<import("../shared/rpc-schema").AttachSessionResult>;
-  };
-  send: {
-    ptyInput: (p: { sessionId: string; data: string }) => void;
-    ptyResize: (p: { sessionId: string; cols: number; rows: number }) => void;
-    killSession: (p: { sessionId: string }) => void;
-  };
-};
+let active: RpcClient | null = null;
 
-export const rpc: RpcShape = Electroview.defineRPC<AppRPC>({
+const native = Electroview.defineRPC<AppRPC>({
   maxRequestTime: 60_000,
   handlers: {
     requests: {},
     messages: {
-      ptyOutput: ({ sessionId, data }) => notify(outputListeners, sessionId, data),
-      ptyTitle: ({ sessionId, title }) => notify(titleListeners, sessionId, title),
-      ptyExit: ({ sessionId }) => notify(exitListeners, sessionId, undefined),
+      ptyOutput: ({ sessionId, data }) => {
+        if (active === (native as unknown as RpcClient))
+          dispatch({ kind: "output", sessionId, data });
+      },
+      ptyTitle: ({ sessionId, title }) => {
+        if (active === (native as unknown as RpcClient))
+          dispatch({ kind: "title", sessionId, title });
+      },
+      ptyExit: ({ sessionId }) => {
+        if (active === (native as unknown as RpcClient)) dispatch({ kind: "exit", sessionId });
+      },
     },
   },
-}) as unknown as RpcShape;
+});
 
-// Attach the browser side of the transport exactly once per page load.
-// In a plain browser (vite dev without Electrobun) this throws — fall back
-// to the local Bun WebSocket transport.
-try {
-  new Electroview({ rpc: rpc as unknown as ReturnType<typeof Electroview.defineRPC<AppRPC>> });
-} catch {
-  // Running outside Electrobun (e.g. `vite` dev in a normal browser).
-  const socket = new WebSocket(`ws://127.0.0.1:${DEV_BACKEND_PORT}`);
-  const pending = new Map<
-    number,
-    { resolve: (value: unknown) => void; reject: (error: Error) => void }
-  >();
-  let nextId = 0;
-  const connected = new Promise<void>((resolve, reject) => {
-    socket.addEventListener("open", () => resolve(), { once: true });
-    socket.addEventListener("error", () => reject(new Error("Web backend unavailable")), {
-      once: true,
+export const desktopRpc: RpcClient | null = window.__electrobun
+  ? (() => {
+      new Electroview({ rpc: native });
+      return native as unknown as RpcClient;
+    })()
+  : null;
+
+const URL_KEY = "term.backendUrl:v1";
+function savedUrl() {
+  try {
+    return localStorage.getItem(URL_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+const rememberedUrl = savedUrl();
+const browserUrl =
+  location.port === String(DEV_FRONTEND_PORT)
+    ? `${location.protocol}//${location.hostname}:${DEV_BACKEND_PORT}`
+    : location.origin;
+active = rememberedUrl || !desktopRpc ? null : desktopRpc;
+let network: Awaited<ReturnType<typeof connectBackendSocket>> | undefined;
+let generation = 0;
+let state: {
+  status: "connected" | "connecting" | "disconnected";
+  url: string;
+  error: string;
+  generation: number;
+} = {
+  status: active ? "connected" : "disconnected",
+  url: rememberedUrl || (desktopRpc ? "" : browserUrl),
+  error: "",
+  generation,
+};
+const connectionListeners = new Set<() => void>();
+function update(next: Partial<typeof state>) {
+  state = { ...state, ...next };
+  for (const listener of connectionListeners) listener();
+}
+export const getConnection = () => state;
+export function getBackendClient(): RpcClient {
+  if (!active) throw new Error("Backend disconnected");
+  return active;
+}
+export const subscribeConnection = (listener: () => void) => {
+  connectionListeners.add(listener);
+  return () => {
+    connectionListeners.delete(listener);
+  };
+};
+
+export async function connectRemoteBackend(value: string, pin: string) {
+  const url = normalizeBackendUrl(value);
+  if (!/^\d{6}$/.test(pin)) throw new Error("Enter the six-digit PIN shown on the host machine");
+  const attempt = ++generation;
+  network?.close();
+  network = undefined;
+  active = null;
+  update({ status: "connecting", url, error: "" });
+  let established = false;
+  try {
+    const connection = await connectBackendSocket({
+      url,
+      pin,
+      onEvent: (event) => {
+        if (attempt === generation && active) dispatch(event);
+      },
+      onClose: () => {
+        if (attempt !== generation || !established) return;
+        active = null;
+        update({
+          status: "disconnected",
+          error: "Backend disconnected. Enter the PIN to reconnect.",
+        });
+      },
     });
-  });
-  socket.addEventListener("message", ({ data }) => {
-    const message = JSON.parse(data);
-    if (message.event) {
-      const event = message.event;
-      if (event.kind === "output") notify(outputListeners, event.sessionId, event.data);
-      if (event.kind === "title") notify(titleListeners, event.sessionId, event.title);
-      if (event.kind === "exit") notify(exitListeners, event.sessionId, undefined);
+    if (attempt !== generation) {
+      connection.close();
       return;
     }
-    const request = pending.get(message.id);
-    if (!request) return;
-    pending.delete(message.id);
-    if (message.error) request.reject(new Error(message.error));
-    else request.resolve(message.result);
-  });
-  socket.addEventListener("close", () => {
-    for (const request of pending.values()) request.reject(new Error("Web backend disconnected"));
-    pending.clear();
-  });
-  const call = async (method: string, params: unknown) => {
-    await connected;
-    if (socket.readyState !== WebSocket.OPEN) throw new Error("Web backend disconnected");
-    const id = ++nextId;
-    return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      socket.send(JSON.stringify({ id, method, params }));
-    });
-  };
-  (rpc as unknown as { request: RpcShape["request"] }).request = new Proxy(
-    {
-      loadWorkspace: async () => {
-        try {
-          return JSON.parse(localStorage.getItem("term.workspace:v1") ?? "null");
-        } catch {
-          return null;
-        }
-      },
-      saveWorkspace: async ({ workspace }: { workspace: unknown }) => {
-        localStorage.setItem("term.workspace:v1", JSON.stringify(workspace));
-        return null;
-      },
-    },
-    {
-      get: (target, key: string) =>
-        key in target ? target[key as keyof typeof target] : (params: unknown) => call(key, params),
-    },
-  ) as unknown as RpcShape["request"];
-  (rpc as unknown as { send: RpcShape["send"] }).send = new Proxy({} as RpcShape["send"], {
-    get: (_, method: string) => (params: unknown) => {
-      void connected
-        .then(() => {
-          if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ method, params }));
-        })
-        .catch(() => undefined);
-    },
-  });
+    network = connection;
+    established = true;
+    active = connection.client;
+    try {
+      localStorage.setItem(URL_KEY, url);
+    } catch {
+      /* Storage may be unavailable. */
+    }
+    update({ status: "connected", generation: attempt, error: "" });
+  } catch (error) {
+    if (attempt === generation)
+      update({
+        status: "disconnected",
+        error: error instanceof Error ? error.message : "Connection failed",
+      });
+    throw error;
+  }
 }
+
+export function switchToLocalBackend() {
+  if (!desktopRpc) return;
+  generation++;
+  network?.close();
+  network = undefined;
+  active = desktopRpc;
+  try {
+    localStorage.removeItem(URL_KEY);
+  } catch {
+    /* Storage may be unavailable. */
+  }
+  update({ status: "connected", url: "", error: "", generation });
+}
+
+// Call sites keep the same typed RPC surface when the selected machine changes.
+export const rpc: RpcClient = {
+  request: new Proxy({} as RpcClient["request"], {
+    get: (_, method: keyof RpcClient["request"]) => (params: never) => {
+      if (!active) return Promise.reject(new Error("Backend disconnected"));
+      return active.request[method](params);
+    },
+  }),
+  send: new Proxy({} as RpcClient["send"], {
+    get: (_, method: keyof RpcClient["send"]) => (params: never) => active?.send[method](params),
+  }),
+};
 
 export function subscribePtyOutput(sessionId: string, fn: Listener<string>) {
   return subscribe(outputListeners, sessionId, fn);

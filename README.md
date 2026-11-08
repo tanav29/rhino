@@ -23,6 +23,7 @@ Deploy on Vercel by importing the repository and setting the project root to `ma
 - **Git panel** — changed files + inline diffs (GitHub Dark, shiki)
 - **Shell detection** — cmd / PowerShell / pwsh / git-bash / WSL / bash / zsh
 - **Workspaces** — multiple projects, persisted under the app's `userData` dir
+- **Network terminals** — share a backend on your LAN or control another machine with its URL and six-digit PIN
 
 ## Requirements
 
@@ -55,6 +56,27 @@ bun run dev
 # or without HMR (app loads bundled views://)
 bun run dev:bundled
 ```
+
+## Use terminals over your network
+
+On the host machine, open **Settings → Share this machine**, enable **network sharing**, choose a port (default `43188`), and click **Apply**. Click **Show** to reveal the six-digit PIN. Keep the host app running.
+
+On another device on the same network, open one of the displayed `http://<host-ip>:43188` addresses in a browser and enter the PIN. Or, in another Rhino app, open **Settings → Control another machine**, enter the backend URL and PIN, and click **Connect**. The terminals, shells, files, Git data, and workspace come from the selected machine. **Use this machine** switches the desktop app back to its local backend.
+
+The backend starts on loopback only; LAN sharing must be enabled again after restarting the desktop app. **New PIN** disconnects remote clients immediately. Clients remember the backend URL, but never save the PIN. Failed PIN attempts are limited per address and across the server. Changing ports or turning sharing off also disconnects remote clients, while their shell processes remain running on the host.
+
+The PIN grants full terminal access. Use this on a trusted network: HTTP/WebSocket traffic is not encrypted. To connect from outside a trusted network, put the backend behind an authenticated VPN or an HTTPS/WSS proxy. If Windows prompts, allow the host app through the firewall on your private network.
+
+To run a backend without the desktop window:
+
+```powershell
+bun run build:web
+$env:TERM_HOST = "0.0.0.0"
+$env:TERM_PORT = "43188"
+bun run start:backend
+```
+
+The server prints a generated six-digit PIN. `TERM_PIN` can supply a specific six-digit PIN instead. Without `TERM_HOST`, it listens on `127.0.0.1`. The standalone backend saves its workspace to `~/.term/workspace.json`; the desktop app continues to use its `userData` directory. `bun run dev:web` uses the same PIN-protected backend with Vite and prints its PIN in the terminal.
 
 ## Build installers
 
@@ -120,6 +142,8 @@ Workspace layout and terminal preferences are saved atomically and flushed on ap
 | Script                      | What it does                                    |
 | --------------------------- | ----------------------------------------------- |
 | `bun run type-check`        | `tsc --noEmit`                                  |
+| `bun run start:backend`     | PIN-protected terminal backend                  |
+| `bun run build:web`         | Build the browser interface into `dist/`        |
 | `bun test ./tests`          | Native PTY, workspace and pane regression tests |
 | `bun run lint` / `lint:fix` | `oxlint`                                        |
 | `bun run fmt` / `fmt:check` | `oxfmt`                                         |

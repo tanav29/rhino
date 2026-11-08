@@ -31,6 +31,12 @@ export type SessionEvent =
   | { kind: "exit"; sessionId: string };
 
 let eventSink: ((event: SessionEvent) => void) | null = null;
+const subscribers = new Set<(event: SessionEvent) => void>();
+
+export function subscribeSessionEvents(sink: (event: SessionEvent) => void) {
+  subscribers.add(sink);
+  return () => subscribers.delete(sink);
+}
 
 /** Registers the bridge that forwards PTY events to the webview. */
 export function setSessionEventSink(sink: (event: SessionEvent) => void) {
@@ -39,6 +45,7 @@ export function setSessionEventSink(sink: (event: SessionEvent) => void) {
 
 function emit(event: SessionEvent) {
   eventSink?.(event);
+  for (const sink of subscribers) sink(event);
 }
 
 type AttachParams = AppRPC["bun"]["requests"]["attachSession"]["params"];
