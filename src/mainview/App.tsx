@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Folder, X, Pencil } from "lucide-react";
+import { Plus, Trash2, Folder, X, Pencil, Ellipsis } from "lucide-react";
 import { SessionTabs } from "./session-tabs";
 import { AgentIcon } from "./agent-icon";
 import { SessionView } from "./session-view";
@@ -7,6 +7,12 @@ import { rpc } from "./rpc";
 import { useWorkspaceStore, selectActiveSession } from "./store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const FilesPanel = lazy(() => import("./file-tree-panel").then((m) => ({ default: m.FilesPanel })));
 const GitPanel = lazy(() => import("./git-panel").then((m) => ({ default: m.GitPanel })));
@@ -108,6 +114,15 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        newOpen ||
+        settingsOpen ||
+        editingGroup ||
+        deletingGroup
+      )
+        return;
       const mod = event.metaKey || event.ctrlKey;
       if (event.ctrlKey && event.key === "Tab" && sessions.length > 1) {
         event.preventDefault();
@@ -137,7 +152,19 @@ export default function App() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeSessionId, addSession, projects, sessions, split, selectSession, selectProject]);
+  }, [
+    activeSessionId,
+    addSession,
+    projects,
+    sessions,
+    split,
+    selectSession,
+    selectProject,
+    newOpen,
+    settingsOpen,
+    editingGroup,
+    deletingGroup,
+  ]);
 
   useEffect(() => {
     let disposed = false;
@@ -178,7 +205,7 @@ export default function App() {
       <aside
         aria-label="Workspaces"
         ref={sidebarRef}
-        className="relative flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
+        className="@container relative flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
         style={{ width: sidebarWidth }}
       >
         <div
@@ -218,56 +245,61 @@ export default function App() {
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
           <h1 className="text-sm font-semibold tracking-tight">Rhino</h1>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2 scrollbar-none">
+        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
           {projects.map((p) => {
             const isActive = p.id === activeProjectId;
             return (
               <div
                 key={p.id}
-                className={`group flex w-full items-start rounded-md border px-2 py-2 text-sm transition-colors ${
+                className={`group flex w-full items-center rounded-md text-sm transition-colors ${
                   isActive
-                    ? "border-border bg-accent text-foreground"
-                    : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 }`}
               >
                 <button
                   type="button"
                   onClick={() => selectProject(p.id)}
                   aria-pressed={isActive}
-                  className="flex min-w-0 flex-1 flex-col gap-1 rounded px-1 text-left"
+                  title={`${p.name}\n${p.path}`}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2.5 py-2 text-left focus-visible:-outline-offset-2"
                 >
-                  <span className="truncate text-[12.5px] font-[550] flex gap-1.5 items-center tracking-tight">
-                    <Folder className="w-3 shrink-0" style={{ color: p.color || "#9198a1" }} />
-                    <span className="truncate">{p.name}</span>
+                  <Folder size={15} className="shrink-0" style={{ color: p.color || "#9198a1" }} />
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate text-xs font-medium">{p.name}</span>
+                    <span className="truncate text-[11px] leading-4 text-muted-foreground">
+                      {p.sessions.length} {p.sessions.length === 1 ? "terminal" : "terminals"}
+                    </span>
                   </span>
-                  <span className="w-full truncate pl-4.5 -mt-2 text-[11px] leading-4 text-muted-foreground">
-                    {p.sessions.length} {p.sessions.length === 1 ? "session" : "sessions"}
-                  </span>
                 </button>
-                <button
-                  type="button"
-                  aria-label={`Edit group ${p.name}`}
-                  title="Edit group"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingGroup({ id: p.id, name: p.name, color: p.color || "#58a6ff" });
-                  }}
-                  className="ml-auto flex size-6 shrink-0 items-center justify-center rounded hover:bg-secondary hover:text-foreground text-muted-foreground"
-                >
-                  <Pencil size={12} />
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Delete group ${p.name}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeletingGroup(p.id);
-                  }}
-                  title="Delete group"
-                  className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                >
-                  <Trash2 size={12} />
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <button
+                        type="button"
+                        aria-label={`Actions for ${p.name}`}
+                        title="Group actions"
+                        className="mr-1 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground aria-expanded:bg-secondary"
+                      >
+                        <Ellipsis size={15} />
+                      </button>
+                    }
+                  />
+                  <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuItem
+                      onClick={() =>
+                        setEditingGroup({ id: p.id, name: p.name, color: p.color || "#58a6ff" })
+                      }
+                    >
+                      <Pencil />
+                      Edit group
+                    </DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onClick={() => setDeletingGroup(p.id)}>
+                      <Trash2 />
+                      Delete group
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             );
           })}
@@ -278,43 +310,46 @@ export default function App() {
             className="flex min-h-9 w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
             <Plus size={13} strokeWidth={2.2} />
-            <span>New group</span>
-            <span className="ml-auto text-[10px] text-muted-foreground">Ctrl+N</span>
+            <span className="whitespace-nowrap">New group</span>
+            <kbd className="ml-auto hidden font-sans text-[11px] text-muted-foreground @[200px]:block">
+              Ctrl+N
+            </kbd>
           </button>
         </div>
-        <div className="flex max-h-[min(12rem,40%)] shrink-0 flex-col border-t border-sidebar-border">
-          <div className="min-h-0 overflow-y-auto">
-            {agents.length === 0 && (
-              <p className="px-4 py-3 text-xs text-muted-foreground">No running agents</p>
-            )}
-            {agents.map((agent) => {
-              const group = projects.find((p) => p.sessions.some((s) => s.id === agent.sessionId));
-              const session = group?.sessions.find((s) => s.id === agent.sessionId);
-              if (!group || !session) return null;
-              return (
-                <button
-                  key={`${agent.sessionId}-${agent.name}`}
-                  type="button"
-                  title={agent.name}
-                  aria-label={`${agent.name}: ${session.title}`}
-                  onClick={() => {
-                    selectProject(group.id);
-                    selectSession(agent.sessionId);
-                  }}
-                  className="flex min-h-9 w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-ring"
-                >
-                  <span className="flex min-w-0 flex-1 items-center gap-2">
-                    <AgentIcon name={agent.name} />
-                    <span className="min-w-0 truncate text-[11px] text-muted-foreground">
-                      {/*{group.name} /*/}
-                      {session.title}
+        {agents.length > 0 && (
+          <div className="flex max-h-[min(12rem,40%)] shrink-0 flex-col border-t border-sidebar-border py-2">
+            <p className="px-4 pb-1 text-xs font-medium text-muted-foreground">Running agents</p>
+            <div className="min-h-0 overflow-y-auto">
+              {agents.map((agent) => {
+                const group = projects.find((p) =>
+                  p.sessions.some((s) => s.id === agent.sessionId),
+                );
+                const session = group?.sessions.find((s) => s.id === agent.sessionId);
+                if (!group || !session) return null;
+                return (
+                  <button
+                    key={`${agent.sessionId}-${agent.name}`}
+                    type="button"
+                    title={agent.name}
+                    aria-label={`${agent.name}: ${session.title}`}
+                    onClick={() => {
+                      selectProject(group.id);
+                      selectSession(agent.sessionId);
+                    }}
+                    className="flex min-h-9 w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-ring"
+                  >
+                    <span className="flex min-w-0 flex-1 items-center gap-2">
+                      <AgentIcon name={agent.name} />
+                      <span className="min-w-0 truncate text-[11px] text-muted-foreground">
+                        {session.title}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </aside>
       {deletingGroup &&
         (() => {
@@ -447,7 +482,11 @@ export default function App() {
                   session={session}
                   onTitle={updateTitle}
                   active={
-                    session.id === activeSessionId && !newOpen && !settingsOpen && !editingGroup
+                    session.id === activeSessionId &&
+                    !newOpen &&
+                    !settingsOpen &&
+                    !editingGroup &&
+                    !deletingGroup
                   }
                   visible={visible}
                   fontSize={termFontSize}

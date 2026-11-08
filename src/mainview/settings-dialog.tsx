@@ -1,4 +1,3 @@
-import { DEV_BACKEND_PORT, DEV_FRONTEND_PORT } from "../shared/ports";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import {
   Dialog,
@@ -38,6 +37,7 @@ function Stepper({
   display,
   min,
   max,
+  defaultValue,
   step,
   onChange,
   onReset,
@@ -47,24 +47,34 @@ function Stepper({
   display: string;
   min: number;
   max: number;
+  defaultValue: number;
   step: number;
   onChange: (value: number) => void;
   onReset: () => void;
 }) {
   const lower = label.toLowerCase();
   return (
-    <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-card p-3">
-      <div className="flex items-center justify-between">
-        <span className="text-[12.5px] font-[600] tracking-tight text-foreground">{label}</span>
-        <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[11px] font-bold leading-none text-primary-foreground">
-          {display}
-        </span>
+    <div className="flex flex-col gap-2 py-4">
+      <div className="flex items-center gap-2">
+        <span className="flex-1 text-xs font-medium">{label}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{display}</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={`Reset ${lower}`}
+          title={`Reset ${lower}`}
+          disabled={value === defaultValue}
+          onClick={onReset}
+        >
+          <RotateCcw size={12} />
+        </Button>
       </div>
 
       <div className="flex items-center gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon-sm"
           aria-label={`Decrease ${lower}`}
           onClick={() => onChange(value - step)}
@@ -81,13 +91,14 @@ function Stepper({
           step={step}
           value={value}
           aria-label={label}
+          aria-valuetext={display}
           onChange={(event) => onChange(Number(event.target.value))}
           className="h-4 min-w-0 flex-1 accent-ring cursor-pointer"
         />
 
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon-sm"
           aria-label={`Increase ${lower}`}
           onClick={() => onChange(value + step)}
@@ -97,15 +108,6 @@ function Stepper({
           <Plus size={14} />
         </Button>
       </div>
-
-      <button
-        type="button"
-        onClick={onReset}
-        className="inline-flex items-center gap-1 self-end rounded bg-accent px-2 py-1 font-mono text-[11px] font-semibold text-foreground transition-colors hover:bg-secondary"
-      >
-        <RotateCcw size={11} />
-        Reset
-      </button>
     </div>
   );
 }
@@ -122,99 +124,62 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-sm">
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Terminal settings</DialogTitle>
-          <DialogDescription>
-            Make your terminal feel right. Changes save automatically.
-          </DialogDescription>
+          <DialogDescription>Changes save automatically.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 px-5 pb-5 pt-3">
-          <Stepper
-            label="Font size"
-            value={fontSize}
-            display={`${fontSize}px`}
-            min={FONT_SIZE_MIN}
-            max={FONT_SIZE_MAX}
-            step={1}
-            onChange={(v) => onFontSizeChange(clampFont(v))}
-            onReset={() => onFontSizeChange(FONT_SIZE_DEFAULT)}
-          />
+        <div className="px-5 pb-5">
+          <div className="divide-y divide-border">
+            <Stepper
+              label="Font size"
+              value={fontSize}
+              display={`${fontSize}px`}
+              min={FONT_SIZE_MIN}
+              max={FONT_SIZE_MAX}
+              defaultValue={FONT_SIZE_DEFAULT}
+              step={1}
+              onChange={(v) => onFontSizeChange(clampFont(v))}
+              onReset={() => onFontSizeChange(FONT_SIZE_DEFAULT)}
+            />
 
-          <Stepper
-            label="Line height"
-            value={lineHeight}
-            display={lineHeight.toFixed(2)}
-            min={LINE_HEIGHT_MIN}
-            max={LINE_HEIGHT_MAX}
-            step={0.02}
-            onChange={(v) => onLineHeightChange(clampLine(v))}
-            onReset={() => onLineHeightChange(LINE_HEIGHT_DEFAULT)}
-          />
+            <Stepper
+              label="Line height"
+              value={lineHeight}
+              display={lineHeight.toFixed(2)}
+              min={LINE_HEIGHT_MIN}
+              max={LINE_HEIGHT_MAX}
+              defaultValue={LINE_HEIGHT_DEFAULT}
+              step={0.02}
+              onChange={(v) => onLineHeightChange(clampLine(v))}
+              onReset={() => onLineHeightChange(LINE_HEIGHT_DEFAULT)}
+            />
 
-          <button
-            type="button"
-            role="switch"
-            aria-checked={cursorBlink}
-            onClick={() => onCursorBlinkChange(!cursorBlink)}
-            className="flex items-center justify-between gap-4 rounded-[10px] border border-border bg-card p-3 text-left transition-colors hover:bg-accent"
-          >
-            <span className="flex flex-col">
-              <span className="text-[12.5px] font-[600] tracking-tight text-foreground">
-                Cursor blink
-              </span>
-              <span className="font-mono text-[11px] text-muted-foreground">
-                Blink the block cursor
-              </span>
-            </span>
-            <span
-              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                cursorBlink ? "bg-primary" : "bg-secondary"
-              }`}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={cursorBlink}
+              onClick={() => onCursorBlinkChange(!cursorBlink)}
+              className="flex w-full items-center justify-between gap-4 py-4 text-left"
             >
+              <span className="text-xs font-medium">Cursor blink</span>
               <span
-                className={`absolute top-0.5 size-4 rounded-full bg-foreground transition-transform ${
-                  cursorBlink ? "translate-x-[18px]" : "translate-x-0.5"
+                className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                  cursorBlink ? "bg-primary" : "bg-input"
                 }`}
-              />
-            </span>
-          </button>
-
-          <details className="rounded-[10px] border border-border bg-card p-3 text-sm">
-            <summary className="cursor-pointer font-semibold">Help</summary>
-            <div className="mt-3 space-y-3 text-xs leading-relaxed text-muted-foreground">
-              <div>
-                <p className="font-semibold text-foreground">Keyboard shortcuts</p>
-                <p>Ctrl/? + T: New terminal</p>
-                <p>Ctrl/? + N: New group</p>
-                <p>Ctrl/? + D: Split pane</p>
-                <p>Ctrl/? + Shift + D: Split pane vertically</p>
-                <p>Ctrl + Tab / Ctrl + Shift + Tab: Next / previous terminal</p>
-                <p>Ctrl/? + 1?9: Select group</p>
-                <p>Ctrl + F: Find in terminal; Escape closes find</p>
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">Connections</p>
-                <p>
-                  The packaged app loads its interface from its bundle. Development uses frontend
-                  port {DEV_FRONTEND_PORT}; browser development also uses local backend port{" "}
-                  {DEV_BACKEND_PORT}.
-                </p>
-                <p>
-                  If a development port is occupied, stop the other application before starting
-                  Rhino.
-                </p>
-              </div>
-              <p>
-                Groups and terminal layout are saved automatically. Terminal processes stop when the
-                app exits.
-              </p>
-            </div>
-          </details>
+              >
+                <span
+                  className={`absolute top-0.5 size-4 rounded-full transition-transform ${cursorBlink ? "bg-primary-foreground" : "bg-foreground"} ${
+                    cursorBlink ? "translate-x-[18px]" : "translate-x-0.5"
+                  }`}
+                />
+              </span>
+            </button>
+          </div>
 
           <div
-            className="rounded-[10px] border border-border bg-background p-3 font-mono shadow-inner [&_*]:font-mono"
+            className="mt-1 overflow-x-auto rounded-md bg-background p-3 font-mono [&_*]:font-mono"
             style={{ fontSize: `${fontSize}px`, lineHeight }}
             aria-hidden
           >
@@ -228,6 +193,31 @@ export function SettingsDialog({
               }`}
             />
           </div>
+          <details className="mt-4 border-t border-border pt-4 text-xs">
+            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+              Keyboard shortcuts
+            </summary>
+            <dl className="mt-3 space-y-2">
+              {[
+                ["New terminal", "Ctrl+T"],
+                ["New group", "Ctrl+N"],
+                ["Split right", "Ctrl+D"],
+                ["Split down", "Ctrl+Shift+D"],
+                ["Next terminal", "Ctrl+Tab"],
+                ["Previous terminal", "Ctrl+Shift+Tab"],
+                ["Select group", "Ctrl+1–9"],
+                ["Find in terminal", "Ctrl+F"],
+                ["Close find", "Esc"],
+              ].map(([action, shortcut]) => (
+                <div key={action} className="flex items-center justify-between gap-3">
+                  <dt>{action}</dt>
+                  <dd className="text-muted-foreground">
+                    <kbd className="font-sans">{shortcut}</kbd>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </details>
         </div>
       </DialogContent>
     </Dialog>

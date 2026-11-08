@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
 import { PatchDiff } from "@pierre/diffs/react";
 import { parseGitStatus, type GitChangedFile } from "./git-status";
 import { rpc } from "./rpc";
@@ -46,26 +46,20 @@ export function GitPanel({ cwd }: { cwd?: string }) {
           <p className="text-[12.5px] font-semibold tracking-tight text-foreground">
             Working tree clean
           </p>
-          <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
-            No changed files in this workspace.
-          </p>
-          <div className="mt-3 h-px bg-accent" />
-          <p className="text-xs text-muted-foreground">All changes committed</p>
         </div>
       ) : (
         <div className="flex flex-1 flex-col overflow-y-auto p-2">
           <div className="mb-2 flex items-center justify-between px-2">
             <span className="text-xs font-medium text-muted-foreground">Changed files</span>
-            <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none text-primary-foreground">
-              {files.length}
-            </span>
+            <span className="text-xs tabular-nums text-muted-foreground">{files.length}</span>
           </div>
           {files.map((f) => (
             <button
               key={f.path}
               type="button"
+              title={f.path}
               onClick={() => setSelected(f.path)}
-              className="flex items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-left transition-colors hover:bg-accent"
+              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
             >
               <span
                 className={`size-1.5 shrink-0 rounded-full ${f.status === "deleted" ? "bg-destructive" : f.status === "added" || f.status === "untracked" ? "bg-success" : "bg-warning"}`}
@@ -126,9 +120,10 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
           type="button"
           aria-label="Back to changed files"
           onClick={onClose}
-          className="rounded-[5px] bg-secondary px-1.5 py-0.5 font-mono text-[11px] font-bold text-primary-foreground hover:bg-accent"
+          title="Back to changed files"
+          className="flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          ←
+          <ArrowLeft size={14} />
         </button>
       )}
       <button
@@ -172,7 +167,10 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
           Loading diff…
         </div>
       ) : "error" in diff ? (
-        <p className="p-3 font-mono text-xs text-muted-foreground">{diff.error}</p>
+        <>
+          {renderHeader()}
+          <p className="p-3 text-xs text-muted-foreground">{diff.error}</p>
+        </>
       ) : diff.kind === "added" || diff.kind === "diff" ? (
         <PatchDiff
           patch={diff.kind === "added" ? createAddedPatch(path, diff.contents) : diff.patch}

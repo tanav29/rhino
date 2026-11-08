@@ -5,7 +5,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, X, Terminal, ChevronDown, PanelLeftOpen, Settings } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Plus, X, Terminal, ChevronDown, PanelRight, Settings } from "lucide-react";
 import { AgentIcon } from "./agent-icon";
 
 export interface SessionTab {
@@ -43,18 +44,43 @@ export function SessionTabs({
   onPanelToggle,
   onSettings,
 }: SessionTabsProps) {
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const tabs = tabsRef.current;
+    if (!tabs) return;
+    const revealActive = () =>
+      tabs.querySelector('[aria-pressed="true"]')?.parentElement?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+      });
+    revealActive();
+    const observer = new ResizeObserver(revealActive);
+    observer.observe(tabs);
+    return () => observer.disconnect();
+  }, [activeId, sessions, shells]);
+
   return (
     <div className="flex h-10 shrink-0 items-center border-b border-border bg-sidebar">
-      <div className="flex h-full min-w-0 flex-1 items-stretch overflow-x-auto scrollbar-none">
+      <div
+        ref={tabsRef}
+        role="group"
+        aria-label="Terminals"
+        className="flex h-full min-w-0 items-stretch overflow-x-auto scrollbar-none"
+      >
         {sessions.map((session) => {
           const active = session.id === activeId;
+          const executable = session.title.split(/[\\/]/).pop()?.toLowerCase();
+          const title =
+            shells.find((shell) => shell.value.split(/[\\/]/).pop()?.toLowerCase() === executable)
+              ?.name ?? session.title;
           const agent =
             agents.find((item) => item.sessionId === session.id)?.name ??
             session.title.match(agentTitle)?.[1];
           return (
             <div
               key={session.id}
-              className={`group relative flex shrink-0 items-center gap-1 border-r border-b-2 pr-2 text-xs transition-colors select-none ${
+              className={`group relative flex shrink-0 items-center border-r border-b-2 pr-1 text-xs transition-colors select-none ${
                 active
                   ? "border-r-border border-b-ring bg-background text-foreground"
                   : "border-r-border border-b-transparent bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -63,24 +89,25 @@ export function SessionTabs({
               <button
                 type="button"
                 onClick={() => onSelect(session.id)}
-                aria-label={agent ? `${agent}: ${session.title}` : undefined}
+                aria-label={agent ? `${agent}: ${title}` : undefined}
                 title={session.cwd ? `${session.title} — ${session.cwd}` : session.title}
                 aria-pressed={active}
                 className="flex h-full min-w-0 items-center gap-2 px-3 text-left"
               >
                 {agent ? <AgentIcon name={agent} /> : <Terminal size={14} />}
-                <span className="max-w-40 truncate text-xs">{session.title}</span>
+                <span className="max-w-40 truncate text-xs">{title}</span>
               </button>
               <button
                 type="button"
-                aria-label={`Close ${session.title}`}
+                aria-label={`Close ${title}`}
+                title={`Close ${title}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose(session.id);
                 }}
-                className={`flex size-5 shrink-0 items-center justify-center transition-colors ${
+                className={`flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors hover:bg-accent ${
                   active
-                    ? "text-muted-foreground  hover:text-foreground"
+                    ? "text-muted-foreground hover:text-foreground"
                     : "text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100 group-focus-within:opacity-100"
                 }`}
               >
@@ -106,7 +133,9 @@ export function SessionTabs({
               <button
                 type="button"
                 aria-label="Choose shell"
-                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="Choose shell"
+                disabled={shells.length === 0}
+                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
               >
                 <ChevronDown size={14} />
               </button>
@@ -142,7 +171,7 @@ export function SessionTabs({
           className={`flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent ${panel ? "bg-accent text-ring" : "text-muted-foreground hover:text-foreground"}`}
           title={panel ? "Close workspace panel" : "Open workspace panel"}
         >
-          <PanelLeftOpen size={14} strokeWidth={1.8} />
+          <PanelRight size={14} strokeWidth={1.8} />
         </button>
       </div>
     </div>
