@@ -5,7 +5,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, X, Terminal, ChevronDown, PanelLeftOpen, Settings, Bot } from "lucide-react";
+import { Plus, X, Terminal, ChevronDown, PanelLeftOpen, Settings } from "lucide-react";
+import { AgentIcon } from "./agent-icon";
 
 export interface SessionTab {
   id: string;
@@ -16,6 +17,7 @@ export interface SessionTab {
 
 interface SessionTabsProps {
   sessions: SessionTab[];
+  agents: { sessionId: string; name: string }[];
   activeId: string;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
@@ -26,10 +28,12 @@ interface SessionTabsProps {
   onSettings?: () => void;
 }
 
-const agentTitle = /(?:^|[^a-z0-9])(opencode|claude|codex|cursor|gemini|aider)(?:$|[^a-z0-9])/i;
+const agentTitle =
+  /(?:^|[^a-z0-9])(opencode|claude|codex|cursor|gemini|aider|copilot)(?:$|[^a-z0-9])/i;
 
 export function SessionTabs({
   sessions,
+  agents,
   activeId,
   onSelect,
   onClose,
@@ -44,6 +48,9 @@ export function SessionTabs({
       <div className="flex h-full min-w-0 flex-1 items-stretch overflow-x-auto scrollbar-none">
         {sessions.map((session) => {
           const active = session.id === activeId;
+          const agent =
+            agents.find((item) => item.sessionId === session.id)?.name ??
+            session.title.match(agentTitle)?.[1];
           return (
             <div
               key={session.id}
@@ -56,15 +63,12 @@ export function SessionTabs({
               <button
                 type="button"
                 onClick={() => onSelect(session.id)}
+                aria-label={agent ? `${agent}: ${session.title}` : undefined}
                 title={session.cwd ? `${session.title} — ${session.cwd}` : session.title}
                 aria-pressed={active}
                 className="flex h-full min-w-0 items-center gap-2 px-3 text-left"
               >
-                {agentTitle.test(session.title) ? (
-                  <Bot size={14} aria-label="AI agent" />
-                ) : (
-                  <Terminal size={14} />
-                )}
+                {agent ? <AgentIcon name={agent} /> : <Terminal size={14} />}
                 <span className="max-w-40 truncate text-xs">{session.title}</span>
               </button>
               <button

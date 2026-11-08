@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Folder, X, Pencil } from "lucide-react";
 import { SessionTabs } from "./session-tabs";
+import { AgentIcon } from "./agent-icon";
 import { SessionView } from "./session-view";
 import { rpc } from "./rpc";
 import { useWorkspaceStore, selectActiveSession } from "./store";
@@ -294,16 +295,16 @@ export default function App() {
                 <button
                   key={`${agent.sessionId}-${agent.name}`}
                   type="button"
+                  title={agent.name}
+                  aria-label={`${agent.name}: ${session.title}`}
                   onClick={() => {
                     selectProject(group.id);
                     selectSession(agent.sessionId);
                   }}
                   className="flex min-h-9 w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-ring"
                 >
-                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                    <span className="shrink-0 text-xs capitalize text-foreground">
-                      {agent.name}
-                    </span>
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <AgentIcon name={agent.name} />
                     <span className="min-w-0 truncate text-[11px] text-muted-foreground">
                       {/*{group.name} /*/}
                       {session.title}
@@ -406,6 +407,7 @@ export default function App() {
       <main className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
         <SessionTabs
           sessions={sessions}
+          agents={agents}
           activeId={activeSessionId}
           onSelect={selectSession}
           onClose={closeSession}
