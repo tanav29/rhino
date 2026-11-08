@@ -30,7 +30,7 @@ jobs:
         include:
           - runner: windows-2025
             target: win-x64
-          - runner: macos-14
+          - runner: macos-15
             target: macos-arm64
           - runner: ubuntu-24.04
             target: linux-x64

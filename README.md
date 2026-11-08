@@ -80,6 +80,12 @@ git push origin main v0.0.1
 
 The workflow also supports **Run workflow** with an existing version tag. Installers are currently unsigned. Publishing releases does not enable automatic updates in installed apps.
 
+To retry a tag using the current workflow, select the `main` branch and enter the tag, or run:
+
+```bash
+gh workflow run release.yml --ref main -f tag=v0.0.1
+```
+
 ## How it works
 
 ```
