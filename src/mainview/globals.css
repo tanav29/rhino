@@ -211,7 +211,7 @@ button,
   --term-line-height: 1.38;
   background: var(--term-bg);
   border-radius: 0;
-  padding: 12px 16px;
+  padding: 0;
   isolation: isolate;
 }
 

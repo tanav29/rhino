@@ -172,7 +172,7 @@ export function BackendSettings({ shareOnly = false }: { shareOnly?: boolean }) 
   }
 
   return (
-    <div className="mt-5 space-y-5 border-t border-border pt-5">
+    <div className="space-y-5">
       {desktopRpc && (
         <section aria-labelledby="share-backend-heading" className="space-y-3">
           <h2 id="share-backend-heading" className="text-sm font-medium">
@@ -316,7 +316,7 @@ export function BackendSettings({ shareOnly = false }: { shareOnly?: boolean }) 
                 </Button>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Enter the link and PIN in Rhino’s machine menu on the right, or open the link in a
+                Enter the link and PIN in the machine menu next to Settings, or open the link in a
                 browser. A new PIN disconnects all guests and stops internet sharing. Sharing is off
                 when Rhino starts.
               </p>

@@ -12,7 +12,10 @@ export function ConnectionGate() {
         {connection.status === "connected" ? (
           <App key={connection.generation} />
         ) : (
-          <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
+          <main className="relative flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
+            <div className="absolute right-2 top-1.5">
+              <MachineSelector />
+            </div>
             <div className="w-full max-w-sm space-y-6">
               <div className="space-y-2">
                 <h1 className="text-xl font-semibold tracking-tight">Connect to a terminal</h1>
@@ -35,7 +38,6 @@ export function ConnectionGate() {
           </main>
         )}
       </div>
-      <MachineSelector />
     </div>
   );
 }

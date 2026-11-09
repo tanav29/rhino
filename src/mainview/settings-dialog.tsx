@@ -1,4 +1,5 @@
-import { Minus, Plus, RotateCcw } from "lucide-react";
+import { Tabs } from "@base-ui/react/tabs";
+import { Keyboard, Minus, Monitor, Plus, RotateCcw, Terminal } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -125,14 +126,41 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex h-[min(620px,90dvh)] flex-col sm:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-border pb-4">
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>Changes save automatically.</DialogDescription>
         </DialogHeader>
 
-        <div className="px-5 pb-5">
-          <div className="divide-y divide-border">
+        <Tabs.Root defaultValue="terminal" orientation="vertical" className="flex min-h-0 flex-1">
+          <Tabs.List
+            aria-label="Settings sections"
+            activateOnFocus
+            className="flex w-12 shrink-0 flex-col gap-1 border-r border-border bg-sidebar p-1.5 sm:w-44 sm:p-3"
+          >
+            {[
+              { value: "terminal", label: "Terminal", icon: Terminal },
+              { value: "machines", label: "Machines", icon: Monitor },
+              { value: "shortcuts", label: "Keyboard shortcuts", icon: Keyboard },
+            ].map(({ value, label, icon: Icon }) => (
+              <Tabs.Tab
+                key={value}
+                value={value}
+                title={label}
+                className="flex min-h-9 items-center justify-center gap-2 rounded-md px-2 text-left text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground aria-selected:bg-accent aria-selected:text-foreground focus-visible:-outline-offset-2 sm:justify-start"
+              >
+                <Icon size={15} className="shrink-0" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only">{label}</span>
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+
+          <Tabs.Panel value="terminal" className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            <h2 className="text-sm font-semibold">Terminal</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Adjust the text and cursor in your terminals.
+            </p>
+            <div className="mt-3 divide-y divide-border">
             <Stepper
               label="Font size"
               value={fontSize}
@@ -164,8 +192,12 @@ export function SettingsDialog({
               onClick={() => onCursorBlinkChange(!cursorBlink)}
               className="flex w-full items-center justify-between gap-4 py-4 text-left"
             >
-              <span className="text-xs font-medium">Cursor blink</span>
+              <span className="space-y-1">
+                <span className="block text-xs font-medium">Cursor blink</span>
+                <span className="block text-xs text-muted-foreground">Animate the terminal cursor.</span>
+              </span>
               <span
+                aria-hidden="true"
                 className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
                   cursorBlink ? "bg-primary" : "bg-input"
                 }`}
@@ -177,10 +209,11 @@ export function SettingsDialog({
                 />
               </span>
             </button>
-          </div>
+            </div>
 
-          <div
-            className="mt-1 overflow-x-auto rounded-md bg-background p-3 font-mono [&_*]:font-mono"
+            <p className="mt-5 mb-2 text-xs font-medium text-muted-foreground">Preview</p>
+            <div
+            className="overflow-x-auto rounded-md border border-border bg-background p-4 font-mono [&_*]:font-mono"
             style={{ fontSize: `${fontSize}px`, lineHeight }}
             aria-hidden
           >
@@ -193,12 +226,23 @@ export function SettingsDialog({
                 cursorBlink ? "animate-cursor-blink" : ""
               }`}
             />
-          </div>
-          <details className="mt-4 border-t border-border pt-4 text-xs">
-            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-              Keyboard shortcuts
-            </summary>
-            <dl className="mt-3 space-y-2">
+            </div>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="machines" className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            <h2 className="text-sm font-semibold">Machines</h2>
+            <p className="mt-1 mb-5 text-xs leading-relaxed text-muted-foreground">
+              Connect to another machine or share access to this one.
+            </p>
+            <BackendSettings />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="shortcuts" className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            <h2 className="text-sm font-semibold">Keyboard shortcuts</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Navigate groups and terminals from your keyboard.
+            </p>
+            <dl className="mt-4 divide-y divide-border text-xs">
               {[
                 ["New terminal", "Ctrl+T"],
                 ["New group", "Ctrl+N"],
@@ -207,20 +251,19 @@ export function SettingsDialog({
                 ["Next terminal", "Ctrl+Tab"],
                 ["Previous terminal", "Ctrl+Shift+Tab"],
                 ["Select group", "Ctrl+1–9"],
-                ["Find in terminal", "Ctrl+F"],
+                ["Find in terminal", "Ctrl+Alt+F"],
                 ["Close find", "Esc"],
               ].map(([action, shortcut]) => (
-                <div key={action} className="flex items-center justify-between gap-3">
+                <div key={action} className="flex flex-wrap items-center justify-between gap-2 py-3">
                   <dt>{action}</dt>
                   <dd className="text-muted-foreground">
-                    <kbd className="font-sans">{shortcut}</kbd>
+                    <kbd className="rounded border border-border bg-background px-1.5 py-1 font-sans text-[11px] whitespace-nowrap">{shortcut}</kbd>
                   </dd>
                 </div>
               ))}
             </dl>
-          </details>
-          <BackendSettings />
-        </div>
+          </Tabs.Panel>
+        </Tabs.Root>
       </DialogContent>
     </Dialog>
   );

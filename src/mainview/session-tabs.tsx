@@ -17,6 +17,7 @@ import {
   Settings,
 } from "lucide-react";
 import { AgentIcon } from "./agent-icon";
+import { MachineSelector } from "./machine-selector";
 import type { AgentInfo, AgentStatus } from "../shared/rpc-schema";
 
 export interface SessionTab {
@@ -132,10 +133,10 @@ export function SessionTabs({
                 className="flex h-full min-w-0 items-center gap-2 px-3 text-left"
               >
                 {agent ? <AgentIcon name={agent} /> : <Terminal size={14} />}
-                <span className="max-w-40 truncate text-xs">{title}</span>
+                <span className="max-w-40 truncate text-xs">{agent ?? title}</span>
                 {agentInfo && (
                   <span
-                    className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
+                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[10px] text-muted-foreground"
                     title={
                       agentInfo.source === "reported"
                         ? "Reported by agent hook"
@@ -210,13 +211,14 @@ export function SessionTabs({
       <div className="ml-auto flex shrink-0 items-center gap-1 border-l border-border px-2">
         <button
           type="button"
-          aria-label="Terminal settings"
+          aria-label="Settings"
           onClick={() => onSettings?.()}
           className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          title="Terminal settings"
+          title="Settings"
         >
           <Settings size={14} strokeWidth={1.8} />
         </button>
+        <MachineSelector />
         <button
           type="button"
           aria-label={panel ? "Close workspace panel" : "Open workspace panel"}

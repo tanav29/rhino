@@ -36,10 +36,7 @@ export function MachineSelector() {
   }
 
   return (
-    <aside
-      aria-label="Machines"
-      className="flex w-11 shrink-0 flex-col items-center border-l border-border bg-sidebar py-1 text-foreground"
-    >
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
@@ -47,11 +44,11 @@ export function MachineSelector() {
               type="button"
               aria-label={`Switch machine: ${label}`}
               title={`Switch machine: ${label}`}
-              className="relative flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              className="relative flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
             />
           }
         >
-          {connection.url ? <Globe size={17} /> : <Monitor size={17} />}
+          {connection.url ? <Globe size={14} /> : <Monitor size={14} />}
           <span
             className={`absolute bottom-1 right-1 size-1.5 rounded-full ${connection.status === "connected" ? "bg-success" : "bg-destructive"}`}
           />
@@ -166,6 +163,6 @@ export function MachineSelector() {
           </div>
         </DialogContent>
       </Dialog>
-    </aside>
+    </>
   );
 }
