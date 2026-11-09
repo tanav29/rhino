@@ -163,6 +163,8 @@ export default function App() {
       if (
         event.defaultPrevented ||
         event.isComposing ||
+        (event.target instanceof Element &&
+          event.target.closest('[role="dialog"], [role="menu"]')) ||
         newOpen ||
         settingsOpen ||
         editingGroup ||

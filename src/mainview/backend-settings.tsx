@@ -12,35 +12,55 @@ import {
 const inputClass =
   "mt-1.5 w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground outline-none focus:border-ring disabled:opacity-50";
 
-export function BackendConnectionForm() {
+export function BackendConnectionForm({
+  initialUrl,
+  onConnected,
+}: {
+  initialUrl?: string;
+  onConnected?: () => void;
+}) {
   const connection = useSyncExternalStore(subscribeConnection, getConnection);
-  const [url, setUrl] = useState(connection.url);
+  const [url, setUrl] = useState(initialUrl ?? connection.url);
+  const [name, setName] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
-  const busy = connection.status === "connecting";
+  const [busy, setBusy] = useState(false);
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         setError("");
-        void connectRemoteBackend(url, pin).catch((cause) =>
-          setError(cause instanceof Error ? cause.message : "Connection failed"),
-        );
+        setBusy(true);
+        void connectRemoteBackend(url, pin, name)
+          .then(() => onConnected?.())
+          .catch((cause) => setError(cause instanceof Error ? cause.message : "Connection failed"))
+          .finally(() => setBusy(false));
         setPin("");
       }}
       className="space-y-3"
     >
       <label className="block text-xs font-medium">
-        Backend URL
+        Share link or backend URL
         <input
           type="url"
           required
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="http://192.168.1.10:43188"
+          placeholder="https://your-machine.trycloudflare.com#token=…"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
+          disabled={busy}
+          className={inputClass}
+        />
+      </label>
+      <label className="block text-xs font-medium">
+        Machine name <span className="font-normal text-muted-foreground">(optional)</span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={80}
+          placeholder="e.g. Work laptop"
           disabled={busy}
           className={inputClass}
         />
@@ -80,7 +100,7 @@ export function BackendConnectionForm() {
   );
 }
 
-export function BackendSettings() {
+export function BackendSettings({ shareOnly = false }: { shareOnly?: boolean }) {
   const connection = useSyncExternalStore(subscribeConnection, getConnection);
   const [backend, setBackend] = useState<BackendStatus | null>(null);
   const [port, setPort] = useState("");
@@ -88,21 +108,33 @@ export function BackendSettings() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPin, setShowPin] = useState(false);
+  const [copied, setCopied] = useState(false);
   useEffect(() => {
     let disposed = false;
-    void desktopRpc?.request
-      .getBackendStatus({})
-      .then((status) => {
-        if (disposed) return;
-        setBackend(status);
-        setPort(String(status.port));
-        setShared(status.shared);
-      })
-      .catch((cause) => {
-        if (!disposed) setError(String(cause));
-      });
+    let initialized = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = () =>
+      void desktopRpc?.request
+        .getBackendStatus({})
+        .then((status) => {
+          if (disposed) return;
+          setBackend(status);
+          setPort((value) => value || String(status.port));
+          if (!initialized) {
+            setShared(status.shared);
+            initialized = true;
+          }
+        })
+        .catch((cause) => {
+          if (!disposed) setError(String(cause));
+        })
+        .finally(() => {
+          if (!disposed) timer = setTimeout(refresh, 1500);
+        });
+    refresh();
     return () => {
       disposed = true;
+      clearTimeout(timer);
     };
   }, []);
 
@@ -125,6 +157,20 @@ export function BackendSettings() {
     }
   }
 
+  async function shareInternet(enabled: boolean) {
+    if (!desktopRpc) return;
+    setBusy(true);
+    setError("");
+    setCopied(false);
+    try {
+      setBackend(await desktopRpc.request.setInternetSharing({ enabled }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to update internet sharing");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="mt-5 space-y-5 border-t border-border pt-5">
       {desktopRpc && (
@@ -133,8 +179,65 @@ export function BackendSettings() {
             Share this machine
           </h2>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Allow another device on your network to use this machine’s terminal.
+            Share a public link so someone can open your terminals in Rhino from anywhere.
           </p>
+          <div className="space-y-3 rounded-md border border-border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium">Internet sharing</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy || !backend}
+                onClick={() =>
+                  void shareInternet(
+                    !["starting", "running"].includes(backend?.internet.state ?? ""),
+                  )
+                }
+              >
+                {backend?.internet.state === "starting"
+                  ? "Cancel"
+                  : backend?.internet.state === "running"
+                    ? "Stop sharing"
+                    : "Create public link"}
+              </Button>
+            </div>
+            {backend?.internet.state === "starting" && (
+              <p role="status" className="text-xs text-muted-foreground">
+                Connecting to Cloudflare…
+              </p>
+            )}
+            {backend?.internet.url && (
+              <>
+                <code className="block select-text break-all rounded bg-background p-2 text-xs">
+                  {backend.internet.url}
+                </code>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() => {
+                    void desktopRpc?.request
+                      .copyBackendShareLink({})
+                      .then(() => setCopied(true))
+                      .catch(() => setError("Unable to copy. Select and copy the link above."));
+                  }}
+                >
+                  {copied ? "Copied" : "Copy share link"}
+                </Button>
+              </>
+            )}
+            {backend?.internet.error && (
+              <p role="alert" className="text-xs text-destructive">
+                {backend.internet.error}
+              </p>
+            )}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Share the complete link and PIN below with people you trust. They grant full terminal
+              access. Keep Rhino running. Stopping sharing disconnects guests; the next link will be
+              different. A new link may take a moment to become reachable.
+            </p>
+          </div>
           <label className="flex items-center gap-2 text-xs">
             <input
               type="checkbox"
@@ -213,8 +316,9 @@ export function BackendSettings() {
                 </Button>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Open the address on another device and enter this PIN. A new PIN disconnects all
-                remote clients. Sharing is off each time the app starts.
+                Enter the link and PIN in Rhino’s machine menu on the right, or open the link in a
+                browser. A new PIN disconnects all guests and stops internet sharing. Sharing is off
+                when Rhino starts.
               </p>
             </>
           )}
@@ -225,18 +329,20 @@ export function BackendSettings() {
           )}
         </section>
       )}
-      <section aria-labelledby="remote-backend-heading" className="space-y-3">
-        <h2 id="remote-backend-heading" className="text-sm font-medium">
-          Control another machine
-        </h2>
-        <p className="break-all text-xs leading-relaxed text-muted-foreground">
-          {connection.url ? `Connected to ${connection.url}` : "Currently using this machine."}
-        </p>
-        <BackendConnectionForm />
-      </section>
+      {!shareOnly && (
+        <section aria-labelledby="remote-backend-heading" className="space-y-3">
+          <h2 id="remote-backend-heading" className="text-sm font-medium">
+            Control another machine
+          </h2>
+          <p className="break-all text-xs leading-relaxed text-muted-foreground">
+            {connection.url ? `Connected to ${connection.url}` : "Currently using this machine."}
+          </p>
+          <BackendConnectionForm />
+        </section>
+      )}
       <p className="text-xs leading-relaxed text-muted-foreground">
-        The PIN grants full terminal access. Use a trusted network; HTTP connections are not
-        encrypted. The PIN is never saved on this device.
+        Cloudflare links use HTTPS. Use LAN addresses on trusted networks only. PINs and access
+        tokens are never saved on this device. cloudflared must be installed to create public links.
       </p>
     </div>
   );

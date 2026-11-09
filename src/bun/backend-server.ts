@@ -57,6 +57,7 @@ export function startBackendServer(options: {
   pin: string;
   staticDirectory: string;
   handlers: BunRequestHandlers;
+  accessToken?: string;
 }) {
   if (!/^\d{6}$/.test(options.pin)) throw new Error("PIN must contain exactly six digits");
   const sockets = new Set<ServerWebSocket<SocketData>>();
@@ -150,6 +151,18 @@ export function startBackendServer(options: {
           const { method, params } = payload;
           if (!socket.data.authenticated) {
             if (method !== "authenticate" || id === undefined) throw new Error("PIN required");
+            if (options.accessToken) {
+              const candidate = params?.token;
+              const expected = Buffer.from(options.accessToken);
+              if (
+                !isString(candidate) ||
+                Buffer.byteLength(candidate) !== expected.length ||
+                !timingSafeEqual(expected, Buffer.from(candidate))
+              )
+                throw new Error(
+                  "Invalid share link. Paste the complete link from the host machine.",
+                );
+            }
             authenticate(socket.data.ip, params?.pin);
             socket.data.authenticated = true;
             clearTimeout(socket.data.timer);

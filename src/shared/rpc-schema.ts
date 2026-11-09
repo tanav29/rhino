@@ -65,6 +65,11 @@ export interface BackendStatus {
   pin: string;
   urls: string[];
   error?: string;
+  internet: {
+    state: "stopped" | "starting" | "running" | "error";
+    url?: string;
+    error?: string;
+  };
 }
 
 export type RpcClient = {
@@ -100,6 +105,8 @@ export type AppRPC = {
   bun: RPCSchema<{
     requests: {
       getBackendStatus: { params: {}; response: BackendStatus };
+      setInternetSharing: { params: { enabled: boolean }; response: BackendStatus };
+      copyBackendShareLink: { params: {}; response: null };
       configureBackend: {
         params: { shared: boolean; port: number; regeneratePin?: boolean };
         response: BackendStatus;

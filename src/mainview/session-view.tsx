@@ -6,7 +6,7 @@ import type { SessionTab } from "./session-tabs";
 import {
   desktopRpc,
   getConnection,
-  rpc,
+  getBackendClient,
   subscribePtyExit,
   subscribePtyOutput,
   subscribePtyTitle,
@@ -30,6 +30,7 @@ export function SessionView({
   lineHeight?: number;
   cursorBlink?: boolean;
 }) {
+  const [rpc] = useState(getBackendClient);
   const { ref, write, focus } = useTerminal();
   const [core, setCore] = useState<GhosttyCore | null>(null);
   const [ready, setReady] = useState(false);
@@ -77,7 +78,11 @@ export function SessionView({
   useEffect(() => {
     if (!ready || !visible || !active) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.isComposing) return;
+      if (
+        event.isComposing ||
+        (event.target instanceof Element && event.target.closest('[role="dialog"], [role="menu"]'))
+      )
+        return;
       if (
         event.ctrlKey &&
         event.altKey &&
@@ -179,7 +184,7 @@ export function SessionView({
       unsubTitle();
       unsubExit();
     };
-  }, [core, ready, ref, session.cwd, session.id, session.shell, write]);
+  }, [core, ready, ref, rpc, session.cwd, session.id, session.shell, write]);
 
   const rowHeight = Math.round(fontSize * lineHeight);
 

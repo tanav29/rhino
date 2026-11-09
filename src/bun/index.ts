@@ -43,6 +43,13 @@ const rpc = BrowserView.defineRPC<AppRPC>({
     requests: {
       ...handlers,
       getBackendStatus: () => backend.status(),
+      setInternetSharing: (options) => backend.setInternetSharing(options),
+      copyBackendShareLink: () => {
+        const link = backend.status().internet.url;
+        if (!link) throw new Error("Create a public link first");
+        Utils.clipboardWriteText(link);
+        return null;
+      },
       configureBackend: (options) => backend.configure(options),
       openTerminalLink: async ({ sessionId, target }) => {
         let link = resolveTerminalLink(target, process.cwd());

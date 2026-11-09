@@ -1,7 +1,9 @@
 import { networkInterfaces } from "node:os";
+import { randomBytes } from "node:crypto";
 import { DEV_BACKEND_PORT } from "../shared/ports";
 import type { BackendStatus, BunRequestHandlers } from "../shared/rpc-schema";
 import { generatePin, startBackendServer } from "./backend-server";
+import { createCloudflareTunnel } from "./cloudflare-tunnel";
 
 export function createBackendController(handlers: BunRequestHandlers, staticDirectory: string) {
   let server: ReturnType<typeof startBackendServer> | undefined;
@@ -9,6 +11,15 @@ export function createBackendController(handlers: BunRequestHandlers, staticDire
   let port = DEV_BACKEND_PORT;
   let pin = generatePin();
   let error: string | undefined;
+  let publicServer: ReturnType<typeof startBackendServer> | undefined;
+  let accessToken = "";
+  const tunnel = createCloudflareTunnel({
+    onStopped() {
+      publicServer?.stop();
+      publicServer = undefined;
+      accessToken = "";
+    },
+  });
 
   function start() {
     server = startBackendServer({
@@ -37,6 +48,10 @@ export function createBackendController(handlers: BunRequestHandlers, staticDire
       pin,
       urls: server ? [...new Set(hosts)].map((host) => `http://${host}:${port}`) : [],
       error,
+      internet: {
+        ...tunnel.status(),
+        url: tunnel.status().url ? `${tunnel.status().url}#token=${accessToken}` : undefined,
+      },
     };
   }
 
@@ -48,6 +63,28 @@ export function createBackendController(handlers: BunRequestHandlers, staticDire
 
   return {
     status,
+    setInternetSharing({ enabled }: { enabled: boolean }) {
+      if (typeof enabled !== "boolean") throw new Error("Invalid sharing option");
+      if (!enabled) tunnel.stop();
+      else if (!publicServer) {
+        accessToken = randomBytes(32).toString("base64url");
+        try {
+          publicServer = startBackendServer({
+            handlers,
+            staticDirectory,
+            port: 0,
+            pin,
+            accessToken,
+            hostname: "127.0.0.1",
+          });
+          tunnel.start(`http://127.0.0.1:${publicServer.port}`);
+        } catch (cause) {
+          tunnel.stop();
+          throw cause;
+        }
+      }
+      return status();
+    },
     configure(options: { shared: boolean; port: number; regeneratePin?: boolean }) {
       if (
         typeof options.shared !== "boolean" ||
@@ -58,6 +95,7 @@ export function createBackendController(handlers: BunRequestHandlers, staticDire
         throw new Error("Choose a port between 1 and 65535");
       }
       const previous = { shared, port, pin };
+      tunnel.stop();
       server?.stop();
       server = undefined;
       shared = options.shared;
@@ -83,6 +121,7 @@ export function createBackendController(handlers: BunRequestHandlers, staticDire
       return status();
     },
     stop() {
+      tunnel.stop();
       server?.stop();
       server = undefined;
     },

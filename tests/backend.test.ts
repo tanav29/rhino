@@ -6,7 +6,11 @@ import { createBackendHandlers } from "../src/bun/backend-handlers";
 import { createBackendController } from "../src/bun/backend-controller";
 import { generatePin, startBackendServer } from "../src/bun/backend-server";
 import { attachSession, killAllSessions, type SessionEvent } from "../src/bun/sessions";
-import { connectBackendSocket, normalizeBackendUrl } from "../src/mainview/backend-client";
+import {
+  connectBackendSocket,
+  normalizeBackendUrl,
+  parseBackendLink,
+} from "../src/mainview/backend-client";
 
 const directory = mkdtempSync(join(tmpdir(), "term-backend-test-"));
 const publicDirectory = join(directory, "public");
@@ -123,6 +127,10 @@ test("authenticated client controls a real PTY, reattaches with scrollback, and 
 test("network clients cannot manage sharing or send malformed PTY requests", async () => {
   const client = await connect(start());
   await expect(client.request.getBackendStatus({})).rejects.toThrow("Invalid request");
+  await expect(client.request.setInternetSharing({ enabled: true })).rejects.toThrow(
+    "Invalid request",
+  );
+  await expect(client.request.copyBackendShareLink({})).rejects.toThrow("Invalid request");
   await expect(
     client.request.openTerminalLink({ sessionId: "local", target: "https://example.com" }),
   ).rejects.toThrow("Invalid request");
@@ -212,4 +220,36 @@ test("backend URLs accept HTTP and WebSocket URLs without embedding credentials"
     expect(() => normalizeBackendUrl(value)).toThrow();
   }
   expect(generatePin()).toMatch(/^\d{6}$/);
+});
+
+test("public backends require both the complete share link and PIN", async () => {
+  const token = "a".repeat(43);
+  const server = startBackendServer({
+    port: 0,
+    hostname: "127.0.0.1",
+    pin: "012345",
+    accessToken: token,
+    staticDirectory: publicDirectory,
+    handlers: createBackendHandlers(),
+  });
+  servers.push(server);
+  const url = `http://127.0.0.1:${server.port}`;
+  const connectPublic = (link: string, pin = "012345") =>
+    connectBackendSocket({
+      url: link,
+      pin,
+      onEvent() {},
+      onClose() {},
+    });
+  await expect(connectPublic(url)).rejects.toThrow("Invalid share link");
+  await expect(connectPublic(`${url}#token=${"b".repeat(43)}`)).rejects.toThrow(
+    "Invalid share link",
+  );
+  await expect(connectPublic(`${url}#token=${token}`, "999999")).rejects.toThrow("Incorrect PIN");
+  const client = await connectPublic(`${url}#token=${token}`);
+  clients.push(client);
+  expect((await client.client.request.listShells({})).length).toBeGreaterThan(0);
+  expect(parseBackendLink(`${url}#token=${token}`)).toEqual({ url, token });
+  for (const fragment of ["#token=short", `#token=${token}&pin=012345`, "#unknown=value"])
+    expect(() => parseBackendLink(`${url}${fragment}`)).toThrow();
 });

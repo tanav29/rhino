@@ -17,13 +17,28 @@ export function normalizeBackendUrl(value: string) {
   return url.toString().replace(/\/$/, "");
 }
 
+/** Access tokens live in fragments, so HTTP requests and referrers never contain them. */
+export function parseBackendLink(value: string) {
+  const link = new URL(value.trim());
+  let token: string | undefined;
+  if (link.hash) {
+    if (!/^#token=[A-Za-z0-9_-]{43}$/.test(link.hash))
+      throw new Error("Paste the complete share link from Rhino");
+    token = link.hash.slice(7);
+    link.hash = "";
+  }
+  return { url: normalizeBackendUrl(link.toString()), token };
+}
+
 export async function connectBackendSocket(options: {
   url: string;
   pin: string;
+  token?: string;
   onEvent: (event: SessionEvent) => void;
   onClose: () => void;
 }) {
-  const url = new URL(`${normalizeBackendUrl(options.url)}/ws`);
+  const link = parseBackendLink(options.url);
+  const url = new URL(`${link.url}/ws`);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   const socket = new WebSocket(url);
   const pending = new Map<
@@ -100,7 +115,8 @@ export async function connectBackendSocket(options: {
         once: true,
       });
     });
-    await call("authenticate", { pin: options.pin }, 8000);
+    const token = options.token ?? link.token;
+    await call("authenticate", { pin: options.pin, token }, 8000);
   } catch (error) {
     socket.close();
     throw error;

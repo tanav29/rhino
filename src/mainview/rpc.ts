@@ -2,7 +2,7 @@ import { DEV_BACKEND_PORT, DEV_FRONTEND_PORT } from "../shared/ports";
 import { Electroview } from "electrobun/view";
 import type { AppRPC, RpcClient } from "../shared/rpc-schema";
 import type { SessionEvent } from "../bun/sessions";
-import { connectBackendSocket, normalizeBackendUrl } from "./backend-client";
+import { createBackendConnections } from "./backend-connections";
 
 type Listener<T> = (payload: T) => void;
 const outputListeners = new Map<string, Set<Listener<string>>>();
@@ -30,7 +30,7 @@ function dispatch(event: SessionEvent) {
   if (event.kind === "exit") notify(exitListeners, event.sessionId, undefined);
 }
 
-let active: RpcClient | null = null;
+const isLocalActive = () => getConnection().status === "connected" && !getConnection().url;
 
 const native = Electroview.defineRPC<AppRPC>({
   maxRequestTime: 60_000,
@@ -38,15 +38,13 @@ const native = Electroview.defineRPC<AppRPC>({
     requests: {},
     messages: {
       ptyOutput: ({ sessionId, data }) => {
-        if (active === (native as unknown as RpcClient))
-          dispatch({ kind: "output", sessionId, data });
+        if (isLocalActive()) dispatch({ kind: "output", sessionId, data });
       },
       ptyTitle: ({ sessionId, title }) => {
-        if (active === (native as unknown as RpcClient))
-          dispatch({ kind: "title", sessionId, title });
+        if (isLocalActive()) dispatch({ kind: "title", sessionId, title });
       },
       ptyExit: ({ sessionId }) => {
-        if (active === (native as unknown as RpcClient)) dispatch({ kind: "exit", sessionId });
+        if (isLocalActive()) dispatch({ kind: "exit", sessionId });
       },
     },
   },
@@ -59,122 +57,43 @@ export const desktopRpc: RpcClient | null = window.__electrobun
     })()
   : null;
 
-const URL_KEY = "term.backendUrl:v1";
-function savedUrl() {
-  try {
-    return localStorage.getItem(URL_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-const rememberedUrl = savedUrl();
 const browserUrl =
   location.port === String(DEV_FRONTEND_PORT)
     ? `${location.protocol}//${location.hostname}:${DEV_BACKEND_PORT}`
     : location.origin;
-active = rememberedUrl || !desktopRpc ? null : desktopRpc;
-let network: Awaited<ReturnType<typeof connectBackendSocket>> | undefined;
-let generation = 0;
-let state: {
-  status: "connected" | "connecting" | "disconnected";
-  url: string;
-  error: string;
-  generation: number;
-} = {
-  status: active ? "connected" : "disconnected",
-  url: rememberedUrl || (desktopRpc ? "" : browserUrl),
-  error: "",
-  generation,
-};
-const connectionListeners = new Set<() => void>();
-function update(next: Partial<typeof state>) {
-  state = { ...state, ...next };
-  for (const listener of connectionListeners) listener();
+let storage: Storage | undefined;
+try {
+  storage = localStorage;
+} catch {
+  /* Storage may be unavailable. */
 }
-export const getConnection = () => state;
-export function getBackendClient(): RpcClient {
-  if (!active) throw new Error("Backend disconnected");
-  return active;
-}
-export const subscribeConnection = (listener: () => void) => {
-  connectionListeners.add(listener);
-  return () => {
-    connectionListeners.delete(listener);
-  };
-};
-
-export async function connectRemoteBackend(value: string, pin: string) {
-  const url = normalizeBackendUrl(value);
-  if (!/^\d{6}$/.test(pin)) throw new Error("Enter the six-digit PIN shown on the host machine");
-  const attempt = ++generation;
-  network?.close();
-  network = undefined;
-  active = null;
-  update({ status: "connecting", url, error: "" });
-  let established = false;
-  try {
-    const connection = await connectBackendSocket({
-      url,
-      pin,
-      onEvent: (event) => {
-        if (attempt === generation && active) dispatch(event);
-      },
-      onClose: () => {
-        if (attempt !== generation || !established) return;
-        active = null;
-        update({
-          status: "disconnected",
-          error: "Backend disconnected. Enter the PIN to reconnect.",
-        });
-      },
-    });
-    if (attempt !== generation) {
-      connection.close();
-      return;
-    }
-    network = connection;
-    established = true;
-    active = connection.client;
-    try {
-      localStorage.setItem(URL_KEY, url);
-    } catch {
-      /* Storage may be unavailable. */
-    }
-    update({ status: "connected", generation: attempt, error: "" });
-  } catch (error) {
-    if (attempt === generation)
-      update({
-        status: "disconnected",
-        error: error instanceof Error ? error.message : "Connection failed",
-      });
-    throw error;
-  }
-}
-
-export function switchToLocalBackend() {
-  if (!desktopRpc) return;
-  generation++;
-  network?.close();
-  network = undefined;
-  active = desktopRpc;
-  try {
-    localStorage.removeItem(URL_KEY);
-  } catch {
-    /* Storage may be unavailable. */
-  }
-  update({ status: "connected", url: "", error: "", generation });
-}
+export const backendConnections = createBackendConnections({
+  local: desktopRpc,
+  initialUrl: browserUrl,
+  storage,
+  onEvent: dispatch,
+});
+export const getConnection = backendConnections.getSnapshot;
+export const getBackendClient = backendConnections.getClient;
+export const subscribeConnection = backendConnections.subscribe;
+export const connectRemoteBackend = backendConnections.connect;
+export const switchToLocalBackend = backendConnections.switchToLocal;
 
 // Call sites keep the same typed RPC surface when the selected machine changes.
 export const rpc: RpcClient = {
   request: new Proxy({} as RpcClient["request"], {
     get: (_, method: keyof RpcClient["request"]) => (params: never) => {
-      if (!active) return Promise.reject(new Error("Backend disconnected"));
-      return active.request[method](params);
+      try {
+        return getBackendClient().request[method](params);
+      } catch (cause) {
+        return Promise.reject(cause);
+      }
     },
   }),
   send: new Proxy({} as RpcClient["send"], {
-    get: (_, method: keyof RpcClient["send"]) => (params: never) => active?.send[method](params),
+    get: (_, method: keyof RpcClient["send"]) => (params: never) => {
+      if (getConnection().status === "connected") getBackendClient().send[method](params);
+    },
   }),
 };
 

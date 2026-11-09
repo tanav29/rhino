@@ -24,6 +24,7 @@ Deploy on Vercel by importing the repository and setting the project root to `ma
 - **Shell detection** — cmd / PowerShell / pwsh / git-bash / WSL / bash / zsh
 - **Workspaces** — multiple projects, persisted under the app's `userData` dir
 - **Network terminals** — share a backend on your LAN or control another machine with its URL and six-digit PIN
+- **Internet sharing** — create a Cloudflare public link and switch between local and shared machines from the menu on the right
 - **Smart selection** — double-click paths, URLs, IP addresses, git hashes and numbers, including soft-wrapped output
 - **Clickable output** — Ctrl-click (Cmd-click on macOS) URLs, OSC 8 links and local file paths; files are revealed in the file manager and directories open normally
 - **Agent status** — agent tabs show working / idle activity estimates, with exact blocked / needs attention states available through agent hooks
@@ -93,13 +94,28 @@ bun run dev:bundled
 
 ## Use terminals over your network
 
+### Share over the internet
+
+Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/downloads/) on the host and make sure it is on `PATH`, then restart Rhino. No Cloudflare account or domain is needed.
+
+1. Click the **machine button on the right → Share this machine → Create public link**.
+2. Copy the complete `https://….trycloudflare.com#token=…` link and reveal the six-digit PIN. Share both with someone you trust: they grant full terminal access.
+3. In the other Rhino app, click **machine button → Add a machine**, paste the complete link, enter the PIN, and optionally name the machine. The link also opens Rhino's web interface in a browser.
+4. Use the same menu to switch between **This machine** and any connected backend. Connections and shell processes stay alive while switching. **Manage machines** removes saved addresses and disconnects this app without killing the host's terminals.
+
+Only machine names and backend addresses are remembered. PINs and link tokens stay in memory; after restarting or losing a connection, paste the complete link and PIN again. The desktop app starts on its local backend.
+
+Internet sharing uses a separate token-protected loopback listener and Cloudflare's HTTPS/WSS tunnel; LAN sharing can remain off. **Stop sharing**, changing backend settings, regenerating the PIN, or quitting Rhino revokes the public connection. Sharing is off after an app restart. Each start generates a fresh link and access token. Cloudflare Quick Tunnels have temporary hostnames and no uptime guarantee; see [Cloudflare's Quick Tunnel documentation](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
+
+### Share on your LAN
+
 On the host machine, open **Settings → Share this machine**, enable **network sharing**, choose a port (default `43188`), and click **Apply**. Click **Show** to reveal the six-digit PIN. Keep the host app running.
 
-On another device on the same network, open one of the displayed `http://<host-ip>:43188` addresses in a browser and enter the PIN. Or, in another Rhino app, open **Settings → Control another machine**, enter the backend URL and PIN, and click **Connect**. The terminals, shells, files, Git data, and workspace come from the selected machine. **Use this machine** switches the desktop app back to its local backend.
+On another device on the same network, open one of the displayed `http://<host-ip>:43188` addresses in a browser and enter the PIN. Or, in another Rhino app, open **machine button → Add a machine**, enter the backend URL and PIN, and click **Connect**. The terminals, shells, files, Git data, and workspace come from the selected machine. **This machine** switches the desktop app back to its local backend.
 
 The backend starts on loopback only; LAN sharing must be enabled again after restarting the desktop app. **New PIN** disconnects remote clients immediately. Clients remember the backend URL, but never save the PIN. Failed PIN attempts are limited per address and across the server. Changing ports or turning sharing off also disconnects remote clients, while their shell processes remain running on the host.
 
-The PIN grants full terminal access. Use this on a trusted network: HTTP/WebSocket traffic is not encrypted. To connect from outside a trusted network, put the backend behind an authenticated VPN or an HTTPS/WSS proxy. If Windows prompts, allow the host app through the firewall on your private network.
+The PIN grants full terminal access. Use LAN addresses on a trusted network: HTTP/WebSocket traffic is not encrypted. For internet access, use the public-link flow above. If Windows prompts, allow the host app through the firewall on your private network.
 
 To run a backend without the desktop window:
 
