@@ -3,7 +3,7 @@ import { Plus, Trash2, Folder, X, Pencil, Ellipsis } from "lucide-react";
 import { SessionTabs } from "./session-tabs";
 import { AgentIcon } from "./agent-icon";
 import { SessionView } from "./session-view";
-import { desktopRpc, getBackendClient, getConnection } from "./rpc";
+import { backendConnections, desktopRpc, getBackendClient, getConnection } from "./rpc";
 import type { AgentInfo } from "../shared/rpc-schema";
 import { useWorkspaceStore, selectActiveSession } from "./store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -78,6 +78,7 @@ export default function App() {
   const sessions = project?.sessions ?? [];
   const activeSession = useWorkspaceStore(selectActiveSession);
   const defaultShell = useWorkspaceStore((s) => s.defaultShell);
+  const defaultDirectory = useWorkspaceStore((s) => s.defaultDirectory);
   const panelCwd = activeSession?.cwd || project?.path;
 
   useEffect(() => {
@@ -106,19 +107,32 @@ export default function App() {
       panel: null,
       lastSessionByProject: {},
     });
-    void backendRpc.request
-      .loadWorkspace({})
+    const remoteUrl = getConnection().url;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = backendRpc.request.loadWorkspace({});
+    const timedLoad = remoteUrl
+      ? Promise.race([
+          load,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error("Workspace request timed out")), 8000);
+          }),
+        ])
+      : load;
+    void timedLoad
       .then((snapshot) => {
         if (disposed) return;
         hydrate(snapshot);
         setLoaded(true);
       })
       .catch((cause) => {
-        if (!disposed)
-          setLoadError(cause instanceof Error ? cause.message : "Unable to load workspace");
+        if (!disposed) {
+          if (remoteUrl) backendConnections.failRemote(remoteUrl);
+          else setLoadError(cause instanceof Error ? cause.message : "Unable to load workspace");
+        }
       });
     return () => {
       disposed = true;
+      if (timer) clearTimeout(timer);
     };
   }, [backendRpc, hydrate]);
 
@@ -132,6 +146,7 @@ export default function App() {
           activeSessionId,
           panes,
           defaultShell,
+          defaultDirectory,
           termFontSize,
           termLineHeight,
           termCursorBlink,
@@ -148,6 +163,7 @@ export default function App() {
     activeSessionId,
     panes,
     defaultShell,
+    defaultDirectory,
     termFontSize,
     termLineHeight,
     termCursorBlink,

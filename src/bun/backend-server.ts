@@ -45,7 +45,8 @@ const validators: Record<string, (params: Record<string, unknown>) => boolean> =
     isSize(p.cols) &&
     isSize(p.rows) &&
     optionalString(p.shell) &&
-    optionalString(p.cwd),
+    optionalString(p.cwd) &&
+    optionalString(p.sourceSessionId),
   ptyInput: (p) => isSession(p) && isString(p.data),
   ptyResize: (p) => isSession(p) && isSize(p.cols) && isSize(p.rows),
   killSession: isSession,

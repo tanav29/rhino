@@ -1,1 +1,2 @@
 - [ ] MCP support: let agents discover sessions, read output, send input, and manage terminals through an authenticated MCP server. Define permissions and local/remote access before exposing tools.
+- [ ] The marketing app has the /app page that have the shared ui from desktop not built another one, so that user can connect there terminal from browser too, with multiple machien connections too.

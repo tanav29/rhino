@@ -38,6 +38,7 @@ export interface WorkspaceSnapshot {
   activeSessionId: string;
   panes: unknown[];
   defaultShell?: string;
+  defaultDirectory?: string;
   termFontSize?: number;
   termLineHeight?: number;
   termCursorBlink?: boolean;
@@ -46,6 +47,7 @@ export interface WorkspaceSnapshot {
 
 export interface AttachSessionParams {
   sessionId: string;
+  sourceSessionId?: string;
   shell?: string;
   cwd?: string;
   cols: number;

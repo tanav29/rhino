@@ -113,6 +113,23 @@ export function createBackendConnections(options: {
       else selection++;
       return true;
     },
+    failRemote(url: string) {
+      const connection = connections.get(url);
+      connections.delete(url);
+      connection?.close();
+      if (state.url === url) {
+        if (options.local) select("", options.local);
+        else {
+          active = null;
+          update({ status: "disconnected" });
+        }
+      }
+      const machine = state.machines.find((item) => item.url === url);
+      update({
+        machines: machineStatus(url, "disconnected"),
+        error: `${machine?.name ?? "Machine"} is not available.`,
+      });
+    },
     forget(url: string) {
       attempts.delete(url);
       const connection = connections.get(url);
@@ -159,11 +176,12 @@ export function createBackendConnections(options: {
             if (!connection || connections.get(url) !== connection) return;
             connections.delete(url);
             if (active === connection.client) {
-              active = null;
-              update({
-                status: "disconnected",
-                error: "Backend disconnected. Enter the PIN and complete share link to reconnect.",
-              });
+              if (options.local) select("", options.local);
+              else {
+                active = null;
+                update({ status: "disconnected" });
+              }
+              update({ error: `${machine.name} is not available.` });
             }
             update({ machines: machineStatus(url, "disconnected") });
           },
@@ -184,6 +202,7 @@ export function createBackendConnections(options: {
         if (attempts.get(url) === attempt)
           update({
             machines: machineStatus(url, connections.has(url) ? "connected" : "disconnected"),
+            error: `${machine.name} is not available.`,
           });
         throw cause;
       } finally {

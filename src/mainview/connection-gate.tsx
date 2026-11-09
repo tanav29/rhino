@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import App from "./App";
 import { BackendConnectionForm } from "./backend-settings";
 import { getConnection, subscribeConnection } from "./rpc";
@@ -6,8 +6,23 @@ import { MachineSelector } from "./machine-selector";
 
 export function ConnectionGate() {
   const connection = useSyncExternalStore(subscribeConnection, getConnection);
+  const [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (!connection.error) return;
+    setNotice(connection.error);
+    const timer = setTimeout(() => setNotice(""), 5000);
+    return () => clearTimeout(timer);
+  }, [connection.error]);
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      {notice && (
+        <div
+          role="alert"
+          className="fixed right-4 top-4 z-50 rounded-md border border-destructive bg-background px-4 py-3 text-sm text-destructive shadow-lg"
+        >
+          {notice}
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         {connection.status === "connected" ? (
           <App key={connection.generation} />

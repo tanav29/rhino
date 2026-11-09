@@ -25,6 +25,7 @@ export interface SessionTab {
   title: string;
   shell?: string;
   cwd?: string;
+  sourceSessionId?: string;
 }
 
 interface SessionTabsProps {

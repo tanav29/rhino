@@ -69,7 +69,15 @@ export function MachineSelector() {
                 if (!backendConnections.switchToRemote(machine.url)) connect(machine.url);
               }}
             >
-              <Server />
+              <Server
+                className={
+                  machine.status === "disconnected"
+                    ? "text-destructive"
+                    : machine.status === "connected"
+                      ? "text-success"
+                      : "text-muted-foreground"
+                }
+              />
               <span className="min-w-0 flex-1">
                 <span className="block truncate">{machine.name}</span>
                 <span className="block truncate text-[11px] text-muted-foreground">

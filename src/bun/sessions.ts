@@ -2,6 +2,7 @@ import { statSync } from "node:fs";
 import type { AgentInfo, AppRPC } from "../shared/rpc-schema";
 import { getAvailableShells } from "./shells";
 import { TerminalMetadata } from "./terminal-metadata";
+import { resolveTerminalLink } from "./terminal-links";
 
 interface ShellProcess {
   pid: number;
@@ -87,7 +88,9 @@ function getWorkingDirectory(cwd?: string): string | undefined {
     process.platform === "win32"
       ? process.env.USERPROFILE || process.cwd()
       : process.env.HOME || process.cwd();
-  const candidate = cwd ? cwd : fallback;
+  const candidate = cwd && /^~(?:[\\/]|$)/.test(cwd)
+    ? resolveTerminalLink(cwd, fallback).value
+    : cwd || fallback;
   try {
     if (statSync(candidate).isDirectory()) return candidate;
   } catch {
@@ -129,7 +132,7 @@ function finishSession(id: string, session: PtySession) {
   emit({ kind: "exit", sessionId: id });
 }
 
-export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }: AttachParams): {
+export function attachSession({ sessionId, sourceSessionId, shell: shellValue, cwd, cols, rows }: AttachParams): {
   title: string;
   replay: string;
 } {
@@ -139,7 +142,10 @@ export function attachSession({ sessionId, shell: shellValue, cwd, cols, rows }:
   }
 
   const { shell, args } = getShell(shellValue);
-  const safeCwd = shellValue?.startsWith("ssh:") ? undefined : getWorkingDirectory(cwd);
+  const source = sourceSessionId ? getSessionDirectory(sourceSessionId) : undefined;
+  const sourcePath = source?.uri ? resolveTerminalLink(source.uri, source.cwd) : undefined;
+  const inheritedCwd = sourcePath?.kind === "path" ? sourcePath.value : source?.cwd;
+  const safeCwd = shellValue?.startsWith("ssh:") ? undefined : getWorkingDirectory(inheritedCwd || cwd);
 
   let terminal: Bun.Terminal | undefined;
   let proc: ShellProcess;

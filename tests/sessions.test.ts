@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import {
   attachSession,
+  getSessionDirectory,
   killAllSessions,
   killSession,
   resizePty,
@@ -62,4 +63,10 @@ test("shell exit delivers final output before the exit event", async () => {
       .some((event) => event.kind === "output" && event.data.includes("FINAL_OUTPUT")),
   ).toBe(true);
   expect(events.filter((event) => event.kind === "exit")).toHaveLength(1);
+});
+
+test("new sessions resolve the home directory", () => {
+  attachSession({ sessionId: "home", cols: 80, rows: 24, cwd: "~" });
+  const home = process.platform === "win32" ? process.env.USERPROFILE : process.env.HOME;
+  expect(getSessionDirectory("home")?.cwd).toBe(home || process.cwd());
 });

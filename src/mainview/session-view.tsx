@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Terminal, useTerminal } from "@wterm/react";
 import { GhosttyCore } from "@wterm/ghostty";
 import { TerminalFind } from "./terminal-find";
+import { useWorkspaceStore } from "./store";
 import type { SessionTab } from "./session-tabs";
 import {
   desktopRpc,
@@ -148,7 +149,8 @@ export function SessionView({
         const attached = await rpc.request.attachSession({
           sessionId: session.id,
           shell: session.shell || undefined,
-          cwd: session.cwd || undefined,
+          cwd: session.cwd || useWorkspaceStore.getState().defaultDirectory?.trim() || undefined,
+          sourceSessionId: session.sourceSessionId,
           cols: size.cols,
           rows: size.rows,
         });
@@ -304,3 +306,4 @@ export function SessionView({
     </div>
   );
 }
+

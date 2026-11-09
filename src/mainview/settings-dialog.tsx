@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BackendSettings } from "./backend-settings";
 import {
+  useWorkspaceStore,
   FONT_SIZE_MIN,
   FONT_SIZE_MAX,
   FONT_SIZE_DEFAULT,
@@ -124,6 +125,8 @@ export function SettingsDialog({
   cursorBlink,
   onCursorBlinkChange,
 }: SettingsDialogProps) {
+  const defaultDirectory = useWorkspaceStore((s) => s.defaultDirectory);
+  const setDefaultDirectory = useWorkspaceStore((s) => s.setDefaultDirectory);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[min(620px,90dvh)] flex-col sm:max-w-3xl">
@@ -160,6 +163,11 @@ export function SettingsDialog({
               Adjust the text and cursor in your terminals.
             </p>
             <div className="mt-3 divide-y divide-border">
+            <label className="flex flex-col gap-2 py-4 text-xs font-medium">
+              Starting directory
+              <input className="rounded-md border border-input bg-background px-3 py-2 font-mono" value={defaultDirectory ?? ""} onChange={(event) => setDefaultDirectory(event.target.value)} placeholder="Home directory" />
+              <span className="font-normal text-muted-foreground">Used for new terminals outside a project. Leave empty to use your home directory.</span>
+            </label>
             <Stepper
               label="Font size"
               value={fontSize}
