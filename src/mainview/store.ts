@@ -162,11 +162,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         );
       });
     const loaded = valid
-      ? (snap!.projects as Project[]).map((project) =>
-          project.path === "."
-            ? { ...project, sessions: project.sessions.map((session) => session.cwd === "." ? { ...session, cwd: undefined } : session) }
-            : project,
-        )
+      ? (snap!.projects as Project[]).map((project) => ({
+          ...project,
+          sessions: project.sessions.map((session) => ({
+            ...session,
+            cwd: undefined,
+            sourceSessionId: undefined,
+          })),
+        }))
       : [newProject()];
     const snapshotProjectId =
       typeof snap?.activeProjectId === "string" ? snap.activeProjectId : undefined;
@@ -221,12 +224,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   addSession: (shell, cwd) => {
-    const { projects, activeProjectId, activeSessionId, defaultShell } = get();
+    const { projects, activeProjectId, defaultShell } = get();
     const project = projects.find((p) => p.id === activeProjectId);
     if (!project) return;
-    const previous = project.sessions.find((s) => s.id === activeSessionId);
-    const session = newSession(cwd || previous?.cwd || (project.path !== "." ? project.path : undefined), shell ?? defaultShell);
-    if (!cwd && previous) session.sourceSessionId = previous.id;
+    const session = newSession(cwd, shell ?? defaultShell);
     set((s) => ({
       projects: s.projects.map((p) =>
         p.id === project.id ? { ...p, sessions: [...p.sessions, session] } : p,
@@ -270,7 +271,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     rpc.send.killSession({ sessionId: id });
     const replacement =
       sessions.length === 1
-        ? newSession(sessions[0]?.cwd || (project?.path !== "." ? project?.path : undefined), get().defaultShell)
+        ? newSession(undefined, get().defaultShell)
         : undefined;
     const next = replacement ?? sessions.find((s) => s.id !== id);
     set((s) => {
@@ -361,8 +362,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const project = projects.find((p) => p.id === activeProjectId);
     const activeSession = project?.sessions.find((s) => s.id === activeSessionId);
     if (!project || !activeSession) return;
-    const session = newSession(activeSession.cwd || (project.path !== "." ? project.path : undefined), activeSession.shell);
-    session.sourceSessionId = activeSession.id;
+    const session = newSession(undefined, activeSession.shell);
     set((s) => ({
       projects: s.projects.map((p) =>
         p.id === project.id ? { ...p, sessions: [...p.sessions, session] } : p,

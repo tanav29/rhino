@@ -39,6 +39,41 @@ test("closing the last terminal creates a working replacement", () => {
   expect(state.panes[0].sessionId).toBe(state.activeSessionId);
 });
 
+test("new tabs, splits and replacement terminals do not inherit a project directory", () => {
+  for (const action of ["tab", "split", "replace"] as const) {
+    const store = useWorkspaceStore.getState();
+    store.hydrate(null);
+    store.setDefaultDirectory("/saved/default");
+    store.createProject("test-shell", "/previous/project");
+    const active = useWorkspaceStore.getState();
+    if (action === "tab") active.addSession();
+    else if (action === "split") active.split("row");
+    else active.closeSession(active.activeSessionId);
+    const state = useWorkspaceStore.getState();
+    const session = state.projects
+      .find((project) => project.id === state.activeProjectId)!
+      .sessions.find((session) => session.id === state.activeSessionId)!;
+    expect(session.cwd).toBeUndefined();
+    expect(session.sourceSessionId).toBeUndefined();
+  }
+});
+
+test("restoring a workspace discards saved terminal directories and inheritance", () => {
+  const store = useWorkspaceStore.getState();
+  store.createProject("test-shell", "/saved/project");
+  const snapshot = JSON.parse(JSON.stringify(useWorkspaceStore.getState()));
+  const project = snapshot.projects.find(
+    (project: { id: string }) => project.id === snapshot.activeProjectId,
+  );
+  project.sessions[0].sourceSessionId = "previous-terminal";
+  store.hydrate(snapshot);
+  const restored = useWorkspaceStore.getState().projects.find((p) => p.id === project.id)!;
+  expect(restored.path).toBe("/saved/project");
+  expect(restored.sessions[0].shell).toBe("test-shell");
+  expect(restored.sessions[0].cwd).toBeUndefined();
+  expect(restored.sessions[0].sourceSessionId).toBeUndefined();
+});
+
 test("sidebar visibility restores from saved workspaces and defaults open for older snapshots", () => {
   const store = useWorkspaceStore.getState();
   store.setSidebarCollapsed(true);

@@ -613,7 +613,7 @@ export default function App() {
           open={newOpen}
           onOpenChange={setNewOpen}
           shells={shells}
-          initialPath={project?.path ?? "."}
+          initialPath="~"
           onCreate={createProject}
         />
         <SettingsDialog
