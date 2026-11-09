@@ -85,7 +85,7 @@
       >
       <nav aria-label="Main navigation">
         <a href="https://github.com/tanav29/rhino">GitHub</a>
-        <a href="#how-it-works">How it works</a
+        <a href="#how-it-works">Explore</a
         ><a href="#under-the-hood">Under the hood <span aria-hidden="true">↗</span></a>
       </nav>
     </header>
@@ -101,13 +101,12 @@
         />
         <h1 id="hero-title">Every machine.<br />One terminal.</h1>
         <p class="hero-description">
-          Your laptop. Your server. Your machine at home.<br class="desktop-break" />
-          A desktop terminal that brings them all together.
+          A fast, compact desktop terminal for your local shell and the machines you connect to. Your projects, panes, and tools stay close at hand.
         </p>
         <a class="download-button" type="button" aria-describedby="download-note" target="_blank" href="https://github.com/tanav29/rhino/releases">
           <svg class="icon" aria-hidden="true"><use href="#icon-download" /></svg>Download Rhino
         </a>
-        <p id="download-note" class="download-note">Coming soon</p>
+        <p id="download-note" class="download-note">View available releases on GitHub</p>
         <div class="platforms" aria-label="Built for macOS, Windows, and Linux">
           <span title="macOS"
             ><svg class="icon" aria-hidden="true"><use href="#icon-apple" /></svg
@@ -209,37 +208,24 @@
           </div>
         </figure>
         <p class="demo-caption">
-          <svg class="icon" aria-hidden="true"><use href="#icon-network" /></svg>Your terminal here.
-          Your shell anywhere.<span class="caption-hint">Select a machine to explore.</span>
+          <svg class="icon" aria-hidden="true"><use href="#icon-network" /></svg>An interactive illustration of your workspace.<span class="caption-hint">Select a machine to explore.</span>
         </p>
       </section>
 
-      <section class="details page-width" id="under-the-hood" aria-label="How Rhino is built">
-        <article>
-          <svg class="icon feature-icon" aria-hidden="true"><use href="#icon-network" /></svg>
-          <h2>Local or a world away.</h2>
-          <p>
-            Run commands on your other machines from the same terminal. Keep your local and remote
-            shells side by side.
-          </p>
-        </article>
-        <article>
-          <svg class="icon feature-icon" aria-hidden="true"><use href="#icon-globe" /></svg>
-          <h2>Web interface. Desktop home.</h2>
-          <p>
-            A web-based client wrapped in Electrobun. A familiar place for your tabs, split panes,
-            and workspaces.
-          </p>
-        </article>
-        <article>
-          <svg class="icon feature-icon" aria-hidden="true"><use href="#icon-bolt" /></svg>
-          <h2>Bun does the running.</h2>
-          <p>
-            A client-server architecture powered by Bun. The client is your interface; the server
-            runs your shell.
-          </p>
-        </article>
+      <section class="feature-intro page-width" id="under-the-hood">
+        <div><p class="section-kicker">Built for the way you work</p><h2>More room for the work.<br />Less between you and it.</h2></div>
+        <p>Rhino brings terminals, projects, and machines together in a compact workspace designed to stay out of your way.</p>
       </section>
+      <section class="feature-grid page-width" aria-label="Rhino features">
+        <article class="feature-wide"><span class="feature-symbol">?</span><h3>One workspace, many machines</h3><p>Add backend URLs from different machines and switch between them from the desktop app. Your terminals keep running on their host while you switch.</p><div class="connection-map" aria-hidden="true"><span>This machine</span><span>LAN</span><span>Cloudflare</span><span>Rhino</span></div></article>
+        <article><span class="feature-symbol">?</span><h3>Share across your network</h3><p>Enable LAN sharing and connect with a backend URL and six-digit PIN. Open it in another Rhino app or a browser.</p></article>
+        <article><span class="feature-symbol">?</span><h3>Reach it over the internet</h3><p>Use cloudflared to create a public link. Share the complete link and PIN with someone you trust.</p></article>
+        <article><span class="feature-symbol">?</span><h3>Make space to focus</h3><p>Organize work into projects, terminal tabs, and horizontal or vertical split panes. Your layout is saved between launches.</p></article>
+        <article><span class="feature-symbol">?</span><h3>Files and Git, in context</h3><p>Browse project files, see Git status, and inspect changes with inline diffs without leaving your workspace.</p></article>
+        <article><span class="feature-symbol">&gt;_</span><h3>Your shell, ready to go</h3><p>Run real shells in native PTYs with Ghostty rendering and automatic shell detection. Select paths and links directly from terminal output.</p></article>
+        <article><span class="feature-symbol">?</span><h3>Stay in the loop</h3><p>See agent activity in your tabs and get desktop notifications when long-running background commands finish with shell integration.</p></article>
+      </section>
+      <section class="closing page-width"><div><h2>All your terminals.<br />One place to work.</h2><p>Explore the source, setup, and releases on GitHub.</p></div><a class="download-button" href="https://github.com/tanav29/rhino">Explore Rhino on GitHub</a></section>
     </main>
 
     <footer class="site-footer page-width">

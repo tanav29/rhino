@@ -129,7 +129,6 @@ export function SettingsDialog({
       <DialogContent className="flex h-[min(620px,90dvh)] flex-col sm:max-w-3xl">
         <DialogHeader className="shrink-0 border-b border-border pb-4">
           <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>Changes save automatically.</DialogDescription>
         </DialogHeader>
 
         <Tabs.Root defaultValue="terminal" orientation="vertical" className="flex min-h-0 flex-1">

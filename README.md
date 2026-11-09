@@ -6,7 +6,7 @@ Native desktop terminal — [wterm](https://wterm.dev) + [Ghostty](https://ghost
 
 ## Marketing page
 
-The standalone landing page lives in `marketing/` and does not connect to the terminal backend. The machine selector shows illustrative sessions; the Download button is a placeholder.
+The standalone landing page lives in `marketing/` and does not connect to the terminal backend. The machine selector shows illustrative sessions; the Download button links to GitHub releases.
 
 ```bash
 bun run dev:marketing   # http://127.0.0.1:4173
@@ -23,6 +23,7 @@ Deploy on Vercel by importing the repository and setting the project root to `ma
 - **Git panel** — changed files + inline diffs (GitHub Dark, shiki)
 - **Shell detection** — cmd / PowerShell / pwsh / git-bash / WSL / bash / zsh
 - **Workspaces** — multiple projects, persisted under the app's `userData` dir
+- **Fast, compact interface** ? a minimal workspace with panels and dialogs loaded on demand
 - **Network terminals** — share a backend on your LAN or control another machine with its URL and six-digit PIN
 - **Internet sharing** — create a Cloudflare public link and switch between local and shared machines from the menu on the right
 - **Smart selection** — double-click paths, URLs, IP addresses, git hashes and numbers, including soft-wrapped output
@@ -85,7 +86,7 @@ hutch --version
 bun install
 bun run prepare:desktop
 
-# HMR (Vite on :5173, app loads from http://localhost:5173)
+# HMR (Vite on :43187, app loads from http://localhost:43187)
 bun run dev
 
 # or without HMR (app loads bundled views://)
@@ -135,7 +136,7 @@ bun run build             # stable channel
 bun run build:canary      # canary channel (separate install)
 ```
 
-Builds type-check the app, bundle the webview and WASM, and package the native runtime. App bundles are written to `build/`; distributable installers and update bundles are written to `artifacts/`. Windows uses the multi-size icon at `assets/icon.ico`, configured in `electrobun.config.ts`.
+Builds type-check the app, bundle the webview and WASM, and package the native runtime. The desktop window loads its built HTML, JavaScript, and CSS through `views://`; it does not require a frontend server. The backend listens on its configured port; internet sharing additionally starts a separate loopback listener for the tunnel. App bundles are written to `build/`; distributable installers and update bundles are written to `artifacts/`. Windows uses the multi-size icon at `assets/icon.ico`, configured in `electrobun.config.ts`.
 
 Regenerate the Windows icon and shared app/marketing logo in `assets/` from `logo.png` with `bun scripts/make-icon.ts` on Windows.
 
