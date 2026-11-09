@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { AgentIcon } from "./agent-icon";
 import { MachineSelector } from "./machine-selector";
-import type { AgentInfo, AgentStatus } from "../shared/rpc-schema";
+import type { AgentInfo } from "../shared/rpc-schema";
 
 export interface SessionTab {
   id: string;
@@ -44,13 +44,6 @@ interface SessionTabsProps {
 
 const agentTitle =
   /(?:^|[^a-z0-9])(opencode|claude|codex|cursor|gemini|aider|copilot)(?:$|[^a-z0-9])/i;
-
-const statusColors: Record<AgentStatus, string> = {
-  working: "bg-sky-400",
-  blocked: "bg-red-400",
-  idle: "bg-muted-foreground",
-  "needs-attention": "bg-amber-400",
-};
 
 export function SessionTabs({
   sessions,
@@ -123,34 +116,13 @@ export function SessionTabs({
               <button
                 type="button"
                 onClick={() => onSelect(session.id)}
-                aria-label={
-                  agent
-                    ? `${agent}: ${title}${agentInfo ? `, ${agentInfo.status.replaceAll("-", " ")}` : ""}`
-                    : undefined
-                }
+                aria-label={agent ? `${agent}: ${title}` : undefined}
                 title={session.cwd ? `${session.title} — ${session.cwd}` : session.title}
                 aria-pressed={active}
                 className="flex h-full min-w-0 items-center gap-2 px-3 text-left"
               >
                 {agent ? <AgentIcon name={agent} /> : <Terminal size={14} />}
-                <span className="max-w-40 truncate text-xs">{agent ?? title}</span>
-                {agentInfo && (
-                  <span
-                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[10px] text-muted-foreground"
-                    title={
-                      agentInfo.source === "reported"
-                        ? "Reported by agent hook"
-                        : "Inferred from terminal activity; quiet agents may still be working"
-                    }
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`size-1.5 rounded-full ${statusColors[agentInfo.status]}`}
-                    />
-                    {agentInfo.status.replaceAll("-", " ")}
-                    {agentInfo.source === "activity" ? " (inferred)" : ""}
-                  </span>
-                )}
+                <span className="max-w-40 truncate text-xs">{title}</span>
               </button>
               <button
                 type="button"
