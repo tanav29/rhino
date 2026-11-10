@@ -49,40 +49,45 @@ function styled(text, className) {
   return element;
 }
 
-for (const button of machineButtons) {
-  button.addEventListener("click", () => {
-    const session = sessions[button.dataset.machine];
-    if (!session) return;
+function selectMachine(button) {
+  const session = sessions[button.dataset.machine];
+  if (!session) return;
 
-    for (const machine of machineButtons) {
-      const selected = machine === button;
-      machine.classList.toggle("selected", selected);
-      machine.setAttribute("aria-pressed", String(selected));
-    }
+  for (const machine of machineButtons) {
+    const selected = machine === button;
+    machine.classList.toggle("selected", selected);
+    machine.setAttribute("aria-pressed", String(selected));
+  }
 
-    document.getElementById("session-name").textContent = session.name;
-    document.getElementById("shell-type").textContent = session.shell;
-    document.getElementById("connection").textContent = `Connected to ${session.name}`;
-    document.getElementById("connection-kind").textContent = session.kind;
-    document.getElementById("session-location").textContent =
-      `${session.kind === "local" ? "Local" : "Remote"} session`;
+  document.getElementById("session-name").textContent = session.name;
+  document.getElementById("shell-type").textContent = session.shell;
+  document.getElementById("connection").textContent = `Connected to ${session.name}`;
+  document.getElementById("connection-kind").textContent = session.kind;
+  document.getElementById("session-location").textContent =
+    `${session.kind === "local" ? "Local" : "Remote"} session`;
 
-    const prompt = () => line(styled(session.prompt, "prompt"), " ", styled(session.path, "path"));
-    const result = session.lines.map((text) => {
-      const element = line(text);
-      element.className = "output-muted";
-      return element;
-    });
-    const nextPrompt = prompt();
-    nextPrompt.className = "output-gap";
-    const cursor = styled("", "cursor");
-    cursor.setAttribute("aria-hidden", "true");
-    output.replaceChildren(
-      prompt(),
-      line(styled("❯", "prompt-arrow"), session.command),
-      ...result,
-      nextPrompt,
-      line(styled("❯", "prompt-arrow"), cursor),
-    );
+  const prompt = () => line(styled(session.prompt, "prompt"), " ", styled(session.path, "path"));
+  const result = session.lines.map((text) => {
+    const element = line(text);
+    element.className = "output-muted";
+    return element;
   });
+  const nextPrompt = prompt();
+  nextPrompt.className = "output-gap";
+  const cursor = styled("", "cursor");
+  cursor.setAttribute("aria-hidden", "true");
+  output.replaceChildren(
+    prompt(),
+    line(styled("❯", "prompt-arrow"), session.command),
+    ...result,
+    nextPrompt,
+    line(styled("❯", "prompt-arrow"), cursor),
+  );
 }
+
+for (const button of machineButtons) {
+  button.addEventListener("click", () => selectMachine(button));
+}
+
+const initialMachine = document.querySelector('[data-machine][aria-pressed="true"]');
+if (initialMachine) selectMachine(initialMachine);

@@ -3,6 +3,7 @@ import App from "./App";
 import { BackendConnectionForm } from "./backend-settings";
 import { getConnection, subscribeConnection } from "./rpc";
 import { MachineSelector } from "./machine-selector";
+import logo from "../../assets/logo.png";
 
 export function ConnectionGate() {
   const connection = useSyncExternalStore(subscribeConnection, getConnection);
@@ -18,7 +19,7 @@ export function ConnectionGate() {
       {notice && (
         <div
           role="alert"
-          className="fixed right-4 top-4 z-50 rounded-md border border-destructive bg-background px-4 py-3 text-sm text-destructive shadow-lg"
+          className="fixed right-2 top-2 z-50 max-w-[calc(100%-1rem)] rounded-sm border border-destructive bg-popover px-3 py-2 text-xs text-destructive"
         >
           {notice}
         </div>
@@ -31,10 +32,14 @@ export function ConnectionGate() {
             <div className="absolute right-2 top-1.5">
               <MachineSelector />
             </div>
-            <div className="w-full max-w-sm space-y-6">
+            <div className="w-full max-w-sm space-y-4 rounded-sm border border-border bg-popover p-4">
+              <div className="flex items-center gap-2 text-xs font-medium">
+                <img src={logo} alt="" width={24} height={24} className="size-6" />
+                Rhino
+              </div>
               <div className="space-y-2">
-                <h1 className="text-xl font-semibold tracking-tight">Connect to a terminal</h1>
-                <p className="text-sm leading-relaxed text-muted-foreground">
+                <h1 className="text-sm font-medium">Connect to a terminal</h1>
+                <p className="text-xs leading-relaxed text-muted-foreground">
                   Enter the backend address and PIN from the machine you want to control.
                 </p>
               </div>

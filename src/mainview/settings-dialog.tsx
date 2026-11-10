@@ -1,11 +1,6 @@
 import { Tabs } from "@base-ui/react/tabs";
 import { Keyboard, Minus, Monitor, Plus, RotateCcw, Terminal } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { BackendSettings } from "./backend-settings";
 import {
@@ -55,7 +50,7 @@ function Stepper({
 }) {
   const lower = label.toLowerCase();
   return (
-    <div className="flex flex-col gap-2 py-4">
+    <div className="flex flex-col gap-1 py-3">
       <div className="flex items-center gap-2">
         <span className="flex-1 text-xs font-medium">{label}</span>
         <span className="text-xs tabular-nums text-muted-foreground">{display}</span>
@@ -125,8 +120,11 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(620px,90dvh)] flex-col sm:max-w-3xl">
-        <DialogHeader className="shrink-0 border-b border-border pb-4">
+      <DialogContent
+        className="flex h-[min(520px,90dvh)] flex-col sm:max-w-3xl"
+        aria-describedby={undefined}
+      >
+        <DialogHeader className="shrink-0">
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
 
@@ -134,7 +132,7 @@ export function SettingsDialog({
           <Tabs.List
             aria-label="Settings sections"
             activateOnFocus
-            className="flex w-12 shrink-0 flex-col gap-1 border-r border-border bg-sidebar p-1.5 sm:w-44 sm:p-3"
+            className="flex w-10 shrink-0 flex-col border-r border-border bg-sidebar py-1 sm:w-44"
           >
             {[
               { value: "terminal", label: "Terminal", icon: Terminal },
@@ -145,7 +143,7 @@ export function SettingsDialog({
                 key={value}
                 value={value}
                 title={label}
-                className="flex min-h-9 items-center justify-center gap-2 rounded-md px-2 text-left text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground aria-selected:bg-accent aria-selected:text-foreground focus-visible:-outline-offset-2 sm:justify-start"
+                className="flex min-h-7 items-center justify-center gap-2 border-l-2 border-transparent px-2 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground aria-selected:border-l-ring aria-selected:bg-accent aria-selected:text-foreground sm:justify-start"
               >
                 <Icon size={15} className="shrink-0" aria-hidden="true" />
                 <span className="sr-only sm:not-sr-only">{label}</span>
@@ -153,89 +151,82 @@ export function SettingsDialog({
             ))}
           </Tabs.List>
 
-          <Tabs.Panel value="terminal" className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          <Tabs.Panel value="terminal" className="min-w-0 flex-1 overflow-y-auto bg-background p-4">
             <h2 className="text-sm font-semibold">Terminal</h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Adjust the text and cursor in your terminals.
             </p>
             <div className="mt-3 divide-y divide-border">
-            <Stepper
-              label="Font size"
-              value={fontSize}
-              display={`${fontSize}px`}
-              min={FONT_SIZE_MIN}
-              max={FONT_SIZE_MAX}
-              defaultValue={FONT_SIZE_DEFAULT}
-              step={1}
-              onChange={(v) => onFontSizeChange(clampFont(v))}
-              onReset={() => onFontSizeChange(FONT_SIZE_DEFAULT)}
-            />
+              <Stepper
+                label="Font size"
+                value={fontSize}
+                display={`${fontSize}px`}
+                min={FONT_SIZE_MIN}
+                max={FONT_SIZE_MAX}
+                defaultValue={FONT_SIZE_DEFAULT}
+                step={1}
+                onChange={(v) => onFontSizeChange(clampFont(v))}
+                onReset={() => onFontSizeChange(FONT_SIZE_DEFAULT)}
+              />
 
-            <Stepper
-              label="Line height"
-              value={lineHeight}
-              display={lineHeight.toFixed(2)}
-              min={LINE_HEIGHT_MIN}
-              max={LINE_HEIGHT_MAX}
-              defaultValue={LINE_HEIGHT_DEFAULT}
-              step={0.02}
-              onChange={(v) => onLineHeightChange(clampLine(v))}
-              onReset={() => onLineHeightChange(LINE_HEIGHT_DEFAULT)}
-            />
+              <Stepper
+                label="Line height"
+                value={lineHeight}
+                display={lineHeight.toFixed(2)}
+                min={LINE_HEIGHT_MIN}
+                max={LINE_HEIGHT_MAX}
+                defaultValue={LINE_HEIGHT_DEFAULT}
+                step={0.02}
+                onChange={(v) => onLineHeightChange(clampLine(v))}
+                onReset={() => onLineHeightChange(LINE_HEIGHT_DEFAULT)}
+              />
 
-            <button
-              type="button"
-              role="switch"
-              aria-checked={cursorBlink}
-              onClick={() => onCursorBlinkChange(!cursorBlink)}
-              className="flex w-full items-center justify-between gap-4 py-4 text-left"
-            >
-              <span className="space-y-1">
-                <span className="block text-xs font-medium">Cursor blink</span>
-                <span className="block text-xs text-muted-foreground">Animate the terminal cursor.</span>
-              </span>
-              <span
-                aria-hidden="true"
-                className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                  cursorBlink ? "bg-primary" : "bg-input"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 size-4 rounded-full transition-transform ${cursorBlink ? "bg-primary-foreground" : "bg-foreground"} ${
-                    cursorBlink ? "translate-x-[18px]" : "translate-x-0.5"
-                  }`}
+              <label className="flex w-full cursor-pointer items-center justify-between gap-4 py-3 text-left">
+                <span className="space-y-1">
+                  <span className="block text-xs font-medium">Cursor blink</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Off by default for a steady cursor.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={cursorBlink}
+                  onChange={(event) => onCursorBlinkChange(event.target.checked)}
+                  className="size-3.5 shrink-0 accent-ring"
                 />
-              </span>
-            </button>
+              </label>
             </div>
 
-            <p className="mt-5 mb-2 text-xs font-medium text-muted-foreground">Preview</p>
+            <p className="mt-3 mb-2 text-xs font-medium text-muted-foreground">Preview</p>
             <div
-            className="overflow-x-auto rounded-md border border-border bg-background p-4 font-mono [&_*]:font-mono"
-            style={{ fontSize: `${fontSize}px`, lineHeight }}
-            aria-hidden
-          >
-            <span className="text-foreground">$</span>{" "}
-            <span className="text-foreground">echo &quot;Hello, Rhino&quot;</span>
-            <br />
-            <span className="text-success">Hello, Rhino</span>
-            <span
-              className={`ml-1 inline-block h-[1.1em] w-[0.55em] translate-y-[2px] bg-ring ${
-                cursorBlink ? "animate-cursor-blink" : ""
-              }`}
-            />
+              className="overflow-x-auto rounded-sm border border-border bg-background p-3 font-mono [&_*]:font-mono"
+              style={{ fontSize: `${fontSize}px`, lineHeight }}
+              aria-hidden
+            >
+              <span className="text-foreground">$</span>{" "}
+              <span className="text-foreground">echo &quot;Hello, Rhino&quot;</span>
+              <br />
+              <span className="text-success">Hello, Rhino</span>
+              <span
+                className={`ml-1 inline-block h-[1.1em] w-[0.55em] translate-y-[2px] bg-ring ${
+                  cursorBlink ? "animate-cursor-blink" : ""
+                }`}
+              />
             </div>
           </Tabs.Panel>
 
-          <Tabs.Panel value="machines" className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          <Tabs.Panel value="machines" className="min-w-0 flex-1 overflow-y-auto bg-background p-4">
             <h2 className="text-sm font-semibold">Machines</h2>
-            <p className="mt-1 mb-5 text-xs leading-relaxed text-muted-foreground">
+            <p className="mt-1 mb-3 text-xs leading-relaxed text-muted-foreground">
               Connect to another machine or share access to this one.
             </p>
             <BackendSettings />
           </Tabs.Panel>
 
-          <Tabs.Panel value="shortcuts" className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          <Tabs.Panel
+            value="shortcuts"
+            className="min-w-0 flex-1 overflow-y-auto bg-background p-4"
+          >
             <h2 className="text-sm font-semibold">Keyboard shortcuts</h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Navigate groups and terminals from your keyboard.
@@ -252,10 +243,13 @@ export function SettingsDialog({
                 ["Find in terminal", "Ctrl+Alt+F"],
                 ["Close find", "Esc"],
               ].map(([action, shortcut]) => (
-                <div key={action} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                <div
+                  key={action}
+                  className="flex min-h-7 flex-wrap items-center justify-between gap-2 py-1"
+                >
                   <dt>{action}</dt>
                   <dd className="text-muted-foreground">
-                    <kbd className="rounded border border-border bg-background px-1.5 py-1 font-sans text-[11px] whitespace-nowrap">{shortcut}</kbd>
+                    <kbd className="ui-keycap">{shortcut}</kbd>
                   </dd>
                 </div>
               ))}

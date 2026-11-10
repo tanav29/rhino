@@ -40,7 +40,7 @@ export function TerminalFind({
     <div
       role="search"
       aria-label="Find in terminal"
-      className="absolute top-2 right-2 z-10 flex w-[23rem] max-w-[calc(100%-1rem)] items-center gap-1 rounded-md border border-border bg-popover p-1.5 text-foreground shadow-lg"
+      className="absolute top-0 right-0 z-10 flex w-[23rem] max-w-full items-center gap-1 rounded-bl-sm border border-border bg-popover p-1 text-foreground"
     >
       <input
         ref={inputRef}
@@ -58,7 +58,7 @@ export function TerminalFind({
           if (event.shiftKey) terminal.findPrevious();
           else terminal.findNext();
         }}
-        className="min-w-0 flex-1 rounded-sm bg-background px-2 py-1 text-xs outline-none placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
+        className="ui-input h-6 flex-1"
       />
       <span
         role="status"

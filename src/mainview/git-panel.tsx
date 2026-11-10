@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import { PatchDiff } from "@pierre/diffs/react";
 import { parseGitStatus, type GitChangedFile } from "./git-status";
 import { rpc } from "./rpc";
@@ -35,21 +35,18 @@ export function GitPanel({ cwd }: { cwd?: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col bg-sidebar">
       {error ? (
-        <p className="p-4 font-mono text-xs text-muted-foreground">{error}</p>
+        <p className="p-3 text-xs text-muted-foreground">{error}</p>
       ) : files === null ? (
-        <div className="flex items-center gap-2 p-4 font-mono text-xs text-muted-foreground">
-          <Loader2 size={12} className="animate-spin" />
+        <div role="status" className="p-3 text-xs text-muted-foreground">
           Loading…
         </div>
       ) : files.length === 0 ? (
-        <div className="flex flex-col gap-1.5 p-4">
-          <p className="text-[12.5px] font-semibold tracking-tight text-foreground">
-            Working tree clean
-          </p>
+        <div className="p-3">
+          <p className="text-xs text-muted-foreground">Working tree clean</p>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col overflow-y-auto p-2">
-          <div className="mb-2 flex items-center justify-between px-2">
+        <div className="flex flex-1 flex-col overflow-y-auto py-1">
+          <div className="flex h-7 shrink-0 items-center justify-between px-3">
             <span className="text-xs font-medium text-muted-foreground">Changed files</span>
             <span className="text-xs tabular-nums text-muted-foreground">{files.length}</span>
           </div>
@@ -59,12 +56,12 @@ export function GitPanel({ cwd }: { cwd?: string }) {
               type="button"
               title={f.path}
               onClick={() => setSelected(f.path)}
-              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+              className="flex h-7 shrink-0 items-center gap-2 px-3 text-left hover:bg-accent"
             >
               <span
                 className={`size-1.5 shrink-0 rounded-full ${f.status === "deleted" ? "bg-destructive" : f.status === "added" || f.status === "untracked" ? "bg-success" : "bg-warning"}`}
               />
-              <span className="min-w-0 flex-1 truncate text-[12.5px] font-[450] tracking-tight text-foreground">
+              <span className="min-w-0 flex-1 truncate text-xs tracking-tight text-foreground">
                 {f.path}
               </span>
               <span className="rounded bg-accent px-1 py-0.5 font-mono text-[10px] font-medium leading-none text-muted-foreground">
@@ -114,14 +111,14 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
   }, [cwd, path]);
 
   const renderHeader = (additions = 0, deletions = 0) => (
-    <div className="flex items-center gap-1.5 border-b border-border bg-popover px-2 py-1.5 font-mono text-xs text-foreground">
+    <div className="ui-panel-header gap-1.5 text-xs text-foreground">
       {onClose && (
         <button
           type="button"
           aria-label="Back to changed files"
           onClick={onClose}
           title="Back to changed files"
-          className="flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="ui-icon-button"
         >
           <ArrowLeft size={14} />
         </button>
@@ -131,11 +128,9 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
         aria-label={`${collapsed ? "Expand" : "Collapse"} diff for ${path}`}
         aria-expanded={!collapsed}
         onClick={() => setCollapsed((value) => !value)}
-        className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="ui-icon-button"
       >
-        <ChevronDown
-          className={`h-4 w-4 transition-transform ${collapsed ? "-rotate-90" : "rotate-0"}`}
-        />
+        <ChevronDown className={`h-4 w-4 ${collapsed ? "-rotate-90" : "rotate-0"}`} />
       </button>
       <span className="truncate font-[500] tracking-tight">{path}</span>
       <span className="ml-auto flex shrink-0 gap-1.5">
@@ -162,8 +157,7 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
   return (
     <div className="h-full overflow-auto bg-sidebar">
       {!diff ? (
-        <div className="flex items-center gap-2 p-3 font-mono text-xs text-muted-foreground">
-          <Loader2 size={12} className="animate-spin" />
+        <div role="status" className="p-3 text-xs text-muted-foreground">
           Loading diff…
         </div>
       ) : "error" in diff ? (
@@ -180,9 +174,15 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
             diffStyle: "unified",
             theme: "github-dark-default",
             collapsed,
+            unsafeCSS: `
+              :host { --diffs-font-size: 12px; --diffs-line-height: 18px; --diffs-font-family: var(--font-mono); --diffs-header-font-family: var(--font-sans); }
+              :host, pre { --diffs-bg: var(--background); --diffs-fg: var(--foreground); }
+              :host { background-color: var(--background) !important; }
+              [data-separator] { border-radius: 2px; }
+              *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+            `,
           }}
           className="h-full w-full font-mono"
-          style={{ fontFamily: "ui-monospace, monospace" }}
         />
       ) : (
         <>

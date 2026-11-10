@@ -106,7 +106,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   defaultShell: undefined,
   termFontSize: FONT_SIZE_DEFAULT,
   termLineHeight: LINE_HEIGHT_DEFAULT,
-  termCursorBlink: true,
+  termCursorBlink: false,
   newOpen: false,
   settingsOpen: false,
   shells: [],
@@ -214,10 +214,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       activeSessionId: sessionId,
       panes,
       defaultShell: typeof snap?.defaultShell === "string" ? snap.defaultShell : undefined,
-      defaultDirectory: typeof snap?.defaultDirectory === "string" ? snap.defaultDirectory : undefined,
+      defaultDirectory:
+        typeof snap?.defaultDirectory === "string" ? snap.defaultDirectory : undefined,
       termFontSize: parsedSize,
       termLineHeight: parsedLineHeight,
-      termCursorBlink: typeof snap?.termCursorBlink === "boolean" ? snap.termCursorBlink : true,
+      termCursorBlink: typeof snap?.termCursorBlink === "boolean" ? snap.termCursorBlink : false,
       sidebarCollapsed: snap?.sidebarCollapsed === true,
       hydrated: true,
     });
@@ -270,9 +271,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     if (!sessions.some((session) => session.id === id)) return;
     rpc.send.killSession({ sessionId: id });
     const replacement =
-      sessions.length === 1
-        ? newSession(undefined, get().defaultShell)
-        : undefined;
+      sessions.length === 1 ? newSession(undefined, get().defaultShell) : undefined;
     const next = replacement ?? sessions.find((s) => s.id !== id);
     set((s) => {
       const filteredProjects = s.projects.map((p) =>

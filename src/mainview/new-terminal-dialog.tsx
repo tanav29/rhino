@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronUp, Folder, Loader2, TerminalSquare } from "lucide-react";
+import { ChevronUp, Folder, TerminalSquare } from "lucide-react";
 import { rpc } from "./rpc";
 import type { DirectoryListing, ShellOption } from "../shared/rpc-schema";
 import {
@@ -60,13 +60,13 @@ export function NewSessionDialog({
           <DialogDescription>Choose a shell and starting directory.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 px-5 pb-4 pt-3">
+        <div className="flex flex-col gap-3 p-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-muted-foreground">Shell</span>
             <select
               value={shell}
               onChange={(event) => setShell(event.target.value)}
-              className="h-8 rounded-[8px] border border-border bg-accent px-2.5 font-mono text-[12.5px] text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+              className="ui-input w-full"
             >
               <option value="" className="bg-popover">
                 Default shell
@@ -98,17 +98,17 @@ export function NewSessionDialog({
                 value={pathInput}
                 onChange={(event) => setPathInput(event.target.value)}
                 spellCheck={false}
-                className="h-8 min-w-0 flex-1 rounded-[8px] border border-border bg-background px-2.5 font-mono text-[12.5px] text-foreground placeholder:text-muted-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                className="ui-input flex-1 font-mono"
                 placeholder="/path/to/project"
               />
               <Button type="submit" variant="outline" size="sm">
                 Go
               </Button>
             </form>
-            <div className="h-52 overflow-y-auto rounded-[8px] border border-border bg-sidebar">
+            <div className="h-52 overflow-y-auto rounded-sm border border-border bg-sidebar">
               {loading ? (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  <Loader2 size={16} className="animate-spin" />
+                <div role="status" className="p-3 text-xs text-muted-foreground">
+                  Loading directories…
                 </div>
               ) : browse?.error ? (
                 <p className="p-3 font-mono text-xs text-destructive">{browse.error}</p>
@@ -119,7 +119,7 @@ export function NewSessionDialog({
                       type="button"
                       aria-label="Go to parent directory"
                       onClick={() => loadPath(browse.parent!)}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[12.5px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
                     >
                       <ChevronUp size={13} />
                       Up a level
@@ -134,10 +134,10 @@ export function NewSessionDialog({
                       aria-label={`Open ${entry.name}`}
                       key={entry.path}
                       onClick={() => loadPath(entry.path)}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] transition-colors hover:bg-accent hover:text-foreground"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-accent hover:text-foreground"
                     >
                       <Folder size={13} className="shrink-0 text-muted-foreground" />
-                      <span className="truncate font-[450] tracking-tight">{entry.name}</span>
+                      <span className="truncate tracking-tight">{entry.name}</span>
                     </button>
                   ))}
                 </>

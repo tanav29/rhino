@@ -44,7 +44,7 @@ export function MachineSelector() {
               type="button"
               aria-label={`Switch machine: ${label}`}
               title={`Switch machine: ${label}`}
-              className="relative flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              className="ui-icon-button relative"
             />
           }
         >
@@ -54,7 +54,7 @@ export function MachineSelector() {
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-72">
-          <div className="px-2 py-2 text-xs font-medium text-muted-foreground">Machines</div>
+          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Machines</div>
           {desktopRpc && (
             <DropdownMenuItem onClick={switchToLocalBackend}>
               <Monitor />
@@ -134,7 +134,7 @@ export function MachineSelector() {
                   : "Paste a Rhino share link or backend address and enter the host’s PIN."}
             </DialogDescription>
           </DialogHeader>
-          <div className="px-5 pb-5">
+          <div className="p-3">
             {dialog === "connect" && (
               <BackendConnectionForm
                 key={url}

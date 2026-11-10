@@ -9,8 +9,7 @@ import {
   switchToLocalBackend,
 } from "./rpc";
 
-const inputClass =
-  "mt-1.5 w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground outline-none focus:border-ring disabled:opacity-50";
+const inputClass = "ui-input mt-1 w-full";
 
 export function BackendConnectionForm({
   initialUrl,
@@ -172,7 +171,7 @@ export function BackendSettings({ shareOnly = false }: { shareOnly?: boolean }) 
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {desktopRpc && (
         <section aria-labelledby="share-backend-heading" className="space-y-3">
           <h2 id="share-backend-heading" className="text-sm font-medium">
@@ -181,7 +180,7 @@ export function BackendSettings({ shareOnly = false }: { shareOnly?: boolean }) 
           <p className="text-xs leading-relaxed text-muted-foreground">
             Share a public link so someone can open your terminals in Rhino from anywhere.
           </p>
-          <div className="space-y-3 rounded-md border border-border p-3">
+          <div className="space-y-3 rounded-sm border border-border p-2">
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-medium">Internet sharing</span>
               <Button
@@ -244,7 +243,7 @@ export function BackendSettings({ shareOnly = false }: { shareOnly?: boolean }) 
               checked={shared}
               onChange={(e) => setShared(e.target.checked)}
               disabled={busy || !backend}
-              className="accent-ring"
+              className="size-3.5 accent-ring"
             />
             Enable network sharing
           </label>

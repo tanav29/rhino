@@ -60,7 +60,8 @@ try {
   });
   await Bun.write(join(root, "assets/icon.ico"), Buffer.concat([header, ...images]));
   await Bun.write(join(root, "assets/logo.png"), images.at(-1)!);
-  console.log("Generated Windows icon (16–256px) and webview logo from logo.png.");
+  await Bun.write(join(root, "marketing/assets/logo.png"), images.at(-1)!);
+  console.log("Generated Windows icon (16–256px), webview logo, and marketing logo from logo.png.");
 } finally {
   await Promise.all(sizes.map((size) => rm(join(output, `${size}.png`), { force: true })));
   await rmdir(output);

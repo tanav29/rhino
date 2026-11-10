@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { FileTree, useFileTree } from "@pierre/trees/react";
-import { themeToTreeStyles, type GitStatusEntry } from "@pierre/trees";
+import type { GitStatusEntry } from "@pierre/trees";
 import { rpc } from "./rpc";
 import { parseGitStatus, toGitStatusEntries } from "./git-status";
 
@@ -10,23 +9,32 @@ interface FilesData {
   gitStatus: GitStatusEntry[];
 }
 
-const treeStyle = themeToTreeStyles({
-  type: "dark",
-  colors: {
-    "sideBar.background": "#010409",
-    "sideBar.foreground": "#f0f6fc",
-    "sideBar.border": "#3d444d",
-    "list.hoverBackground": "#212830",
-    "list.activeSelectionBackground": "#388bfd26",
-    "list.activeSelectionForeground": "#f0f6fc",
-    "list.focusOutline": "#58a6ff",
-    "input.background": "#0d1117",
-    "input.border": "#3d444d",
-    "gitDecoration.addedResourceForeground": "#3fb950",
-    "gitDecoration.modifiedResourceForeground": "#d29922",
-    "gitDecoration.deletedResourceForeground": "#f85149",
-  },
-});
+// Pass shared tokens into the tree's shadow root instead of maintaining a second theme.
+const treeStyle = {
+  colorScheme: "dark",
+  "--trees-bg-override": "var(--sidebar)",
+  "--trees-bg-muted-override": "var(--accent)",
+  "--trees-fg-override": "var(--foreground)",
+  "--trees-fg-muted-override": "var(--muted-foreground)",
+  "--trees-border-color-override": "var(--border)",
+  "--trees-selected-bg-override": "var(--selection)",
+  "--trees-selected-fg-override": "var(--foreground)",
+  "--trees-focus-ring-color-override": "var(--ring)",
+  "--trees-selected-focused-border-color-override": "var(--ring)",
+  "--trees-search-bg-override": "var(--background)",
+  "--trees-input-bg-override": "var(--background)",
+  "--trees-font-family-override": "var(--font-sans)",
+  "--trees-font-size-override": "12px",
+  "--trees-border-radius-override": "2px",
+  "--trees-scrollbar-thumb-override": "var(--input)",
+  "--trees-status-added-override": "var(--success)",
+  "--trees-status-untracked-override": "var(--success)",
+  "--trees-status-modified-override": "var(--warning)",
+  "--trees-status-deleted-override": "var(--destructive)",
+  "--trees-status-renamed-override": "var(--primary)",
+  "--trees-status-ignored-override": "var(--muted-foreground)",
+  "--truncate-fade-in-duration": "0s",
+} as CSSProperties;
 
 export function FilesPanel({ cwd }: { cwd: string }) {
   const [data, setData] = useState<FilesData | null>(null);
@@ -59,16 +67,15 @@ export function FilesPanel({ cwd }: { cwd: string }) {
     };
   }, [cwd]);
 
-  if (error) return <p className="p-3 font-mono text-xs text-muted-foreground">{error}</p>;
+  if (error) return <p className="p-3 text-xs text-muted-foreground">{error}</p>;
   if (!data)
     return (
-      <div className="flex items-center gap-2 p-3 font-mono text-xs text-muted-foreground">
-        <Loader2 size={12} className="animate-spin" />
+      <div role="status" className="p-3 text-xs text-muted-foreground">
         Loading files…
       </div>
     );
   if (data.paths.length === 0)
-    return <p className="p-3 font-mono text-xs text-muted-foreground">No files found in {cwd}.</p>;
+    return <p className="p-3 text-xs text-muted-foreground">No files found in {cwd}.</p>;
 
   return <FilesTreeBody key={cwd} paths={data.paths} gitStatus={data.gitStatus} />;
 }
@@ -81,10 +88,12 @@ function FilesTreeBody({ paths, gitStatus }: { paths: string[]; gitStatus: GitSt
     search: true,
     density: "compact",
     initialExpansion: "closed",
+    unsafeCSS:
+      "*, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }",
   });
 
   return (
-    <div className="h-full min-h-0 overflow-auto bg-sidebar p-2">
+    <div className="h-full min-h-0 overflow-auto bg-sidebar p-1">
       <FileTree model={model} style={treeStyle} />
     </div>
   );

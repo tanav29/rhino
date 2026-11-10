@@ -22,7 +22,7 @@ export function SessionView({
   visible = true,
   fontSize = 13,
   lineHeight = 1.38,
-  cursorBlink = true,
+  cursorBlink = false,
 }: {
   session: SessionTab;
   onTitle: (id: string, title: string) => void;

@@ -46,8 +46,8 @@ export function setWindowAppearance(window: BrowserWindow) {
       // Unsupported caption colors on older Windows versions are safely ignored.
       for (const [attribute, value] of [
         [20, 1],
-        [35, 0x221b16],
-        [36, 0xfcf6f0],
+        [35, 0x3e342f],
+        [36, 0xe5e0dc],
       ]) {
         const color = new Uint32Array([value]);
         dwm.symbols.DwmSetWindowAttribute(window.ptr, attribute, ptr(color), 4);

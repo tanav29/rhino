@@ -77,8 +77,8 @@ export function SessionTabs({
   }, [activeId, sessions, shells]);
 
   return (
-    <div className="flex h-10 shrink-0 items-center border-b border-border bg-sidebar">
-      <div className="flex h-full shrink-0 items-center border-r border-border px-1.5">
+    <div className="ui-panel-header px-0">
+      <div className="flex h-full shrink-0 items-center border-r border-border px-1">
         <button
           type="button"
           aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -86,7 +86,7 @@ export function SessionTabs({
           aria-expanded={!sidebarCollapsed}
           aria-controls="workspace-sidebar"
           onClick={onSidebarToggle}
-          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="ui-icon-button"
         >
           {sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
         </button>
@@ -108,10 +108,10 @@ export function SessionTabs({
           return (
             <div
               key={session.id}
-              className={`group relative flex shrink-0 items-center border-r border-b-2 pr-1 text-xs transition-colors select-none ${
+              className={`group relative flex shrink-0 items-center border-r border-t pr-1 text-xs select-none ${
                 active
-                  ? "border-r-border border-b-ring bg-background text-foreground"
-                  : "border-r-border border-b-transparent bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "border-r-border border-t-ring bg-background text-foreground"
+                  : "border-r-border border-t-transparent bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >
               <button
@@ -133,7 +133,7 @@ export function SessionTabs({
                   e.stopPropagation();
                   onClose(session.id);
                 }}
-                className={`flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors hover:bg-accent ${
+                className={`flex size-6 shrink-0 items-center justify-center rounded-sm hover:bg-accent ${
                   active
                     ? "text-muted-foreground hover:text-foreground"
                     : "text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100 group-focus-within:opacity-100"
@@ -150,7 +150,7 @@ export function SessionTabs({
           type="button"
           aria-label="New terminal"
           onClick={() => onNew()}
-          className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          className="ui-icon-button"
           title="New terminal (Ctrl+T)"
         >
           <Plus size={14} />
@@ -163,7 +163,7 @@ export function SessionTabs({
                 aria-label="Choose shell"
                 title="Choose shell"
                 disabled={shells.length === 0}
-                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+                className="ui-icon-button"
               >
                 <ChevronDown size={14} />
               </button>
@@ -181,12 +181,12 @@ export function SessionTabs({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="ml-auto flex shrink-0 items-center gap-1 border-l border-border px-2">
+      <div className="ml-auto flex shrink-0 items-center gap-1 border-l border-border px-1">
         <button
           type="button"
           aria-label="Settings"
           onClick={() => onSettings?.()}
-          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="ui-icon-button"
           title="Settings"
         >
           <Settings size={14} strokeWidth={1.8} />
@@ -197,7 +197,7 @@ export function SessionTabs({
           aria-label={panel ? "Close workspace panel" : "Open workspace panel"}
           onClick={() => onPanelToggle?.(panel ? null : "files")}
           aria-pressed={!!panel}
-          className={`flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent ${panel ? "bg-accent text-ring" : "text-muted-foreground hover:text-foreground"}`}
+          className={`ui-icon-button hover:bg-accent ${panel ? "bg-accent text-ring" : "text-muted-foreground hover:text-foreground"}`}
           title={panel ? "Close workspace panel" : "Open workspace panel"}
         >
           <PanelRight size={14} strokeWidth={1.8} />

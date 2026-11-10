@@ -2,11 +2,18 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { Plus, Trash2, Folder, X, Pencil, Ellipsis } from "lucide-react";
 import { SessionTabs } from "./session-tabs";
 import { AgentIcon } from "./agent-icon";
+import logo from "../../assets/logo.png";
 import { SessionView } from "./session-view";
 import { backendConnections, desktopRpc, getBackendClient, getConnection } from "./rpc";
 import type { AgentInfo } from "../shared/rpc-schema";
 import { useWorkspaceStore, selectActiveSession } from "./store";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -212,7 +219,7 @@ export default function App() {
       }
       if (mod && event.key.toLowerCase() === "n") {
         event.preventDefault();
-        setEditingGroup({ id: null, name: "", color: "#58a6ff" });
+        setEditingGroup({ id: null, name: "", color: "#74ade8" });
       }
       if (mod && /^[1-9]$/.test(event.key)) {
         event.preventDefault();
@@ -337,8 +344,9 @@ export default function App() {
             );
           }}
         />
-        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
-          <h1 className="text-sm font-semibold tracking-tight">Rhino</h1>
+        <div className="ui-panel-header gap-2 px-3">
+          <img src={logo} alt="" width={16} height={16} className="size-4 shrink-0" />
+          <h1 className="text-xs font-medium">Rhino</h1>
           {getConnection().url && (
             <button
               type="button"
@@ -350,16 +358,16 @@ export default function App() {
             </button>
           )}
         </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-1">
           {projects.map((p) => {
             const isActive = p.id === activeProjectId;
             return (
               <div
                 key={p.id}
-                className={`group flex w-full items-center rounded-md text-sm transition-colors ${
+                className={`group flex w-full items-center border-l-2 text-xs ${
                   isActive
-                    ? "bg-accent text-foreground"
-                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                    ? "border-l-ring bg-accent text-foreground"
+                    : "border-l-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
                 <button
@@ -367,14 +375,19 @@ export default function App() {
                   onClick={() => selectProject(p.id)}
                   aria-pressed={isActive}
                   title={`${p.name}\n${p.path}`}
-                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2.5 py-2 text-left focus-visible:-outline-offset-2"
+                  className="flex h-7 min-w-0 flex-1 items-center gap-2 px-2 text-left"
                 >
-                  <Folder size={15} className="shrink-0" style={{ color: p.color || "#9198a1" }} />
-                  <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate text-xs font-medium">{p.name}</span>
-                    <span className="truncate text-[11px] leading-4 text-muted-foreground">
-                      {p.sessions.length} {p.sessions.length === 1 ? "terminal" : "terminals"}
-                    </span>
+                  <Folder
+                    size={14}
+                    className="shrink-0"
+                    style={{ color: p.color || "var(--muted-foreground)" }}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                  <span
+                    className="text-[11px] tabular-nums text-muted-foreground"
+                    aria-label={`${p.sessions.length} terminals`}
+                  >
+                    {p.sessions.length}
                   </span>
                 </button>
                 <DropdownMenu>
@@ -384,7 +397,7 @@ export default function App() {
                         type="button"
                         aria-label={`Actions for ${p.name}`}
                         title="Group actions"
-                        className="mr-1 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground aria-expanded:bg-secondary"
+                        className="ui-icon-button mr-1"
                       >
                         <Ellipsis size={15} />
                       </button>
@@ -393,7 +406,7 @@ export default function App() {
                   <DropdownMenuContent align="start" className="w-40">
                     <DropdownMenuItem
                       onClick={() =>
-                        setEditingGroup({ id: p.id, name: p.name, color: p.color || "#58a6ff" })
+                        setEditingGroup({ id: p.id, name: p.name, color: p.color || "#74ade8" })
                       }
                     >
                       <Pencil />
@@ -411,8 +424,8 @@ export default function App() {
           <button
             type="button"
             aria-label="New group"
-            onClick={() => setEditingGroup({ id: null, name: "", color: "#58a6ff" })}
-            className="flex min-h-9 w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            onClick={() => setEditingGroup({ id: null, name: "", color: "#74ade8" })}
+            className="flex h-7 w-full items-center gap-2 px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <Plus size={13} strokeWidth={2.2} />
             <span className="whitespace-nowrap">New group</span>
@@ -423,7 +436,7 @@ export default function App() {
         </div>
         {agents.length > 0 && (
           <div className="flex max-h-[min(12rem,40%)] shrink-0 flex-col border-t border-sidebar-border py-2">
-            <p className="px-4 pb-1 text-xs font-medium text-muted-foreground">Running agents</p>
+            <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">Running agents</p>
             <div className="min-h-0 overflow-y-auto">
               {agents.map((agent) => {
                 const group = projects.find((p) =>
@@ -441,7 +454,7 @@ export default function App() {
                       selectProject(group.id);
                       selectSession(agent.sessionId);
                     }}
-                    className="flex min-h-9 w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-ring"
+                    className="flex h-7 w-full items-center gap-2 px-3 text-left hover:bg-accent"
                   >
                     <span className="flex min-w-0 flex-1 items-center gap-2">
                       <AgentIcon name={agent.name} />
@@ -468,27 +481,27 @@ export default function App() {
               }}
             >
               <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
-                <div className="p-5">
+                <DialogHeader>
                   <DialogTitle>Delete group?</DialogTitle>
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Delete "{group.name}"? This closes {group.sessions.length} terminal
-                    {group.sessions.length === 1 ? "" : "s"}.
-                  </p>
-                  <div className="mt-5 flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setDeletingGroup(null)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => {
-                        removeProject(group.id);
-                        setDeletingGroup(null);
-                      }}
-                    >
-                      Delete group
-                    </Button>
-                  </div>
-                </div>
+                </DialogHeader>
+                <p className="p-3 text-xs leading-relaxed text-muted-foreground">
+                  Delete "{group.name}"? This closes {group.sessions.length} terminal
+                  {group.sessions.length === 1 ? "" : "s"}.
+                </p>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDeletingGroup(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      removeProject(group.id);
+                      setDeletingGroup(null);
+                    }}
+                  >
+                    Delete group
+                  </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           );
@@ -508,38 +521,41 @@ export default function App() {
                 saveGroup(editingGroup.id, editingGroup.name, editingGroup.color);
                 setEditingGroup(null);
               }}
-              className="p-5"
             >
-              <DialogTitle>{editingGroup.id ? "Edit group" : "New group"}</DialogTitle>
-              <label className="mt-4 block text-xs text-muted-foreground">
-                Name
-                <input
-                  autoFocus
-                  required
-                  maxLength={80}
-                  value={editingGroup.name}
-                  onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
-                  className="mt-1.5 w-full rounded border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none focus:border-ring"
-                  placeholder="e.g. Backend"
-                />
-              </label>
-              <label className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                Color
-                <input
-                  type="color"
-                  value={editingGroup.color}
-                  onChange={(e) => setEditingGroup({ ...editingGroup, color: e.target.value })}
-                  className="h-7 w-10 cursor-pointer bg-transparent"
-                />
-              </label>
-              <div className="mt-5 flex justify-end gap-2">
+              <DialogHeader>
+                <DialogTitle>{editingGroup.id ? "Edit group" : "New group"}</DialogTitle>
+              </DialogHeader>
+              <div className="p-3">
+                <label className="block text-xs text-muted-foreground">
+                  Name
+                  <input
+                    autoFocus
+                    required
+                    maxLength={80}
+                    value={editingGroup.name}
+                    onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+                    className="ui-input mt-1 w-full"
+                    placeholder="e.g. Backend"
+                  />
+                </label>
+                <label className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+                  Color
+                  <input
+                    type="color"
+                    value={editingGroup.color}
+                    onChange={(e) => setEditingGroup({ ...editingGroup, color: e.target.value })}
+                    className="h-7 w-10 cursor-pointer bg-transparent"
+                  />
+                </label>
+              </div>
+              <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditingGroup(null)}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={!editingGroup.name.trim()}>
                   Save group
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
@@ -655,9 +671,9 @@ function WorkspacePanel({
   return (
     <aside
       aria-label="Workspace panel"
-      className="flex w-[min(24rem,40vw)] shrink-0 flex-col overflow-hidden border-l border-border bg-sidebar text-sm text-foreground"
+      className="flex w-[min(24rem,40vw)] shrink-0 flex-col overflow-hidden border-l border-border bg-sidebar text-xs text-foreground"
     >
-      <div className="flex h-10 shrink-0 items-center border-b border-border bg-sidebar px-2">
+      <div className="ui-panel-header px-1">
         <div className="flex h-full items-center">
           {(["files", "git"] as const).map((item) => (
             <button
@@ -665,7 +681,7 @@ function WorkspacePanel({
               type="button"
               aria-pressed={panel === item}
               onClick={() => onPanelToggle(item)}
-              className={`h-full border-b-2 px-3 text-xs font-medium capitalize transition-colors ${panel === item ? "border-ring text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              className={`h-full border-b px-3 text-xs capitalize ${panel === item ? "border-ring text-foreground" : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"}`}
             >
               {item}
             </button>
@@ -676,7 +692,7 @@ function WorkspacePanel({
           aria-label="Close workspace panel"
           title="Close panel"
           onClick={() => onPanelToggle(null)}
-          className="ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="ui-icon-button ml-auto"
         >
           <X size={14} />
         </button>
@@ -684,16 +700,15 @@ function WorkspacePanel({
       <div className="min-h-0 flex-1 overflow-hidden bg-sidebar">
         <Suspense
           fallback={
-            <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
-              <span className="size-3 animate-spin rounded-full border border-muted-foreground/30 border-t-muted-foreground" />
+            <div role="status" className="p-3 text-xs text-muted-foreground">
               Loading…
             </div>
           }
         >
           {cwd === undefined ? (
-            <p className="p-4 text-muted-foreground">Waiting for terminal directory…</p>
+            <p className="p-3 text-muted-foreground">Waiting for terminal directory…</p>
           ) : cwd === null ? (
-            <p className="p-4 text-muted-foreground">Terminal directory is unavailable.</p>
+            <p className="p-3 text-muted-foreground">Terminal directory is unavailable.</p>
           ) : panel === "files" ? (
             <FilesPanel cwd={cwd} />
           ) : (
