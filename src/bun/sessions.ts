@@ -1,5 +1,6 @@
 import { statSync } from "node:fs";
-import type { AgentInfo, AppRPC } from "../shared/rpc-schema";
+import { resolve } from "node:path";
+import type { AgentInfo, AppRPC, AttachSessionResult } from "../shared/rpc-schema";
 import { getAvailableShells } from "./shells";
 import { TerminalMetadata } from "./terminal-metadata";
 import { resolveTerminalLink } from "./terminal-links";
@@ -32,6 +33,7 @@ const ESC = String.fromCharCode(27);
 export type SessionEvent =
   | { kind: "output"; sessionId: string; data: string }
   | { kind: "title"; sessionId: string; title: string }
+  | { kind: "cwd"; sessionId: string; cwd: string | null }
   | { kind: "commandFinished"; sessionId: string; durationMs: number; exitCode: number | null }
   | { kind: "exit"; sessionId: string };
 
@@ -88,15 +90,25 @@ function getWorkingDirectory(cwd?: string): string | undefined {
     process.platform === "win32"
       ? process.env.USERPROFILE || process.cwd()
       : process.env.HOME || process.cwd();
-  const candidate = cwd && /^~(?:[\\/]|$)/.test(cwd)
-    ? resolveTerminalLink(cwd, fallback).value
-    : cwd || fallback;
+  const candidate =
+    cwd && /^~(?:[\\/]|$)/.test(cwd) ? resolveTerminalLink(cwd, fallback).value : cwd || fallback;
   try {
-    if (statSync(candidate).isDirectory()) return candidate;
+    if (statSync(candidate).isDirectory()) return resolve(candidate);
   } catch {
     /* fall back for stale or inaccessible workspace paths */
   }
   return fallback;
+}
+
+function sessionDirectory(session: PtySession): string | null {
+  if (session.remote) return null;
+  if (!session.metadata.workingDirectory) return session.cwd;
+  try {
+    const directory = resolveTerminalLink(session.metadata.workingDirectory, session.cwd);
+    return directory.kind === "path" ? directory.value : null;
+  } catch {
+    return null;
+  }
 }
 
 function flushPending(id: string, session: PtySession) {
@@ -132,20 +144,30 @@ function finishSession(id: string, session: PtySession) {
   emit({ kind: "exit", sessionId: id });
 }
 
-export function attachSession({ sessionId, sourceSessionId, shell: shellValue, cwd, cols, rows }: AttachParams): {
-  title: string;
-  replay: string;
-} {
+export function attachSession({
+  sessionId,
+  sourceSessionId,
+  shell: shellValue,
+  cwd,
+  cols,
+  rows,
+}: AttachParams): AttachSessionResult {
   const existing = sessions.get(sessionId);
   if (existing) {
-    return { title: existing.title, replay: stripReplayControlSequences(existing.outputBuffer) };
+    return {
+      title: existing.title,
+      cwd: sessionDirectory(existing),
+      replay: stripReplayControlSequences(existing.outputBuffer),
+    };
   }
 
   const { shell, args } = getShell(shellValue);
   const source = sourceSessionId ? getSessionDirectory(sourceSessionId) : undefined;
   const sourcePath = source?.uri ? resolveTerminalLink(source.uri, source.cwd) : undefined;
   const inheritedCwd = sourcePath?.kind === "path" ? sourcePath.value : source?.cwd;
-  const safeCwd = shellValue?.startsWith("ssh:") ? undefined : getWorkingDirectory(inheritedCwd || cwd);
+  const safeCwd = shellValue?.startsWith("ssh:")
+    ? undefined
+    : getWorkingDirectory(inheritedCwd || cwd);
 
   let terminal: Bun.Terminal | undefined;
   let proc: ShellProcess;
@@ -166,12 +188,16 @@ export function attachSession({ sessionId, sourceSessionId, shell: shellValue, c
         );
         session.pendingOutput.push(text);
         scheduleFlush(sessionId, session);
+        const previousDirectory = session.metadata.workingDirectory;
         for (const event of session.metadata.write(text)) {
           if (event.kind === "title") {
             if (!event.title || event.title === session.title) continue;
             session.title = event.title;
           }
           emit({ ...event, sessionId });
+        }
+        if (session.metadata.workingDirectory !== previousDirectory) {
+          emit({ kind: "cwd", sessionId, cwd: sessionDirectory(session) });
         }
       },
       exit(term) {
@@ -214,7 +240,7 @@ export function attachSession({ sessionId, sourceSessionId, shell: shellValue, c
     }, FLUSH_INTERVAL_MS * 4);
   });
 
-  return { title: session.title, replay: "" };
+  return { title: session.title, cwd: sessionDirectory(session), replay: "" };
 }
 
 export function writePtyInput(sessionId: string, data: string) {

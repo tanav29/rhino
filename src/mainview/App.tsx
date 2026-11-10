@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Folder, X, Pencil, Ellipsis } from "lucide-react";
 import { SessionTabs } from "./session-tabs";
 import { AgentIcon } from "./agent-icon";
@@ -35,6 +35,12 @@ export default function App() {
   const sidebarRef = useRef<HTMLElement>(null);
   const resizeRef = useRef<{ x: number; width: number } | null>(null);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [sessionDirectories, setSessionDirectories] = useState<Record<string, string | null>>({});
+  const updateCwd = useCallback((id: string, cwd: string | null) => {
+    setSessionDirectories((directories) =>
+      directories[id] === cwd ? directories : { ...directories, [id]: cwd },
+    );
+  }, []);
   const [editingGroup, setEditingGroup] = useState<{
     id: string | null;
     name: string;
@@ -79,7 +85,7 @@ export default function App() {
   const activeSession = useWorkspaceStore(selectActiveSession);
   const defaultShell = useWorkspaceStore((s) => s.defaultShell);
   const defaultDirectory = useWorkspaceStore((s) => s.defaultDirectory);
-  const panelCwd = activeSession?.cwd || project?.path;
+  const panelCwd = sessionDirectories[activeSessionId];
 
   useEffect(() => {
     const reportFocus = () =>
@@ -582,6 +588,7 @@ export default function App() {
                 <SessionView
                   session={session}
                   onTitle={updateTitle}
+                  onCwd={updateCwd}
                   active={
                     session.id === activeSessionId &&
                     !newOpen &&
@@ -605,7 +612,12 @@ export default function App() {
             <div className="w-[min(24rem,40vw)] shrink-0 border-l border-border bg-sidebar" />
           }
         >
-          <WorkspacePanel cwd={panelCwd} panel={panel} onPanelToggle={setPanel} />
+          <WorkspacePanel
+            key={`${activeSessionId}:${panelCwd}`}
+            cwd={panelCwd}
+            panel={panel}
+            onPanelToggle={setPanel}
+          />
         </Suspense>
       )}
       <Suspense fallback={null}>
@@ -636,7 +648,7 @@ function WorkspacePanel({
   panel,
   onPanelToggle,
 }: {
-  cwd?: string;
+  cwd?: string | null;
   panel: "files" | "git";
   onPanelToggle: (panel: "files" | "git" | null) => void;
 }) {
@@ -678,13 +690,15 @@ function WorkspacePanel({
             </div>
           }
         >
-          {panel === "files" &&
-            (cwd ? (
-              <FilesPanel cwd={cwd} />
-            ) : (
-              <p className="p-4 text-muted-foreground">No project selected.</p>
-            ))}
-          {panel === "git" && <GitPanel cwd={cwd} />}
+          {cwd === undefined ? (
+            <p className="p-4 text-muted-foreground">Waiting for terminal directory…</p>
+          ) : cwd === null ? (
+            <p className="p-4 text-muted-foreground">Terminal directory is unavailable.</p>
+          ) : panel === "files" ? (
+            <FilesPanel cwd={cwd} />
+          ) : (
+            <GitPanel cwd={cwd} />
+          )}
         </Suspense>
       </div>
     </aside>

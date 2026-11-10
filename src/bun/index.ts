@@ -92,6 +92,9 @@ setSessionEventSink((event) => {
     case "title":
       rpc.send.ptyTitle({ sessionId: event.sessionId, title: event.title });
       break;
+    case "cwd":
+      rpc.send.ptyCwd({ sessionId: event.sessionId, cwd: event.cwd });
+      break;
     case "exit":
       rpc.send.ptyExit({ sessionId: event.sessionId });
       break;

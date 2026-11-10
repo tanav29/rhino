@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
+import { resolve } from "node:path";
 import {
   attachSession,
   getSessionDirectory,
@@ -66,7 +67,37 @@ test("shell exit delivers final output before the exit event", async () => {
 });
 
 test("new sessions resolve the home directory", () => {
-  attachSession({ sessionId: "home", cols: 80, rows: 24, cwd: "~" });
+  const attached = attachSession({ sessionId: "home", cols: 80, rows: 24, cwd: "~" });
   const home = process.platform === "win32" ? process.env.USERPROFILE : process.env.HOME;
   expect(getSessionDirectory("home")?.cwd).toBe(home || process.cwd());
+  expect(attached.cwd).toBe(home || process.cwd());
 });
+
+test("directory updates and reattaches follow the shell without changing other terminals", async () => {
+  const events: SessionEvent[] = [];
+  setSessionEventSink((event) => events.push(event));
+  const windows = process.platform === "win32";
+  const params = {
+    sessionId: "directory",
+    cols: 120,
+    rows: 30,
+    cwd: process.cwd(),
+    shell: windows ? "powershell.exe" : "/bin/bash",
+  };
+  expect(attachSession(params).cwd).toBe(process.cwd());
+  const other = { ...params, sessionId: "other-directory", cwd: resolve("src") };
+  expect(attachSession(other).cwd).toBe(other.cwd);
+  const script = resolve(`scripts/shell-integration.${windows ? "ps1" : "bash"}`);
+  const setup = windows
+    ? `. '${script.replaceAll("'", "''")}'`
+    : `source '${script.replaceAll("'", "'\\''")}'`;
+  writePtyInput(params.sessionId, setup + "\r");
+  await waitFor(() => events.some((event) => event.kind === "cwd" && event.cwd === params.cwd));
+  events.length = 0;
+  writePtyInput(params.sessionId, windows ? "Set-Location tests\r" : "cd tests\r");
+  await waitFor(() =>
+    events.some((event) => event.kind === "cwd" && event.cwd === resolve("tests")),
+  );
+  expect(attachSession(params).cwd).toBe(resolve("tests"));
+  expect(attachSession(other).cwd).toBe(other.cwd);
+}, 15_000);

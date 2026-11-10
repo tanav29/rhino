@@ -56,6 +56,8 @@ export interface AttachSessionParams {
 
 export interface AttachSessionResult {
   title: string;
+  /** Current directory on the backend, or null when unavailable (e.g. SSH/WSL). */
+  cwd: string | null;
   /** Scrollback replay so re-attaching restores terminal history. */
   replay: string;
 }
@@ -136,6 +138,7 @@ export type AppRPC = {
     messages: {
       ptyOutput: { sessionId: string; data: string };
       ptyTitle: { sessionId: string; title: string };
+      ptyCwd: { sessionId: string; cwd: string | null };
       ptyExit: { sessionId: string };
     };
   }>;

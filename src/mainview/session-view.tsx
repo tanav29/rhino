@@ -10,12 +10,14 @@ import {
   subscribePtyExit,
   subscribePtyOutput,
   subscribePtyTitle,
+  subscribePtyCwd,
 } from "./rpc";
 import { installTerminalInteractions } from "./terminal-interactions";
 
 export function SessionView({
   session,
   onTitle,
+  onCwd,
   active = true,
   visible = true,
   fontSize = 13,
@@ -24,6 +26,7 @@ export function SessionView({
 }: {
   session: SessionTab;
   onTitle: (id: string, title: string) => void;
+  onCwd: (id: string, cwd: string | null) => void;
   active?: boolean;
   visible?: boolean;
   fontSize?: number;
@@ -43,6 +46,7 @@ export function SessionView({
   const replayWritten = useRef(false);
   const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const onTitleRef = useRef(onTitle);
+  const onCwdRef = useRef(onCwd);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +67,8 @@ export function SessionView({
 
   useEffect(() => {
     onTitleRef.current = onTitle;
-  }, [onTitle]);
+    onCwdRef.current = onCwd;
+  }, [onTitle, onCwd]);
 
   useLayoutEffect(() => {
     if (!ready || !visible || !active) return;
@@ -136,6 +141,7 @@ export function SessionView({
     if (!core || !ready) return;
 
     let disposed = false;
+    let receivedCwd = false;
     setExited(false);
     setError(null);
 
@@ -154,6 +160,7 @@ export function SessionView({
           rows: size.rows,
         });
         if (disposed) return;
+        if (!receivedCwd) onCwdRef.current(session.id, attached.cwd);
         if (attached.title) onTitleRef.current(session.id, attached.title);
         if (attached.replay && !replayWritten.current) {
           replayWritten.current = true;
@@ -175,6 +182,11 @@ export function SessionView({
     const unsubTitle = subscribePtyTitle(session.id, (title) =>
       onTitleRef.current(session.id, title),
     );
+    const unsubCwd = subscribePtyCwd(session.id, (cwd) => {
+      if (disposed) return;
+      receivedCwd = true;
+      onCwdRef.current(session.id, cwd);
+    });
     const unsubExit = subscribePtyExit(session.id, () => {
       if (!disposed) setExited(true);
     });
@@ -183,6 +195,7 @@ export function SessionView({
       disposed = true;
       unsubOutput();
       unsubTitle();
+      unsubCwd();
       unsubExit();
     };
   }, [core, ready, ref, rpc, session.cwd, session.id, session.shell, write]);
@@ -305,4 +318,3 @@ export function SessionView({
     </div>
   );
 }
-

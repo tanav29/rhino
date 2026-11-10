@@ -33,7 +33,7 @@ Deploy on Vercel by importing the repository and setting the project root to `ma
 
 ## Shell and agent integration
 
-For completion notifications and paths relative to the shell's current directory, enable shell integration. If your prompt already emits OSC 133 command markers and OSC 7 working-directory URIs, no extra setup is needed. Otherwise source the matching script from this checkout in your shell profile (replace the path with your checkout's absolute path):
+Files and Git follow the selected terminal's directory. To update them after `cd`, enable shell integration, which also provides completion notifications and relative file links. If your prompt already emits OSC 133 command markers and OSC 7 working-directory URIs, no extra setup is needed. Otherwise source the matching script from this checkout in your shell profile (replace the path with your checkout's absolute path):
 
 ```powershell
 # PowerShell: add to $PROFILE, after setting up your prompt. Requires PSReadLine.
@@ -47,7 +47,7 @@ source /path/to/term/scripts/shell-integration.bash
 source /path/to/term/scripts/shell-integration.zsh
 ```
 
-Restart the shell after changing its profile. Notifications are local desktop only and depend on OS notification settings. Plain cmd, SSH and WSL sessions need their own OSC 133 integration; quiet output alone never triggers a completion alert. Without OSC 7, relative file paths use the session's initial directory. File links from network backends and explicitly remote shells are not opened on the local machine. A `:line:column` suffix is accepted when revealing a file.
+Restart the shell after changing its profile. Notifications are local desktop only and depend on OS notification settings. Plain cmd, SSH and WSL sessions need their own OSC 133 integration; quiet output alone never triggers a completion alert. Without OSC 7, Files, Git and relative file links use the session's initial directory. Files and Git are unavailable for explicitly remote shells (SSH/WSL). File links from network backends and explicitly remote shells are not opened on the local machine. A `:line:column` suffix is accepted when revealing a file.
 
 Agent process detection runs every five seconds. **Inferred** status reflects recent terminal activity, so a quiet agent may still be working. To report exact status, an agent hook can emit `OSC 777;rhino;agent;<name>;<status> ST`, where status is `working`, `blocked`, `idle` or `needs-attention`. For example:
 

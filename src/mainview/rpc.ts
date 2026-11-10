@@ -7,6 +7,7 @@ import { createBackendConnections } from "./backend-connections";
 type Listener<T> = (payload: T) => void;
 const outputListeners = new Map<string, Set<Listener<string>>>();
 const titleListeners = new Map<string, Set<Listener<string>>>();
+const cwdListeners = new Map<string, Set<Listener<string | null>>>();
 const exitListeners = new Map<string, Set<Listener<undefined>>>();
 
 function subscribe<T>(map: Map<string, Set<Listener<T>>>, sessionId: string, fn: Listener<T>) {
@@ -27,6 +28,7 @@ function notify<T>(map: Map<string, Set<Listener<T>>>, sessionId: string, payloa
 function dispatch(event: SessionEvent) {
   if (event.kind === "output") notify(outputListeners, event.sessionId, event.data);
   if (event.kind === "title") notify(titleListeners, event.sessionId, event.title);
+  if (event.kind === "cwd") notify(cwdListeners, event.sessionId, event.cwd);
   if (event.kind === "exit") notify(exitListeners, event.sessionId, undefined);
 }
 
@@ -42,6 +44,9 @@ const native = Electroview.defineRPC<AppRPC>({
       },
       ptyTitle: ({ sessionId, title }) => {
         if (isLocalActive()) dispatch({ kind: "title", sessionId, title });
+      },
+      ptyCwd: ({ sessionId, cwd }) => {
+        if (isLocalActive()) dispatch({ kind: "cwd", sessionId, cwd });
       },
       ptyExit: ({ sessionId }) => {
         if (isLocalActive()) dispatch({ kind: "exit", sessionId });
@@ -102,6 +107,9 @@ export function subscribePtyOutput(sessionId: string, fn: Listener<string>) {
 }
 export function subscribePtyTitle(sessionId: string, fn: Listener<string>) {
   return subscribe(titleListeners, sessionId, fn);
+}
+export function subscribePtyCwd(sessionId: string, fn: Listener<string | null>) {
+  return subscribe(cwdListeners, sessionId, fn);
 }
 export function subscribePtyExit(sessionId: string, fn: Listener<undefined>) {
   return subscribe(exitListeners, sessionId, fn);

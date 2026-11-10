@@ -106,7 +106,7 @@ test("authenticated client controls a real PTY, reattaches with scrollback, and 
   const params = { sessionId: "network-pty", cols: 80, rows: 24, cwd: process.cwd() };
   // A terminal started locally is the same terminal controlled over the network.
   attachSession(params);
-  await client.request.attachSession(params);
+  expect((await client.request.attachSession(params)).cwd).toBe(params.cwd);
   client.send.ptyResize({ sessionId: params.sessionId, cols: 100, rows: 30 });
   const marker = process.platform === "win32" ? "NETWORK_Windows_NT" : "NETWORK_OK";
   client.send.ptyInput({

@@ -79,10 +79,25 @@ export function createApiHandlers(): RequestHandlers {
     readGitStatus: async ({ cwd }) => {
       const root = resolve(cwd || process.cwd());
       try {
-        const result = await execFileAsync("git", ["-C", root, "status", "--short", "--branch"], {
-          windowsHide: true,
-          maxBuffer: 20 * 1024 * 1024,
-        });
+        const result = await execFileAsync(
+          "git",
+          [
+            "-C",
+            root,
+            "-c",
+            "status.relativePaths=true",
+            "status",
+            "--short",
+            "--branch",
+            "--untracked-files=all",
+            "--",
+            ".",
+          ],
+          {
+            windowsHide: true,
+            maxBuffer: 20 * 1024 * 1024,
+          },
+        );
         return result.stdout as string;
       } catch {
         return "";
