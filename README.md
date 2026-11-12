@@ -59,7 +59,7 @@ printf '\033]777;rhino;agent;codex;needs-attention\033\\'
 [Console]::Write("$([char]27)]777;rhino;agent;codex;needs-attention$([char]7)")
 ```
 
-Both BEL and ST terminators are accepted. Input resumes activity-based status; OSC 133 completion clears the agent report. MCP control is tracked as future work in `.todo`.
+Both BEL and ST terminators are accepted. Input resumes activity-based status; OSC 133 completion clears the agent report. MCP control is tracked in https://github.com/tanav29/rhino/issues/3.
 
 ## Requirements
 
