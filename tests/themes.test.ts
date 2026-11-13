@@ -15,7 +15,7 @@ describe("Marketplace themes", () => {
         '{ "include": "./base.json", "colors": { "terminal.ansiRed": "#ff0000", }, }',
       ),
       "extension/themes/base.json": strToU8(
-        '{ // comment\n "colors": { "editor.background": "#123456", "terminal.foreground": "#abcdef" } }',
+        '{ // comment\n "colors": { "editor.background": "#123456", "panel.border": "#654321", "terminal.foreground": "#abcdef" } }',
       ),
     });
     expect(readThemePackage(zip, "author.example")).toEqual([
@@ -24,6 +24,7 @@ describe("Marketplace themes", () => {
         name: "Example",
         colors: {
           "editor.background": "#123456",
+          "panel.border": "#654321",
           "terminal.background": "#123456",
           "terminal.foreground": "#abcdef",
           "terminal.ansiRed": "#ff0000",
@@ -39,12 +40,18 @@ describe("Marketplace themes", () => {
         "editor.background": "#ffffff",
         "editor.foreground": "#111111",
         "sideBar.background": "#eeeeee",
+        "sideBar.border": "#abcdef",
+        "panel.border": "#345678",
+        "input.border": "#123456",
         focusBorder: "#0055aa",
       },
     });
     expect(variables["--background"]).toBe("#ffffff");
     expect(variables["--sidebar"]).toBe("#eeeeee");
     expect(variables["--ring"]).toBe("#0055aa");
+    expect(variables["--border"]).toBe("#345678");
+    expect(variables["--sidebar-border"]).toBe("#abcdef");
+    expect(variables["--input"]).toBe("#123456");
     expect(variables["color-scheme"]).toBe("light");
     expect(
       appThemeVariables({

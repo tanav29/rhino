@@ -15,7 +15,21 @@ export function appThemeVariables(theme: TerminalTheme): Record<string, string> 
   const accent =
     get("list.hoverBackground", "list.activeSelectionBackground") ??
     `color-mix(in srgb, ${background} 88%, ${foreground})`;
-  const primary = get("focusBorder", "button.background", "terminal.ansiBlue") ?? foreground;
+  const primary = get("button.background", "focusBorder", "terminal.ansiBlue") ?? foreground;
+  const border =
+    get(
+      "panel.border",
+      "sideBar.border",
+      "editorWidget.border",
+      "widget.border",
+      "tab.border",
+      "titleBar.border",
+      "activityBar.border",
+      "contrastBorder",
+      "input.border",
+      "button.border",
+    ) ?? `color-mix(in srgb, ${background} 75%, ${foreground})`;
+  const inputBorder = get("input.border", "contrastBorder") ?? border;
   const channel = (offset: number) => parseInt(background.slice(offset, offset + 2), 16) / 255;
   const luminance = 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
   return {
@@ -23,29 +37,37 @@ export function appThemeVariables(theme: TerminalTheme): Record<string, string> 
     "--background": background,
     "--foreground": foreground,
     "--card": surface,
+    "--card-foreground": foreground,
     "--popover": get("editorWidget.background") ?? surface,
     "--popover-foreground": get("editorWidget.foreground") ?? foreground,
     "--sidebar": surface,
     "--sidebar-foreground": get("sideBar.foreground") ?? foreground,
-    "--secondary": accent,
+    "--sidebar-border": get("sideBar.border", "activityBar.border", "contrastBorder") ?? border,
+    "--sidebar-primary": primary,
+    "--sidebar-primary-foreground": get("button.foreground") ?? background,
+    "--sidebar-accent": accent,
+    "--sidebar-accent-foreground": get("list.activeSelectionForeground") ?? foreground,
+    "--sidebar-ring": get("focusBorder") ?? primary,
+    "--secondary": get("button.secondaryBackground", "list.inactiveSelectionBackground") ?? accent,
+    "--secondary-foreground":
+      get("button.secondaryForeground", "list.inactiveSelectionForeground") ?? foreground,
     "--muted": surface,
     "--accent": accent,
     "--accent-foreground": get("list.activeSelectionForeground") ?? foreground,
     "--muted-foreground":
       get("descriptionForeground") ?? `color-mix(in srgb, ${foreground} 70%, ${background})`,
-    "--border":
-      get("panel.border", "sideBar.border", "input.border") ??
-      `color-mix(in srgb, ${background} 75%, ${foreground})`,
-    "--input": get("input.border") ?? `color-mix(in srgb, ${background} 65%, ${foreground})`,
+    "--border": border,
+    "--input": inputBorder,
     "--primary": primary,
     "--primary-foreground": get("button.foreground") ?? background,
-    "--ring": primary,
+    "--ring": get("focusBorder") ?? primary,
     "--selection":
       get("editor.selectionBackground", "terminal.selectionBackground") ??
       `color-mix(in srgb, ${primary} 30%, transparent)`,
     "--destructive": get("errorForeground", "terminal.ansiRed") ?? "#e06c75",
     "--success": get("terminal.ansiGreen") ?? "#a1c181",
     "--warning": get("terminal.ansiYellow") ?? "#dec184",
+    "--chart-4": get("charts.purple", "terminal.ansiMagenta") ?? primary,
   };
 }
 
