@@ -62,6 +62,8 @@ export default function App() {
   const panel = useWorkspaceStore((s) => s.panel);
   const sidebarCollapsed = useWorkspaceStore((s) => s.sidebarCollapsed);
   const hydrated = useWorkspaceStore((s) => s.hydrated);
+  const terminalThemes = useWorkspaceStore((s) => s.terminalThemes);
+  const selectedThemeId = useWorkspaceStore((s) => s.selectedThemeId);
   const termFontSize = useWorkspaceStore((s) => s.termFontSize);
   const termLineHeight = useWorkspaceStore((s) => s.termLineHeight);
   const termCursorBlink = useWorkspaceStore((s) => s.termCursorBlink);
@@ -160,6 +162,8 @@ export default function App() {
           panes,
           defaultShell,
           defaultDirectory,
+          terminalThemes,
+          selectedThemeId,
           termFontSize,
           termLineHeight,
           termCursorBlink,
@@ -177,6 +181,8 @@ export default function App() {
     panes,
     defaultShell,
     defaultDirectory,
+    terminalThemes,
+    selectedThemeId,
     termFontSize,
     termLineHeight,
     termCursorBlink,

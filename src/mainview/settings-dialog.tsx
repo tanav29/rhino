@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { getBackendClient } from "./rpc";
+import { useWorkspaceStore } from "./store";
 import { Tabs } from "@base-ui/react/tabs";
 import { Keyboard, Minus, Monitor, Plus, RotateCcw, Terminal } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -118,6 +121,30 @@ export function SettingsDialog({
   cursorBlink,
   onCursorBlinkChange,
 }: SettingsDialogProps) {
+  const themes = useWorkspaceStore((s) => s.terminalThemes);
+  const selected = useWorkspaceStore((s) => s.selectedThemeId);
+  const setThemes = useWorkspaceStore((s) => s.setThemes);
+  const [extension, setExtension] = useState("");
+  const [themeError, setThemeError] = useState("");
+  const [installing, setInstalling] = useState(false);
+  const install = async () => {
+    setInstalling(true);
+    setThemeError("");
+    try {
+      const imported = await getBackendClient().request.installMarketplaceThemes({ extension });
+      if (!imported.length) throw new Error("No themes found in this extension");
+      const prefix = imported[0].id.split(":")[0].toLowerCase();
+      setThemes(
+        [...themes.filter((theme) => theme.id.split(":")[0].toLowerCase() !== prefix), ...imported],
+        imported[0].id,
+      );
+      setExtension("");
+    } catch (error) {
+      setThemeError(error instanceof Error ? error.message : "Unable to install theme");
+    } finally {
+      setInstalling(false);
+    }
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -197,6 +224,64 @@ export function SettingsDialog({
               </label>
             </div>
 
+            <div className="mt-4 space-y-2 border-t border-border pt-4">
+              <label htmlFor="terminal-theme" className="block text-xs font-medium">
+                Terminal theme
+              </label>
+              <select
+                id="terminal-theme"
+                className="ui-input w-full"
+                value={selected}
+                onChange={(event) => setThemes(themes, event.target.value)}
+              >
+                <option value="">Rhino default</option>
+                {themes.map((theme) => (
+                  <option key={theme.id} value={theme.id}>
+                    {theme.name}
+                  </option>
+                ))}
+              </select>
+              {selected && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setThemes(
+                      themes.filter((theme) => theme.id !== selected),
+                      "",
+                    )
+                  }
+                >
+                  Remove selected theme
+                </Button>
+              )}
+              <label htmlFor="theme-extension" className="block text-xs font-medium">
+                Install from VS Code Marketplace
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="theme-extension"
+                  className="ui-input flex-1"
+                  placeholder="publisher.extension"
+                  value={extension}
+                  onChange={(event) => setExtension(event.target.value)}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={installing || !extension.trim()}
+                  onClick={() => void install()}
+                >
+                  {installing ? "Installing?" : "Install"}
+                </Button>
+              </div>
+              {themeError && (
+                <p role="alert" className="text-xs text-destructive">
+                  {themeError}
+                </p>
+              )}
+            </div>
             <p className="mt-3 mb-2 text-xs font-medium text-muted-foreground">Preview</p>
             <div
               className="overflow-x-auto rounded-sm border border-border bg-background p-3 font-mono [&_*]:font-mono"

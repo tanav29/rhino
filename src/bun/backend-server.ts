@@ -23,6 +23,7 @@ const optionalString = (value: unknown) => value === undefined || isString(value
 
 // Only this explicit surface is exposed to network clients. Sharing controls stay local.
 const validators: Record<string, (params: Record<string, unknown>) => boolean> = {
+  installMarketplaceThemes: (p) => isString(p.extension) && p.extension.length <= 500,
   listAgents: () => true,
   listShells: () => true,
   browseDirectory: (p) => optionalString(p.path),
