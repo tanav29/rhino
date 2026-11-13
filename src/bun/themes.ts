@@ -1,5 +1,5 @@
 import { unzipSync, strFromU8 } from "fflate";
-import { parse, type ParseError } from "jsonc-parser";
+import { parse, type ParseError } from "jsonc-parser/lib/esm/main.js";
 import { posix } from "node:path";
 import type { TerminalTheme } from "../shared/rpc-schema";
 

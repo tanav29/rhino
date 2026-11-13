@@ -6,7 +6,7 @@ export default {
   app: {
     name: isDev ? "Rhino (dev)" : "Rhino",
     identifier: "dev.10xdevs.term",
-    version: "0.0.3",
+    version: "0.0.4",
   },
   build: {
     mainProcess: "bun",
