@@ -83,6 +83,12 @@ jobs:
           sh "$RUNNER_TEMP/hutch-install.sh" --version 0.29.0 --no-modify-path
           echo "$HOME/.hutch/bin" >> "$GITHUB_PATH"
 
+      - name: Install supported Bash on macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install bash
+          echo "$(brew --prefix bash)/bin" >> "$GITHUB_PATH"
+
       - name: Prepare pinned Electrobun devkit
         run: bun run prepare:desktop
 
@@ -106,6 +112,8 @@ jobs:
   publish:
     name: Publish GitHub Release
     needs: build
+    # Preserve successful targets even when another matrix build fails.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -118,11 +126,29 @@ jobs:
           path: release-artifacts
           merge-multiple: true
 
-      - name: Create and publish release
+      - name: Create or update release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          BUILD_RESULT: ${{ needs.build.result }}
         run: |
-          gh release create "$RELEASE_TAG" release-artifacts/* \
-            --verify-tag --draft --title "Rhino $RELEASE_TAG" --generate-notes
-          gh release edit "$RELEASE_TAG" --draft=false --latest
+          shopt -s nullglob
+          files=(release-artifacts/*)
+          if (( ${#files[@]} == 0 )); then
+            echo "::error::No successful builds produced release files."
+            exit 1
+          fi
+
+          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --verify-tag --draft --title "Rhino $RELEASE_TAG" --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" "${files[@]}" --clobber
+
+          latest=false
+          if [[ "$BUILD_RESULT" == "success" ]]; then
+            latest=true
+          else
+            echo "::warning::Only successful targets were attached. Re-run failed jobs to complete this release."
+          fi
+          gh release edit "$RELEASE_TAG" --draft=false --latest="$latest"
