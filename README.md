@@ -21,6 +21,7 @@ Deploy on Vercel by importing the repository and setting the project root to `ma
 - **Multi-session tabs & split panes** — row/column splits with per-pane terminals
 - **File tree** — project files with git-aware status
 - **Git panel** — changed files + inline diffs (GitHub Dark, shiki)
+- **VS Code themes** — install color themes from the VS Code Marketplace in Settings using a `publisher.extension` ID
 - **Shell detection** — cmd / PowerShell / pwsh / git-bash / WSL / bash / zsh
 - **Workspaces** — multiple projects, persisted under the app's `userData` dir
 - **Fast, compact interface** ? a minimal workspace with panels and dialogs loaded on demand
