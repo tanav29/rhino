@@ -1,3 +1,4 @@
+import type { TerminalTheme } from "../shared/rpc-schema";
 import { create } from "zustand";
 import { rpc } from "./rpc";
 import type { SessionTab } from "./session-tabs";
@@ -61,6 +62,9 @@ interface WorkspaceState {
   termFontSize: number;
   termLineHeight: number;
   termCursorBlink: boolean;
+  terminalThemes: TerminalTheme[];
+  selectedThemeId: string;
+  setThemes: (themes: TerminalTheme[], selected: string) => void;
   newOpen: boolean;
   settingsOpen: boolean;
   shells: { name: string; value: string }[];
@@ -107,6 +111,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   termFontSize: FONT_SIZE_DEFAULT,
   termLineHeight: LINE_HEIGHT_DEFAULT,
   termCursorBlink: false,
+  terminalThemes: [],
+  selectedThemeId: "",
+  setThemes: (terminalThemes, selectedThemeId) => set({ terminalThemes, selectedThemeId }),
   newOpen: false,
   settingsOpen: false,
   shells: [],
@@ -143,6 +150,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       termLineHeight?: unknown;
       termCursorBlink?: unknown;
       sidebarCollapsed?: unknown;
+      terminalThemes?: unknown;
+      selectedThemeId?: unknown;
     } | null;
     const valid =
       snap?.projects &&
@@ -219,6 +228,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       termFontSize: parsedSize,
       termLineHeight: parsedLineHeight,
       termCursorBlink: typeof snap?.termCursorBlink === "boolean" ? snap.termCursorBlink : false,
+      terminalThemes: Array.isArray(snap?.terminalThemes)
+        ? snap.terminalThemes.filter(
+            (t): t is TerminalTheme =>
+              t &&
+              typeof t.id === "string" &&
+              typeof t.name === "string" &&
+              t.colors &&
+              typeof t.colors === "object",
+          )
+        : [],
+      selectedThemeId: typeof snap?.selectedThemeId === "string" ? snap.selectedThemeId : "",
       sidebarCollapsed: snap?.sidebarCollapsed === true,
       hydrated: true,
     });

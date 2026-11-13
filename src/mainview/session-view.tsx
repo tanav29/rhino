@@ -1,3 +1,4 @@
+import { useWorkspaceStore } from "./store";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Terminal, useTerminal } from "@wterm/react";
 import { GhosttyCore } from "@wterm/ghostty";
@@ -33,6 +34,9 @@ export function SessionView({
   lineHeight?: number;
   cursorBlink?: boolean;
 }) {
+  const theme = useWorkspaceStore((s) =>
+    s.terminalThemes.find((item) => item.id === s.selectedThemeId),
+  );
   const [rpc] = useState(getBackendClient);
   const { ref, write, focus } = useTerminal();
   const [core, setCore] = useState<GhosttyCore | null>(null);
@@ -200,6 +204,59 @@ export function SessionView({
     };
   }, [core, ready, ref, rpc, session.cwd, session.id, session.shell, write]);
 
+  const ansiNames = [
+    "Black",
+    "Red",
+    "Green",
+    "Yellow",
+    "Blue",
+    "Magenta",
+    "Cyan",
+    "White",
+    "BrightBlack",
+    "BrightRed",
+    "BrightGreen",
+    "BrightYellow",
+    "BrightBlue",
+    "BrightMagenta",
+    "BrightCyan",
+    "BrightWhite",
+  ];
+  const themeStyle: Record<string, string> = {};
+  if (theme) {
+    for (const [key, variable] of [
+      ["terminal.background", "--term-bg"],
+      ["terminal.foreground", "--term-fg"],
+      ["terminalCursor.foreground", "--term-cursor"],
+      ["terminal.selectionBackground", "--term-selection-bg"],
+      ...ansiNames.map((name, index) => [`terminal.ansi${name}`, `--term-color-${index}`]),
+    ]) {
+      const color = theme.colors[key];
+      if (typeof color === "string" && /^#[\da-f]{6}([\da-f]{2})?$/i.test(color))
+        themeStyle[variable] = color;
+    }
+  }
+  useLayoutEffect(() => {
+    const terminal = ref.current?.instance;
+    const element = terminal?.element as HTMLElement | undefined;
+    if (!ready || !terminal || !element) return;
+    const css = getComputedStyle(element);
+    const rgb = (variable: string) => {
+      const probe = document.createElement("span");
+      probe.style.color = css.getPropertyValue(variable).trim();
+      element.appendChild(probe);
+      const values = getComputedStyle(probe).color.match(/\d+/g)?.map(Number) ?? [0, 0, 0];
+      probe.remove();
+      return (values[0] << 16) | (values[1] << 8) | values[2];
+    };
+    terminal.setThemeColors({
+      foreground: rgb("--term-fg"),
+      background: rgb("--term-bg"),
+      cursor: rgb("--term-cursor"),
+      palette: Array.from({ length: 16 }, (_, i) => rgb(`--term-color-${i}`)),
+    });
+  }, [theme, ready, ref]);
+
   const rowHeight = Math.round(fontSize * lineHeight);
 
   // wterm's ResizeObserver only recomputes the grid when the container's box
@@ -246,6 +303,7 @@ export function SessionView({
           className="terminal-surface h-full min-h-0"
           style={
             {
+              ...themeStyle,
               borderRadius: 0,
               height: "100%",
               minHeight: 0,

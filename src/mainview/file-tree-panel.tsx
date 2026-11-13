@@ -11,7 +11,7 @@ interface FilesData {
 
 // Pass shared tokens into the tree's shadow root instead of maintaining a second theme.
 const treeStyle = {
-  colorScheme: "dark",
+  colorScheme: "inherit",
   "--trees-bg-override": "var(--sidebar)",
   "--trees-bg-muted-override": "var(--accent)",
   "--trees-fg-override": "var(--foreground)",

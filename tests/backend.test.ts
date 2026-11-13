@@ -194,7 +194,8 @@ test("sharing and PIN changes disconnect existing clients, and a failed port cha
   await expect(
     connectBackendSocket({ url, pin: initial.pin, onEvent() {}, onClose() {} }),
   ).rejects.toThrow("Incorrect PIN");
-  const busy = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response() });
+  // Match the wildcard address used by shared mode; macOS can otherwise bind both.
+  const busy = Bun.serve({ hostname: "0.0.0.0", port: 0, fetch: () => new Response() });
   try {
     expect(() => controller.configure({ shared: true, port: busy.port! })).toThrow(
       "Unable to start backend",
