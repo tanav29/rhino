@@ -226,7 +226,7 @@ export function SettingsDialog({
 
             <div className="mt-4 space-y-2 border-t border-border pt-4">
               <label htmlFor="terminal-theme" className="block text-xs font-medium">
-                Terminal theme
+                Theme
               </label>
               <select
                 id="terminal-theme"
@@ -256,6 +256,9 @@ export function SettingsDialog({
                   Remove selected theme
                 </Button>
               )}
+              <p className="text-xs text-muted-foreground">
+                Reinstall themes imported before this update to use their full interface colors.
+              </p>
               <label htmlFor="theme-extension" className="block text-xs font-medium">
                 Install from VS Code Marketplace
               </label>
