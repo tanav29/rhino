@@ -32,6 +32,12 @@ export type GitDiffResult =
   | { error: string };
 
 /** Serialized workspace layout persisted by the main process. */
+export interface TerminalTheme {
+  id: string;
+  name: string;
+  colors: Record<string, string>;
+}
+
 export interface WorkspaceSnapshot {
   projects: unknown[];
   activeProjectId: string;
@@ -43,6 +49,8 @@ export interface WorkspaceSnapshot {
   termLineHeight?: number;
   termCursorBlink?: boolean;
   sidebarCollapsed?: boolean;
+  terminalThemes?: TerminalTheme[];
+  selectedThemeId?: string;
 }
 
 export interface AttachSessionParams {
@@ -115,6 +123,7 @@ export type AppRPC = {
         params: { shared: boolean; port: number; regeneratePin?: boolean };
         response: BackendStatus;
       };
+      installMarketplaceThemes: { params: { extension: string }; response: TerminalTheme[] };
       listAgents: { params: {}; response: AgentInfo[] };
       openTerminalLink: { params: { sessionId: string; target: string }; response: null };
       listShells: { params: {}; response: ShellOption[] };
