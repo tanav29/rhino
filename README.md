@@ -144,14 +144,14 @@ Close a running development app before packaging: Hutch holds a project lock whi
 
 ## Release
 
-Set the same version in `package.json` and `electrobun.config.ts`, then commit and push the changes and a matching `vX.Y.Z` tag. The **Release Rhino** GitHub Actions workflow installs the pinned toolchain, runs lint and tests, and type-checks and builds installers for Windows x64, macOS Apple Silicon, and Linux x64/ARM64. After every build succeeds, it publishes a GitHub Release with generated notes and all files from `artifacts/`. Branch pushes do not publish releases.
+Set the same version in `package.json` and `electrobun.config.ts`, then commit and push the changes and a matching `vX.Y.Z` tag. The **Release Rhino** GitHub Actions workflow installs the pinned toolchain, runs lint and tests, and type-checks and builds installers for Windows x64, macOS Apple Silicon, and Linux x64/ARM64. It publishes a GitHub Release with generated notes and files from each successful target's `artifacts/`, even if another target fails. Only a fully successful build is marked as the latest release. Failed jobs still fail the workflow; re-running them adds the missing targets to the existing release. Branch pushes do not publish releases.
 
 ```bash
 git tag v0.0.1
 git push origin main v0.0.1
 ```
 
-The workflow also supports **Run workflow** with an existing version tag. Installers are currently unsigned. Publishing releases does not enable automatic updates in installed apps.
+The workflow also supports **Run workflow** with an existing version tag and updates its release assets on retries. It always builds the tagged source, so source fixes must be included in a new version tag to take effect. Installers are currently unsigned. Publishing releases does not enable automatic updates in installed apps.
 
 To retry a tag using the current workflow, select the `main` branch and enter the tag, or run:
 

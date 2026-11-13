@@ -4,31 +4,41 @@ import { resolve } from "node:path";
 import { TerminalMetadata, type MetadataEvent } from "../src/bun/terminal-metadata";
 import { resolveTerminalLink } from "../src/bun/terminal-links";
 
-const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
+// macOS ships Bash 3.2; prefer the supported Bash installed on PATH (4.4+).
+const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : Bun.which("bash");
 const powershell = process.platform === "win32" ? "powershell.exe" : Bun.which("pwsh");
 
-async function checkShell(command: string[], setup: string, failure: string) {
+async function checkShell(command: string[], failure: string) {
   const metadata = new TerminalMetadata();
   const events: MetadataEvent[] = [];
   const decoder = new TextDecoder();
   let output = "";
+  let queries = "";
   const terminal = new Bun.Terminal({
     cols: 120,
     rows: 30,
-    data(_term, chunk) {
+    name: "xterm-256color",
+    data(term, chunk) {
       const text = decoder.decode(chunk, { stream: true });
       output += text;
       events.push(...metadata.write(text));
+      // PSReadLine queries the cursor on POSIX. This headless PTY has no renderer to reply.
+      queries = (queries + text)
+        .replaceAll("\x1b[6n", () => {
+          term.write("\x1b[1;1R");
+          return "";
+        })
+        .slice(-3);
     },
   });
   const proc = Bun.spawn(command, { terminal, cwd: process.cwd() });
   async function until(predicate: () => boolean) {
     const deadline = Date.now() + 5000;
     while (!predicate() && Date.now() < deadline) await Bun.sleep(20);
-    expect(predicate()).toBe(true);
+    if (!predicate())
+      throw new Error(`Shell did not become ready. PTY output: ${JSON.stringify(output)}`);
   }
   try {
-    terminal.write(setup + "\r");
     await until(() => output.includes("\x1b]133;B"));
     expect(metadata.workingDirectory).not.toBeNull();
     expect(resolveTerminalLink(metadata.workingDirectory!, process.cwd()).value).toBe(
@@ -41,19 +51,18 @@ async function checkShell(command: string[], setup: string, failure: string) {
       { kind: "commandFinished", exitCode: 1 },
     ]);
   } finally {
-    proc.kill();
+    // Interactive Bash ignores SIGTERM on POSIX, including when an assertion fails.
+    proc.kill("SIGKILL");
     await proc.exited;
     terminal.close();
   }
 }
 
-test.skipIf(!existsSync(bash))(
+test.skipIf(!bash || !existsSync(bash))(
   "Bash integration emits command status and cwd in a real PTY",
   async () => {
-    const path = resolve("scripts/shell-integration.bash")
-      .replaceAll("\\", "/")
-      .replaceAll("'", "'\\''");
-    await checkShell([bash, "--noprofile", "--norc", "-i"], `source '${path}'`, "false");
+    const path = resolve("scripts/shell-integration.bash").replaceAll("\\", "/");
+    await checkShell([bash!, "--noprofile", "--rcfile", path, "-i"], "false");
   },
   15_000,
 );
@@ -63,8 +72,7 @@ test.skipIf(!powershell)(
   async () => {
     const path = resolve("scripts/shell-integration.ps1").replaceAll("'", "''");
     await checkShell(
-      [powershell!, "-NoProfile", "-NoLogo", "-NoExit"],
-      `. '${path}'`,
+      [powershell!, "-NoProfile", "-NoLogo", "-NoExit", "-Command", `. '${path}'`],
       "Write-Error 'test failure'",
     );
   },
