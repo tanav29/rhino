@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@wterm/dom/css" layer(base);
+@import "@xterm/xterm/css/xterm.css" layer(base);
 
 @custom-variant data-open (&:where([data-state="open"], [data-open]:not([data-open="false"])));
 @custom-variant data-closed (&:where([data-state="closed"], [data-closed]:not([data-closed="false"])));
@@ -193,7 +193,7 @@ button,
 }
 
 /* The only opt-in motion is the terminal's cursor preference. */
-*:not(.term-cursor):not([data-cursor-blink]),
+*:not(.xterm-cursor-blink),
 *::before,
 *::after {
   animation: none !important;

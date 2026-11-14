@@ -1,6 +1,6 @@
 # Rhino
 
-Native desktop terminal — [wterm](https://wterm.dev) + [Ghostty](https://ghostty.org) rendering, [Bun.Terminal](https://bun.com/reference/bun/Terminal) PTYs, packaged with [Electrobun](https://blackboard.sh/electrobun/).
+Native desktop terminal — [xterm.js](https://xtermjs.org) rendering, [Bun.Terminal](https://bun.com/reference/bun/Terminal) PTYs, packaged with [Electrobun](https://blackboard.sh/electrobun/).
 
 ![Rhino icon](assets/logo.png)
 
@@ -169,10 +169,10 @@ src/bun/api.ts           shells / browse / files / git handlers
 src/shared/rpc-schema.ts typed AppRPC (both sides import this)
 src/mainview/rpc.ts      Electroview singleton + per-session event bus
 src/mainview/App.tsx     workspace hydration/persistence via rpc
-src/mainview/session-view.tsx  Ghostty + rpc attach/input/resize
+src/mainview/session-view.tsx  xterm.js + rpc attach/input/resize
 ```
 
-`vite.config.ts` trims shiki to common languages and `github-dark-default`, and loads panels and dialogs on demand. The webview build is about 9.4 MB, including Ghostty WASM and all four terminal font styles. The fonts use WOFF2 compression with their full Nerd Font glyph coverage; to convert a replacement TTF, run `bunx wawoff2 input.ttf output.woff2` and retain the font license.
+`vite.config.ts` trims shiki to common languages and `github-dark-default`, and loads panels and dialogs on demand. The webview build includes all four terminal font styles. The fonts use WOFF2 compression with their full Nerd Font glyph coverage; to convert a replacement TTF, run `bunx wawoff2 input.ttf output.woff2` and retain the font license.
 
 UI components are checked in under `components/ui/`; run `bunx shadcn add <component>` when adding one. The app keeps the CSS state variants it uses in `src/mainview/globals.css`, so the CLI is not an install dependency.
 

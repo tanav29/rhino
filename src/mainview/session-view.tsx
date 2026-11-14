@@ -1,7 +1,8 @@
 import { useWorkspaceStore } from "./store";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Terminal, useTerminal } from "@wterm/react";
-import { GhosttyCore } from "@wterm/ghostty";
+import { Terminal, type ITheme } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { SearchAddon } from "@xterm/addon-search";
 import { TerminalFind } from "./terminal-find";
 import type { SessionTab } from "./session-tabs";
 import {
@@ -38,9 +39,12 @@ export function SessionView({
     s.terminalThemes.find((item) => item.id === s.selectedThemeId),
   );
   const [rpc] = useState(getBackendClient);
-  const { ref, write, focus } = useTerminal();
-  const [core, setCore] = useState<GhosttyCore | null>(null);
-  const [ready, setReady] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [runtime, setRuntime] = useState<{
+    terminal: Terminal;
+    fit: FitAddon;
+    search: SearchAddon;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exited, setExited] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -51,23 +55,50 @@ export function SessionView({
   const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const onTitleRef = useRef(onTitle);
   const onCwdRef = useRef(onCwd);
+  const ready = runtime !== null;
 
   useEffect(() => {
-    let cancelled = false;
-    // Keep a useful local history while preserving Ghostty's complete VT support.
-    setError(null);
-    void GhosttyCore.load({ scrollbackLimit: 8 * 1024 * 1024 })
-      .then((loadedCore) => {
-        if (!cancelled) setCore(loadedCore);
-      })
-      .catch((cause) => {
-        if (!cancelled)
-          setError(cause instanceof Error ? cause.message : "Unable to load terminal");
-      });
-    return () => {
-      cancelled = true;
+    const container = containerRef.current;
+    if (!container) return;
+    let disposed = false;
+    const terminal = new Terminal({
+      fontFamily: '"BlexMono Nerd Font", monospace',
+      scrollback: 10_000,
+      allowProposedApi: true,
+    });
+    const fit = new FitAddon();
+    const search = new SearchAddon();
+    const observer = new ResizeObserver(() => fitTerminal());
+    const fitTerminal = () => {
+      if (!disposed && container.clientWidth > 0 && container.clientHeight > 0) fit.fit();
     };
-  }, [attempt]);
+    setError(null);
+    try {
+      terminal.loadAddon(fit);
+      terminal.loadAddon(search);
+      terminal.onData((data) => rpc.send.ptyInput({ sessionId: session.id, data }));
+      terminal.onResize(({ cols, rows }) => {
+        pendingSizeRef.current = { cols, rows };
+        rpc.send.ptyResize({ sessionId: session.id, cols, rows });
+      });
+      terminal.onTitleChange((title) => onTitleRef.current(session.id, title));
+      terminal.open(container);
+      fitTerminal();
+      observer.observe(container);
+      void document.fonts.ready.then(fitTerminal);
+      setRuntime({ terminal, fit, search });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to initialize terminal");
+    }
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      terminal.dispose();
+      setRuntime(null);
+      pendingSizeRef.current = null;
+      replayWritten.current = false;
+    };
+  }, [attempt, rpc, session.id]);
 
   useEffect(() => {
     onTitleRef.current = onTitle;
@@ -80,9 +111,9 @@ export function SessionView({
       findInputRef.current?.focus();
       findInputRef.current?.select();
     } else {
-      focus();
+      runtime?.terminal.focus();
     }
-  }, [active, findOpen, focus, ready, visible]);
+  }, [active, findOpen, runtime, ready, visible]);
 
   useEffect(() => {
     if (!ready || !visible || !active) return;
@@ -110,20 +141,19 @@ export function SessionView({
         setFindOpen(false);
       }
     };
-    // Capture shortcuts before wterm turns them into PTY input.
+    // Capture shortcuts before the terminal turns them into PTY input.
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [active, findOpen, ready, visible]);
 
   useLayoutEffect(() => {
     if (!visible || !ready) return;
-    const el = ref.current?.instance?.element as HTMLElement | undefined;
-    if (!el) return;
-    void el.offsetHeight;
-  }, [visible, ready, ref]);
+    runtime?.fit.fit();
+    runtime?.terminal.refresh(0, runtime.terminal.rows - 1);
+  }, [visible, ready, runtime]);
 
   useEffect(() => {
-    const terminal = ref.current?.instance;
+    const terminal = runtime?.terminal;
     if (!ready || !terminal) return;
     return installTerminalInteractions(terminal, (target) => {
       setLinkError("");
@@ -139,10 +169,11 @@ export function SessionView({
         setLinkError("File links require a local desktop session");
       }
     });
-  }, [ready, ref, session.id]);
+  }, [ready, runtime, session.id]);
 
   useEffect(() => {
-    if (!core || !ready) return;
+    if (!runtime) return;
+    const { terminal } = runtime;
 
     let disposed = false;
     let receivedCwd = false;
@@ -151,10 +182,7 @@ export function SessionView({
 
     void (async () => {
       try {
-        const instance = ref.current?.instance;
-        const size =
-          pendingSizeRef.current ??
-          (instance ? { cols: instance.cols, rows: instance.rows } : { cols: 80, rows: 24 });
+        const size = pendingSizeRef.current ?? { cols: terminal.cols, rows: terminal.rows };
         const attached = await rpc.request.attachSession({
           sessionId: session.id,
           shell: session.shell || undefined,
@@ -168,7 +196,7 @@ export function SessionView({
         if (attached.title) onTitleRef.current(session.id, attached.title);
         if (attached.replay && !replayWritten.current) {
           replayWritten.current = true;
-          write(attached.replay);
+          terminal.write(attached.replay);
         }
         const latestSize = pendingSizeRef.current;
         if (latestSize) rpc.send.ptyResize({ sessionId: session.id, ...latestSize });
@@ -181,7 +209,7 @@ export function SessionView({
     // Subscriptions are registered synchronously so no output is missed
     // while the attach request is in flight.
     const unsubOutput = subscribePtyOutput(session.id, (data) => {
-      if (!disposed) write(data);
+      if (!disposed) terminal.write(data);
     });
     const unsubTitle = subscribePtyTitle(session.id, (title) =>
       onTitleRef.current(session.id, title),
@@ -202,7 +230,7 @@ export function SessionView({
       unsubCwd();
       unsubExit();
     };
-  }, [core, ready, ref, rpc, session.cwd, session.id, session.shell, write]);
+  }, [runtime, rpc, session.cwd, session.id, session.shell]);
 
   const ansiNames = [
     "Black",
@@ -221,7 +249,7 @@ export function SessionView({
     "BrightMagenta",
     "BrightCyan",
     "BrightWhite",
-  ];
+  ] as const;
   const themeStyle: Record<string, string> = {};
   if (theme) {
     for (const [key, variable] of [
@@ -237,96 +265,57 @@ export function SessionView({
     }
   }
   useLayoutEffect(() => {
-    const terminal = ref.current?.instance;
-    const element = terminal?.element as HTMLElement | undefined;
+    const terminal = runtime?.terminal;
+    const element = containerRef.current;
     if (!ready || !terminal || !element) return;
     const css = getComputedStyle(element);
-    const rgb = (variable: string) => {
+    const color = (variable: string) => {
       const probe = document.createElement("span");
       probe.style.color = css.getPropertyValue(variable).trim();
       element.appendChild(probe);
-      const values = getComputedStyle(probe).color.match(/\d+/g)?.map(Number) ?? [0, 0, 0];
+      const value = getComputedStyle(probe).color;
       probe.remove();
-      return (values[0] << 16) | (values[1] << 8) | values[2];
+      return value;
     };
-    terminal.setThemeColors({
-      foreground: rgb("--term-fg"),
-      background: rgb("--term-bg"),
-      cursor: rgb("--term-cursor"),
-      palette: Array.from({ length: 16 }, (_, i) => rgb(`--term-color-${i}`)),
+    const colors: ITheme = {
+      foreground: color("--term-fg"),
+      background: color("--term-bg"),
+      cursor: color("--term-cursor"),
+      selectionBackground: color("--term-selection-bg"),
+      selectionInactiveBackground: color("--term-selection-bg"),
+    };
+    ansiNames.forEach((name, index) => {
+      const key = (name[0].toLowerCase() + name.slice(1)) as Uncapitalize<
+        (typeof ansiNames)[number]
+      >;
+      colors[key] = color(`--term-color-${index}`);
     });
-  }, [theme, ready, ref]);
+    terminal.options.theme = colors;
+  }, [theme, ready, runtime]);
 
-  const rowHeight = Math.round(fontSize * lineHeight);
-
-  // wterm's ResizeObserver only recomputes the grid when the container's box
-  // changes size. A font-size / line-height change keeps the box identical, so
-  // the cell metrics (and thus cols/rows and the PTY geometry) go stale. Re-fit
-  // manually: measure a probe cell, derive cols/rows, and resize — resize()
-  // fires onResize below, which propagates the new size to the PTY.
   useLayoutEffect(() => {
-    if (!ready) return;
-    const wt = ref.current?.instance;
-    const el = wt?.element as HTMLElement | undefined;
-    if (!wt || !el) return;
-    const grid = (el.querySelector(".term-grid") as HTMLElement | null) ?? el;
-    const probe = document.createElement("div");
-    probe.className = "term-row";
-    probe.style.cssText = "visibility:hidden;position:absolute;";
-    const span = document.createElement("span");
-    span.textContent = "W";
-    probe.appendChild(span);
-    grid.appendChild(probe);
-    const charWidth = span.getBoundingClientRect().width;
-    probe.remove();
-    if (charWidth <= 0) return;
-    const cs = getComputedStyle(el);
-    const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
-    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
-    const cols = Math.max(1, Math.floor((el.clientWidth - padX) / charWidth));
-    const rows = Math.max(1, Math.floor((el.clientHeight - padY) / rowHeight));
-    if (cols !== wt.cols || rows !== wt.rows) wt.resize(cols, rows);
-  }, [fontSize, rowHeight, ready, ref]);
+    if (!runtime) return;
+    runtime.terminal.options.fontSize = fontSize;
+    runtime.terminal.options.lineHeight = lineHeight;
+    runtime.terminal.options.cursorBlink = cursorBlink;
+    if (visible) runtime.fit.fit();
+  }, [fontSize, lineHeight, cursorBlink, runtime, visible]);
 
   return (
     <div className="relative box-border h-full min-h-0 bg-background">
-      {!core && !error && (
+      {!ready && !error && (
         <div role="status" className="p-4 font-mono text-xs text-muted-foreground">
           Starting terminal…
         </div>
       )}
-      {core && (
-        <Terminal
-          ref={ref}
-          core={core}
-          autoResize
-          className="h-full min-h-0 isolate rounded-none bg-(--term-bg) p-0 [color-scheme:dark] [--term-bg:var(--background)] [--term-fg:#abb2bf] [--term-cursor:var(--primary)] [--term-selection-bg:var(--selection)] [--term-color-0:#282c34] [--term-color-1:#e06c75] [--term-color-2:#98c379] [--term-color-3:#e5c07b] [--term-color-4:#61afef] [--term-color-5:#c678dd] [--term-color-6:#56b6c2] [--term-color-7:#abb2bf] [--term-color-8:#636d83] [--term-color-9:#ea858b] [--term-color-10:#aad581] [--term-color-11:#ffd885] [--term-color-12:#85c1ff] [--term-color-13:#d398eb] [--term-color-14:#6ed5de] [--term-color-15:#fafafa] [--term-font-family:'BlexMono_Nerd_Font',_monospace] [&[data-link-hover]_.term-row]:cursor-pointer [&[data-link-hover]_.term-row_*]:cursor-pointer"
-          style={
-            {
-              ...themeStyle,
-              padding: "8px",
-              "--term-font-size": `${fontSize}px`,
-              "--term-line-height": `${lineHeight}`,
-              "--term-row-height": `${rowHeight}px`,
-            } as React.CSSProperties
-          }
-          cursorBlink={cursorBlink}
-          renderingPaused={!visible}
-          onData={(data) => rpc.send.ptyInput({ sessionId: session.id, data })}
-          onResize={(cols, rows) => {
-            pendingSizeRef.current = { cols, rows };
-            rpc.send.ptyResize({ sessionId: session.id, cols, rows });
-          }}
-          onReady={() => setReady(true)}
-          onError={(cause) =>
-            setError(cause instanceof Error ? cause.message : "Unable to initialize terminal")
-          }
-          onTitle={(title) => onTitleRef.current(session.id, title)}
-        />
-      )}
-      {findOpen && ready && ref.current?.instance && (
+      <div
+        ref={containerRef}
+        className="h-full min-h-0 isolate bg-(--term-bg) [color-scheme:dark] [--term-bg:var(--background)] [--term-fg:#abb2bf] [--term-cursor:var(--primary)] [--term-selection-bg:var(--selection)] [--term-color-0:#282c34] [--term-color-1:#e06c75] [--term-color-2:#98c379] [--term-color-3:#e5c07b] [--term-color-4:#61afef] [--term-color-5:#c678dd] [--term-color-6:#56b6c2] [--term-color-7:#abb2bf] [--term-color-8:#636d83] [--term-color-9:#ea858b] [--term-color-10:#aad581] [--term-color-11:#ffd885] [--term-color-12:#85c1ff] [--term-color-13:#d398eb] [--term-color-14:#6ed5de] [--term-color-15:#fafafa] [&>.xterm]:h-full [&>.xterm]:p-2"
+        style={themeStyle as React.CSSProperties}
+      />
+      {findOpen && runtime && (
         <TerminalFind
-          terminal={ref.current.instance}
+          searchAddon={runtime.search}
           inputRef={findInputRef}
           onClose={() => setFindOpen(false)}
         />
@@ -360,8 +349,6 @@ export function SessionView({
             className="shrink-0 rounded border border-border px-3 py-1.5 text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
             onClick={() => {
               replayWritten.current = false;
-              setCore(null);
-              setReady(false);
               setExited(false);
               rpc.send.killSession({ sessionId: session.id });
               setAttempt((value) => value + 1);
