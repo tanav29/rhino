@@ -140,6 +140,7 @@ export type AppRPC = {
       ptyResize: { sessionId: string; cols: number; rows: number };
       killSession: { sessionId: string };
       focusedSession: { sessionId: string | null };
+      windowTheme: { background: string };
     };
   }>;
   webview: RPCSchema<{

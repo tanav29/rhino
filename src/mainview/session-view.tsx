@@ -289,7 +289,7 @@ export function SessionView({
   }, [fontSize, rowHeight, ready, ref]);
 
   return (
-    <div className="relative h-full min-h-0 bg-background">
+    <div className="relative box-border h-full min-h-0 bg-background">
       {!core && !error && (
         <div role="status" className="p-4 font-mono text-xs text-muted-foreground">
           Starting terminal…
@@ -300,13 +300,11 @@ export function SessionView({
           ref={ref}
           core={core}
           autoResize
-          className="terminal-surface h-full min-h-0"
+          className="h-full min-h-0 isolate rounded-none bg-(--term-bg) p-0 [color-scheme:dark] [--term-bg:var(--background)] [--term-fg:#abb2bf] [--term-cursor:var(--primary)] [--term-selection-bg:var(--selection)] [--term-color-0:#282c34] [--term-color-1:#e06c75] [--term-color-2:#98c379] [--term-color-3:#e5c07b] [--term-color-4:#61afef] [--term-color-5:#c678dd] [--term-color-6:#56b6c2] [--term-color-7:#abb2bf] [--term-color-8:#636d83] [--term-color-9:#ea858b] [--term-color-10:#aad581] [--term-color-11:#ffd885] [--term-color-12:#85c1ff] [--term-color-13:#d398eb] [--term-color-14:#6ed5de] [--term-color-15:#fafafa] [--term-font-family:'BlexMono_Nerd_Font',_monospace] [&[data-link-hover]_.term-row]:cursor-pointer [&[data-link-hover]_.term-row_*]:cursor-pointer"
           style={
             {
               ...themeStyle,
-              borderRadius: 0,
-              height: "100%",
-              minHeight: 0,
+              padding: "8px",
               "--term-font-size": `${fontSize}px`,
               "--term-line-height": `${lineHeight}`,
               "--term-row-height": `${rowHeight}px`,

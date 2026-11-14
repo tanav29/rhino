@@ -9,8 +9,6 @@ import {
   switchToLocalBackend,
 } from "./rpc";
 
-const inputClass = "ui-input mt-1 w-full";
-
 export function BackendConnectionForm({
   initialUrl,
   onConnected,
@@ -36,7 +34,7 @@ export function BackendConnectionForm({
           .finally(() => setBusy(false));
         setPin("");
       }}
-      className="space-y-3"
+      className="space-y-4"
     >
       <label className="block text-xs font-medium">
         Share link or backend URL
@@ -50,7 +48,7 @@ export function BackendConnectionForm({
           autoCorrect="off"
           spellCheck={false}
           disabled={busy}
-          className={inputClass}
+          className="h-8 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 mt-2 w-full"
         />
       </label>
       <label className="block text-xs font-medium">
@@ -61,7 +59,7 @@ export function BackendConnectionForm({
           maxLength={80}
           placeholder="e.g. Work laptop"
           disabled={busy}
-          className={inputClass}
+          className="h-8 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 mt-2 w-full"
         />
       </label>
       <label className="block text-xs font-medium">
@@ -77,7 +75,7 @@ export function BackendConnectionForm({
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
           disabled={busy}
-          className={`${inputClass} font-mono tracking-[0.25em]`}
+          className="h-8 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 mt-2 w-full font-mono tracking-[0.25em]"
         />
       </label>
       {(error || connection.error) && (
@@ -264,7 +262,7 @@ export function BackendSettings({ shareOnly = false }: { shareOnly?: boolean }) 
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
                 disabled={busy || !backend}
-                className={inputClass}
+                className="h-8 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 mt-2 w-full"
               />
             </label>
             <Button type="submit" variant="outline" disabled={busy || !backend} className="mb-0.5">

@@ -66,7 +66,7 @@ export function NewSessionDialog({
             <select
               value={shell}
               onChange={(event) => setShell(event.target.value)}
-              className="ui-input w-full"
+              className="h-8 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 w-full"
             >
               <option value="" className="bg-popover">
                 Default shell
@@ -98,7 +98,7 @@ export function NewSessionDialog({
                 value={pathInput}
                 onChange={(event) => setPathInput(event.target.value)}
                 spellCheck={false}
-                className="ui-input flex-1 font-mono"
+                className="h-8 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 flex-1 font-mono"
                 placeholder="/path/to/project"
               />
               <Button type="submit" variant="outline" size="sm">

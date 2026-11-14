@@ -1,9 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Plus, Trash2, Folder, X, Pencil, Ellipsis } from "lucide-react";
-import { applyAppTheme } from "./app-theme";
+import { appThemeVariables, applyAppTheme } from "./app-theme";
 import { SessionTabs } from "./session-tabs";
 import { AgentIcon } from "./agent-icon";
-import logo from "../../assets/logo.png";
 import { SessionView } from "./session-view";
 import { backendConnections, desktopRpc, getBackendClient, getConnection } from "./rpc";
 import type { AgentInfo } from "../shared/rpc-schema";
@@ -39,7 +38,7 @@ export default function App() {
   const [backendRpc] = useState(getBackendClient);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [sidebarWidth, setSidebarWidth] = useState(220);
+  const [sidebarWidth, setSidebarWidth] = useState(200);
   const sidebarRef = useRef<HTMLElement>(null);
   const resizeRef = useRef<{ x: number; width: number } | null>(null);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -67,6 +66,10 @@ export default function App() {
   const selectedThemeId = useWorkspaceStore((s) => s.selectedThemeId);
   const selectedTheme = terminalThemes.find((theme) => theme.id === selectedThemeId);
   useLayoutEffect(() => applyAppTheme(selectedTheme), [selectedTheme]);
+  useEffect(() => {
+    const background = selectedTheme ? appThemeVariables(selectedTheme)["--background"] : "#282c33";
+    desktopRpc?.send.windowTheme({ background });
+  }, [selectedTheme]);
   const termFontSize = useWorkspaceStore((s) => s.termFontSize);
   const termLineHeight = useWorkspaceStore((s) => s.termLineHeight);
   const termCursorBlink = useWorkspaceStore((s) => s.termCursorBlink);
@@ -311,12 +314,12 @@ export default function App() {
   const splitColumn = panes[0]?.direction === "column";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="relative flex h-dvh overflow-hidden bg-sidebar text-foreground [--chrome-border:color-mix(in_srgb,var(--foreground)_9%,transparent)]">
       <aside
         id="workspace-sidebar"
         aria-label="Workspaces"
         ref={sidebarRef}
-        className="@container relative flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
+        className="@container relative flex shrink-0 flex-col border-r border-(--chrome-border) bg-sidebar max-sm:absolute max-sm:inset-y-0 max-sm:left-0 max-sm:z-30 max-sm:max-w-[calc(100%-48px)] max-sm:shadow-[12px_0_32px_#00000026]"
         style={{ width: sidebarWidth, display: sidebarCollapsed ? "none" : undefined }}
       >
         <div
@@ -353,30 +356,28 @@ export default function App() {
             );
           }}
         />
-        <div className="ui-panel-header gap-2 px-3">
-          <img src={logo} alt="" width={16} height={16} className="size-4 shrink-0" />
-          <h1 className="text-xs font-medium">Rhino</h1>
-          {getConnection().url && (
-            <button
-              type="button"
-              title={getConnection().url}
-              onClick={() => setSettingsOpen(true)}
-              className="ml-auto truncate text-xs text-muted-foreground hover:text-foreground"
-            >
-              {new URL(getConnection().url).hostname}
-            </button>
-          )}
+        <div className="flex h-10 shrink-0 items-center gap-1 px-3">
+          <h1 className="flex-1 text-xs font-medium text-muted-foreground">Groups</h1>
+          <button
+            type="button"
+            aria-label="New group"
+            title="New group (Ctrl+N)"
+            onClick={() => setEditingGroup({ id: null, name: "", color: "#74ade8" })}
+            className="flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground aria-expanded:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          >
+            <Plus size={14} />
+          </button>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1.5 pb-1.5">
           {projects.map((p) => {
             const isActive = p.id === activeProjectId;
             return (
               <div
                 key={p.id}
-                className={`group flex w-full items-center border-l-2 text-xs ${
+                className={`group flex w-full items-center rounded-full border text-xs ${
                   isActive
-                    ? "border-l-ring bg-accent text-foreground"
-                    : "border-l-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
+                    ? "border-(--chrome-border) bg-[color-mix(in_srgb,var(--foreground)_7%,var(--sidebar))] text-foreground"
+                    : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
                 <button
@@ -384,20 +385,14 @@ export default function App() {
                   onClick={() => selectProject(p.id)}
                   aria-pressed={isActive}
                   title={`${p.name}\n${p.path}`}
-                  className="flex h-7 min-w-0 flex-1 items-center gap-2 px-2 text-left"
+                  className="flex h-8 min-w-0 flex-1 items-center gap-2 px-3 text-left"
                 >
                   <Folder
                     size={14}
                     className="shrink-0"
                     style={{ color: p.color || "var(--muted-foreground)" }}
                   />
-                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                  <span
-                    className="text-[11px] tabular-nums text-muted-foreground"
-                    aria-label={`${p.sessions.length} terminals`}
-                  >
-                    {p.sessions.length}
-                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs">{p.name}</span>
                 </button>
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -406,7 +401,7 @@ export default function App() {
                         type="button"
                         aria-label={`Actions for ${p.name}`}
                         title="Group actions"
-                        className="ui-icon-button mr-1"
+                        className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-accent aria-expanded:text-foreground disabled:pointer-events-none disabled:opacity-50 mr-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 aria-expanded:opacity-100"
                       >
                         <Ellipsis size={15} />
                       </button>
@@ -430,18 +425,6 @@ export default function App() {
               </div>
             );
           })}
-          <button
-            type="button"
-            aria-label="New group"
-            onClick={() => setEditingGroup({ id: null, name: "", color: "#74ade8" })}
-            className="flex h-7 w-full items-center gap-2 px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <Plus size={13} strokeWidth={2.2} />
-            <span className="whitespace-nowrap">New group</span>
-            <kbd className="ml-auto hidden font-sans text-[11px] text-muted-foreground @[200px]:block">
-              Ctrl+N
-            </kbd>
-          </button>
         </div>
         {agents.length > 0 && (
           <div className="flex max-h-[min(12rem,40%)] shrink-0 flex-col border-t border-sidebar-border py-2">
@@ -478,6 +461,14 @@ export default function App() {
           </div>
         )}
       </aside>
+      {!sidebarCollapsed && (
+        <button
+          type="button"
+          aria-label="Dismiss sidebar"
+          onClick={() => setSidebarCollapsed(true)}
+          className="absolute inset-0 z-20 bg-black/40 sm:hidden"
+        />
+      )}
       {deletingGroup &&
         (() => {
           const group = projects.find((p) => p.id === deletingGroup);
@@ -493,7 +484,7 @@ export default function App() {
                 <DialogHeader>
                   <DialogTitle>Delete group?</DialogTitle>
                 </DialogHeader>
-                <p className="p-3 text-xs leading-relaxed text-muted-foreground">
+                <p className="p-5 text-xs leading-relaxed text-muted-foreground">
                   Delete "{group.name}"? This closes {group.sessions.length} terminal
                   {group.sessions.length === 1 ? "" : "s"}.
                 </p>
@@ -534,7 +525,7 @@ export default function App() {
               <DialogHeader>
                 <DialogTitle>{editingGroup.id ? "Edit group" : "New group"}</DialogTitle>
               </DialogHeader>
-              <div className="p-3">
+              <div className="p-5">
                 <label className="block text-xs text-muted-foreground">
                   Name
                   <input
@@ -543,7 +534,7 @@ export default function App() {
                     maxLength={80}
                     value={editingGroup.name}
                     onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
-                    className="ui-input mt-1 w-full"
+                    className="h-8 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 mt-1 w-full"
                     placeholder="e.g. Backend"
                   />
                 </label>
@@ -569,7 +560,7 @@ export default function App() {
           </DialogContent>
         </Dialog>
       )}
-      <main className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
+      <main className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <SessionTabs
           sessions={sessions}
           agents={agents}
@@ -584,7 +575,7 @@ export default function App() {
           sidebarCollapsed={sidebarCollapsed}
           onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
-        <div className="relative isolate min-h-0 flex-1 overflow-hidden bg-background">
+        <div className="relative isolate mx-1.5 mb-1.5 min-h-0 flex-1 overflow-hidden rounded-lg border border-(--chrome-border) bg-background">
           {allSessions.map((session) => {
             const paneIndex = paneSessions.findIndex((pane) => pane.session?.id === session.id);
             const visible = paneIndex >= 0 && paneCount > 0;
@@ -680,17 +671,17 @@ function WorkspacePanel({
   return (
     <aside
       aria-label="Workspace panel"
-      className="flex w-[min(24rem,40vw)] shrink-0 flex-col overflow-hidden border-l border-border bg-sidebar text-xs text-foreground"
+      className="my-1.5 mr-1.5 flex w-[min(24rem,40vw)] shrink-0 flex-col overflow-hidden rounded-lg border border-(--chrome-border) bg-sidebar text-xs text-foreground max-lg:absolute max-lg:top-10 max-lg:right-0 max-lg:bottom-0 max-lg:z-20 max-lg:mt-0 max-lg:w-[min(24rem,calc(100%-12px))] max-lg:shadow-[-12px_8px_32px_#00000026]"
     >
-      <div className="ui-panel-header px-1">
-        <div className="flex h-full items-center">
+      <div className="flex h-9 shrink-0 items-center border-b border-border bg-sidebar px-1.5">
+        <div className="flex h-full items-center gap-1">
           {(["files", "git"] as const).map((item) => (
             <button
               key={item}
               type="button"
               aria-pressed={panel === item}
               onClick={() => onPanelToggle(item)}
-              className={`h-full border-b px-3 text-xs capitalize ${panel === item ? "border-ring text-foreground" : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+              className={`my-1 rounded-full px-2.5 py-1 text-xs capitalize ${panel === item ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
             >
               {item}
             </button>
@@ -701,7 +692,7 @@ function WorkspacePanel({
           aria-label="Close workspace panel"
           title="Close panel"
           onClick={() => onPanelToggle(null)}
-          className="ui-icon-button ml-auto"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-accent aria-expanded:text-foreground disabled:pointer-events-none disabled:opacity-50 ml-auto"
         >
           <X size={14} />
         </button>

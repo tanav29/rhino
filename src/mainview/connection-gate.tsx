@@ -15,7 +15,7 @@ export function ConnectionGate() {
     return () => clearTimeout(timer);
   }, [connection.error]);
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       {notice && (
         <div
           role="alert"
@@ -24,22 +24,22 @@ export function ConnectionGate() {
           {notice}
         </div>
       )}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 overflow-y-auto">
         {connection.status === "connected" ? (
           <App key={connection.generation} />
         ) : (
-          <main className="relative flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
+          <main className="relative flex min-h-dvh items-center justify-center bg-background px-6 py-12 text-foreground">
             <div className="absolute right-2 top-1.5">
               <MachineSelector />
             </div>
-            <div className="w-full max-w-sm space-y-4 rounded-sm border border-border bg-popover p-4">
-              <div className="flex items-center gap-2 text-xs font-medium">
-                <img src={logo} alt="" width={24} height={24} className="size-6" />
-                Rhino
+            <div className="w-full max-w-md rounded-3xl border border-border/60 bg-popover p-7 shadow-2xl shadow-black/10 sm:p-9 [&_input]:h-[42px] [&_button[type=submit]]:h-10 [&_button[type=submit]]:w-full">
+              <div className="mb-8 flex items-center gap-3 text-sm font-semibold">
+                <img src={logo} alt="" width={32} height={32} className="size-8 rounded-md" />
+                <span>Rhino</span>
               </div>
-              <div className="space-y-2">
-                <h1 className="text-sm font-medium">Connect to a terminal</h1>
-                <p className="text-xs leading-relaxed text-muted-foreground">
+              <div className="mb-7 space-y-2">
+                <h1 className="text-2xl font-semibold tracking-tight">Connect to a terminal</h1>
+                <p className="text-sm leading-relaxed text-muted-foreground">
                   Enter the backend address and PIN from the machine you want to control.
                 </p>
               </div>
@@ -50,7 +50,7 @@ export function ConnectionGate() {
                     : connection.url
                 }
               />
-              <p className="text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-7 border-t border-border pt-5 text-xs leading-relaxed text-muted-foreground">
                 Keep the host app running with sharing enabled. Use the complete public link for
                 internet access.
               </p>

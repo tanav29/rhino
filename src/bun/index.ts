@@ -24,7 +24,7 @@ import {
   writePtyInput,
 } from "./sessions";
 import { flushWorkspace, setWorkspaceDirectory } from "./workspace-store";
-import { setWindowAppearance } from "./window-appearance";
+import { setWindowAppearance, setWindowTheme } from "./window-appearance";
 import { resolveTerminalLink } from "./terminal-links";
 import { LONG_COMMAND_MS } from "./terminal-metadata";
 
@@ -37,6 +37,7 @@ const backend = createBackendController(
   existsSync(bundledView) ? bundledView : resolve("dist"),
 );
 let focusedSessionId: string | null = null;
+let updateWindowTheme = (_background: string) => {};
 
 const rpc = BrowserView.defineRPC<AppRPC>({
   handlers: {
@@ -80,6 +81,7 @@ const rpc = BrowserView.defineRPC<AppRPC>({
       focusedSession: ({ sessionId }) => {
         focusedSessionId = sessionId;
       },
+      windowTheme: ({ background }) => updateWindowTheme(background),
     },
   },
 });
@@ -154,4 +156,5 @@ const window = new BrowserWindow({
     height: 800,
   },
 });
+updateWindowTheme = (background) => setWindowTheme(window, background);
 setWindowAppearance(window);

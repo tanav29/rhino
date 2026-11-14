@@ -36,6 +36,25 @@ export function setWindowAppearance(window: BrowserWindow) {
     } finally {
       user32.close();
     }
+  } catch (error) {
+    console.error("Unable to set window appearance", error);
+  }
+  setWindowTheme(window, "#282c33");
+}
+
+export function setWindowTheme(window: BrowserWindow, background: string) {
+  if (process.platform !== "win32" || !window.ptr) return;
+  const match = /^#([\da-f]{6})(?:[\da-f]{2})?$/i.exec(background);
+  if (!match) return;
+
+  const red = parseInt(match[1].slice(0, 2), 16);
+  const green = parseInt(match[1].slice(2, 4), 16);
+  const blue = parseInt(match[1].slice(4, 6), 16);
+  const captionColor = red | (green << 8) | (blue << 16);
+  const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
+  const textColor = luminance > 0.6 ? 0x000000 : 0xffffff;
+
+  try {
     const dwm = dlopen("dwmapi.dll", {
       DwmSetWindowAttribute: {
         args: [FFIType.ptr, FFIType.u32, FFIType.ptr, FFIType.u32],
@@ -46,8 +65,8 @@ export function setWindowAppearance(window: BrowserWindow) {
       // Unsupported caption colors on older Windows versions are safely ignored.
       for (const [attribute, value] of [
         [20, 1],
-        [35, 0x3e342f],
-        [36, 0xe5e0dc],
+        [35, captionColor],
+        [36, textColor],
       ]) {
         const color = new Uint32Array([value]);
         dwm.symbols.DwmSetWindowAttribute(window.ptr, attribute, ptr(color), 4);
@@ -56,6 +75,6 @@ export function setWindowAppearance(window: BrowserWindow) {
       dwm.close();
     }
   } catch (error) {
-    console.error("Unable to set window appearance", error);
+    console.error("Unable to set window theme", error);
   }
 }

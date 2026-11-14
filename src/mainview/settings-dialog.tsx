@@ -92,7 +92,10 @@ function Stepper({
           aria-label={label}
           aria-valuetext={display}
           onChange={(event) => onChange(Number(event.target.value))}
-          className="h-4 min-w-0 flex-1 accent-ring cursor-pointer"
+          className="h-5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-[linear-gradient(to_right,var(--primary)_var(--range-progress),var(--accent)_var(--range-progress))] bg-size-[100%_4px] bg-center bg-no-repeat [&::-webkit-slider-thumb]:size-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:shadow-[0_1px_4px_#00000040] [&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-foreground"
+          style={
+            { "--range-progress": `${((value - min) / (max - min)) * 100}%` } as React.CSSProperties
+          }
         />
 
         <Button
@@ -148,7 +151,7 @@ export function SettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex h-[min(520px,90dvh)] flex-col sm:max-w-3xl"
+        className="flex h-[min(520px,90dvh)] flex-col sm:max-w-2xl"
         aria-describedby={undefined}
       >
         <DialogHeader className="shrink-0">
@@ -159,7 +162,7 @@ export function SettingsDialog({
           <Tabs.List
             aria-label="Settings sections"
             activateOnFocus
-            className="flex w-10 shrink-0 flex-col border-r border-border bg-sidebar py-1 sm:w-44"
+            className="flex w-10 shrink-0 flex-col gap-0.5 border-r border-border/60 bg-sidebar p-1 sm:w-40 sm:p-2"
           >
             {[
               { value: "terminal", label: "Terminal", icon: Terminal },
@@ -170,7 +173,7 @@ export function SettingsDialog({
                 key={value}
                 value={value}
                 title={label}
-                className="flex min-h-7 items-center justify-center gap-2 border-l-2 border-transparent px-2 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground aria-selected:border-l-ring aria-selected:bg-accent aria-selected:text-foreground sm:justify-start"
+                className="flex min-h-8 items-center justify-center gap-2 rounded-md px-2 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground aria-selected:bg-accent aria-selected:font-medium aria-selected:text-foreground sm:justify-start"
               >
                 <Icon size={15} className="shrink-0" aria-hidden="true" />
                 <span className="sr-only sm:not-sr-only">{label}</span>
@@ -219,7 +222,8 @@ export function SettingsDialog({
                   type="checkbox"
                   checked={cursorBlink}
                   onChange={(event) => onCursorBlinkChange(event.target.checked)}
-                  className="size-3.5 shrink-0 accent-ring"
+                  role="switch"
+                  className="h-[18px] w-[30px] shrink-0 cursor-pointer appearance-none rounded-full border border-input bg-accent before:m-0.5 before:block before:size-3 before:rounded-full before:bg-muted-foreground before:content-[''] checked:border-primary checked:bg-primary checked:before:translate-x-3 checked:before:bg-primary-foreground"
                 />
               </label>
             </div>
@@ -230,7 +234,7 @@ export function SettingsDialog({
               </label>
               <select
                 id="terminal-theme"
-                className="ui-input w-full"
+                className="h-8 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 w-full"
                 value={selected}
                 onChange={(event) => setThemes(themes, event.target.value)}
               >
@@ -256,16 +260,13 @@ export function SettingsDialog({
                   Remove selected theme
                 </Button>
               )}
-              <p className="text-xs text-muted-foreground">
-                Reinstall themes imported before this update to use their full interface colors.
-              </p>
               <label htmlFor="theme-extension" className="block text-xs font-medium">
                 Install from VS Code Marketplace
               </label>
               <div className="flex gap-2">
                 <input
                   id="theme-extension"
-                  className="ui-input flex-1"
+                  className="h-8 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 flex-1"
                   placeholder="publisher.extension"
                   value={extension}
                   onChange={(event) => setExtension(event.target.value)}
@@ -276,7 +277,7 @@ export function SettingsDialog({
                   disabled={installing || !extension.trim()}
                   onClick={() => void install()}
                 >
-                  {installing ? "Installing?" : "Install"}
+                  {installing ? "Installing…" : "Install"}
                 </Button>
               </div>
               {themeError && (
@@ -296,8 +297,9 @@ export function SettingsDialog({
               <br />
               <span className="text-success">Hello, Rhino</span>
               <span
+                data-cursor-blink={cursorBlink || undefined}
                 className={`ml-1 inline-block h-[1.1em] w-[0.55em] translate-y-[2px] bg-ring ${
-                  cursorBlink ? "animate-cursor-blink" : ""
+                  cursorBlink ? "animate-[cursor-blink_1s_step-end_infinite]" : ""
                 }`}
               />
             </div>
@@ -337,7 +339,9 @@ export function SettingsDialog({
                 >
                   <dt>{action}</dt>
                   <dd className="text-muted-foreground">
-                    <kbd className="ui-keycap">{shortcut}</kbd>
+                    <kbd className="rounded-sm border border-border/60 bg-background px-1.5 py-1 font-sans text-[11px] leading-none whitespace-nowrap">
+                      {shortcut}
+                    </kbd>
                   </dd>
                 </div>
               ))}

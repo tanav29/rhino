@@ -58,7 +58,7 @@ export function TerminalFind({
           if (event.shiftKey) terminal.findPrevious();
           else terminal.findNext();
         }}
-        className="ui-input h-6 flex-1"
+        className="h-6 min-w-0 rounded-md border border-input/60 bg-background px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 disabled:opacity-50 flex-1"
       />
       <span
         role="status"

@@ -155,12 +155,12 @@ export function installTerminalInteractions(terminal: WTerm, open: (target: stri
   };
   const onMove = (event: MouseEvent) => {
     const link = modified(event) ? linkAt(event) : null;
-    element.classList.toggle("terminal-link-hover", !!link);
+    element.toggleAttribute("data-link-hover", !!link);
     if (link) element.title = `${link} (Ctrl/Cmd+click)`;
     else element.removeAttribute("title");
   };
   const clearHover = () => {
-    element.classList.remove("terminal-link-hover");
+    element.removeAttribute("data-link-hover");
     element.removeAttribute("title");
   };
   element.addEventListener("click", onClick, true);

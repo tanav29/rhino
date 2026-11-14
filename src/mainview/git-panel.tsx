@@ -111,14 +111,14 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
   }, [cwd, path]);
 
   const renderHeader = (additions = 0, deletions = 0) => (
-    <div className="ui-panel-header gap-1.5 text-xs text-foreground">
+    <div className="flex h-8 shrink-0 items-center border-b border-border bg-sidebar px-2 gap-1.5 text-xs text-foreground">
       {onClose && (
         <button
           type="button"
           aria-label="Back to changed files"
           onClick={onClose}
           title="Back to changed files"
-          className="ui-icon-button"
+          className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-accent aria-expanded:text-foreground disabled:pointer-events-none disabled:opacity-50"
         >
           <ArrowLeft size={14} />
         </button>
@@ -128,7 +128,7 @@ function DiffViewer({ cwd, path, onClose }: { cwd?: string; path: string; onClos
         aria-label={`${collapsed ? "Expand" : "Collapse"} diff for ${path}`}
         aria-expanded={!collapsed}
         onClick={() => setCollapsed((value) => !value)}
-        className="ui-icon-button"
+        className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-accent aria-expanded:text-foreground disabled:pointer-events-none disabled:opacity-50"
       >
         <ChevronDown className={`h-4 w-4 ${collapsed ? "-rotate-90" : "rotate-0"}`} />
       </button>

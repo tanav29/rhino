@@ -44,7 +44,7 @@ export function MachineSelector() {
               type="button"
               aria-label={`Switch machine: ${label}`}
               title={`Switch machine: ${label}`}
-              className="ui-icon-button relative"
+              className="flex size-6 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring aria-expanded:text-foreground disabled:pointer-events-none disabled:opacity-50 relative"
             />
           }
         >

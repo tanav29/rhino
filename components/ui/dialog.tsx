@@ -25,7 +25,7 @@ function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) 
   return (
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
-      className={cn("fixed inset-0 isolate z-50 bg-black/40", className)}
+      className={cn("fixed inset-0 isolate z-50 bg-black/50 backdrop-blur-xs", className)}
       {...props}
     />
   );
@@ -45,7 +45,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 gap-0 overflow-y-auto rounded-lg border border-border bg-popover p-0 text-xs text-foreground shadow-lg outline-none sm:max-w-[420px]",
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 gap-0 overflow-y-auto rounded-2xl border border-border/70 bg-popover p-0 text-xs text-foreground shadow-2xl outline-none sm:max-w-[420px]",
           className,
         )}
         {...props}
@@ -54,7 +54,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            render={<Button variant="ghost" className="absolute top-1 right-1" size="icon-sm" />}
+            render={<Button variant="ghost" className="absolute top-2 right-2" size="icon-sm" />}
           >
             <XIcon />
             <span className="sr-only">Close</span>
@@ -69,7 +69,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-1 border-b border-border px-3 py-2 pr-9", className)}
+      className={cn("flex flex-col gap-1 border-b border-border/60 px-4 py-2.5 pr-12", className)}
       {...props}
     />
   );
@@ -87,7 +87,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-wrap items-center justify-end gap-2 border-t border-border bg-sidebar px-3 py-2",
+        "flex flex-wrap items-center justify-end gap-2 border-t border-border/60 bg-sidebar px-4 py-2.5",
         className,
       )}
       {...props}
@@ -104,7 +104,7 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-xs font-medium leading-5 text-foreground", className)}
+      className={cn("text-sm font-semibold leading-6 tracking-tight text-foreground", className)}
       {...props}
     />
   );
