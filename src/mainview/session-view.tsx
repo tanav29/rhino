@@ -2,6 +2,7 @@ import { useWorkspaceStore } from "./store";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Terminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { ImageAddon } from "@xterm/addon-image";
 import { SearchAddon } from "@xterm/addon-search";
 import { TerminalFind } from "./terminal-find";
 import type { SessionTab } from "./session-tabs";
@@ -75,6 +76,7 @@ export function SessionView({
     setError(null);
     try {
       terminal.loadAddon(fit);
+      terminal.loadAddon(new ImageAddon());
       terminal.loadAddon(search);
       terminal.onData((data) => rpc.send.ptyInput({ sessionId: session.id, data }));
       terminal.onResize(({ cols, rows }) => {
