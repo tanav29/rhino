@@ -31,14 +31,13 @@ const clampFontSize = (value: number) =>
 const clampLineHeight = (value: number) =>
   Math.min(LINE_HEIGHT_MAX, Math.max(LINE_HEIGHT_MIN, Math.round(value * 100) / 100));
 
-let counter = 0;
 const uuid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const newSession = (cwd?: string, shell?: string): SessionTab => ({
   id: uuid(),
-  title: `Terminal ${++counter}`,
+  title: "Terminal",
   cwd,
   shell,
 });
