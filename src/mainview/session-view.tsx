@@ -1,5 +1,5 @@
 import { useWorkspaceStore } from "./store";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Terminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { ImageAddon } from "@xterm/addon-image";
@@ -14,15 +14,15 @@ import {
   subscribePtyCwd,
 } from "./rpc";
 import { installTerminalInteractions } from "./terminal-interactions";
+import { createTerminalOutputWriter } from "./terminal-output";
 
-export function SessionView({
+export const SessionView = memo(function SessionView({
   session,
   onTitle,
   onCwd,
   active = true,
   visible = true,
   fontSize = 13,
-  lineHeight = 1.38,
   cursorBlink = false,
 }: {
   session: SessionTab;
@@ -51,6 +51,8 @@ export function SessionView({
   const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const onTitleRef = useRef(onTitle);
   const onCwdRef = useRef(onCwd);
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
   const ready = runtime !== null;
 
   useEffect(() => {
@@ -65,7 +67,13 @@ export function SessionView({
     const fit = new FitAddon();
     const observer = new ResizeObserver(() => fitTerminal());
     const fitTerminal = () => {
-      if (!disposed && container.clientWidth > 0 && container.clientHeight > 0) fit.fit();
+      if (
+        !disposed &&
+        visibleRef.current &&
+        container.clientWidth > 0 &&
+        container.clientHeight > 0
+      )
+        fit.fit();
     };
     setError(null);
     try {
@@ -136,8 +144,28 @@ export function SessionView({
 
     let disposed = false;
     let receivedCwd = false;
+    let receivedTitle = false;
+    const output = createTerminalOutputWriter((data) => terminal.write(data));
     setExited(false);
     setError(null);
+
+    // Subscribe before sending the request; replay may overlap buffered live output.
+    const unsubOutput = subscribePtyOutput(session.id, (chunk) => {
+      if (!disposed) output.output(chunk);
+    });
+    const unsubTitle = subscribePtyTitle(session.id, (title) => {
+      if (disposed) return;
+      receivedTitle = true;
+      onTitleRef.current(session.id, title);
+    });
+    const unsubCwd = subscribePtyCwd(session.id, (cwd) => {
+      if (disposed) return;
+      receivedCwd = true;
+      onCwdRef.current(session.id, cwd);
+    });
+    const unsubExit = subscribePtyExit(session.id, () => {
+      if (!disposed) setExited(true);
+    });
 
     void (async () => {
       try {
@@ -152,35 +180,19 @@ export function SessionView({
         });
         if (disposed) return;
         if (!receivedCwd) onCwdRef.current(session.id, attached.cwd);
-        if (attached.title) onTitleRef.current(session.id, attached.title);
-        if (attached.replay && !replayWritten.current) {
-          replayWritten.current = true;
-          terminal.write(attached.replay);
-        }
+        if (!receivedTitle && attached.title) onTitleRef.current(session.id, attached.title);
+        output.attach(replayWritten.current ? "" : attached.replay, attached.outputOffset);
+        replayWritten.current = true;
         const latestSize = pendingSizeRef.current;
         if (latestSize) rpc.send.ptyResize({ sessionId: session.id, ...latestSize });
         pendingSizeRef.current = null;
       } catch (cause) {
-        if (!disposed) setError(cause instanceof Error ? cause.message : "Unable to start shell");
+        if (!disposed) {
+          output.attach("");
+          setError(cause instanceof Error ? cause.message : "Unable to start shell");
+        }
       }
     })();
-
-    // Subscriptions are registered synchronously so no output is missed
-    // while the attach request is in flight.
-    const unsubOutput = subscribePtyOutput(session.id, (data) => {
-      if (!disposed) terminal.write(data);
-    });
-    const unsubTitle = subscribePtyTitle(session.id, (title) =>
-      onTitleRef.current(session.id, title),
-    );
-    const unsubCwd = subscribePtyCwd(session.id, (cwd) => {
-      if (disposed) return;
-      receivedCwd = true;
-      onCwdRef.current(session.id, cwd);
-    });
-    const unsubExit = subscribePtyExit(session.id, () => {
-      if (!disposed) setExited(true);
-    });
 
     return () => {
       disposed = true;
@@ -255,10 +267,10 @@ export function SessionView({
   useLayoutEffect(() => {
     if (!runtime) return;
     runtime.terminal.options.fontSize = fontSize;
-    runtime.terminal.options.lineHeight = lineHeight;
+    runtime.terminal.options.lineHeight = 1.0;
     runtime.terminal.options.cursorBlink = cursorBlink;
     if (visible) runtime.fit.fit();
-  }, [fontSize, lineHeight, cursorBlink, runtime, visible]);
+  }, [fontSize, cursorBlink, runtime, visible]);
 
   return (
     <div
@@ -315,4 +327,4 @@ export function SessionView({
       )}
     </div>
   );
-}
+});

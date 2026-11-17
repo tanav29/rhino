@@ -36,6 +36,32 @@ test("real PTY executes input, replays output and resizes", async () => {
   expect(attachSession(params).replay).toContain(marker);
 });
 
+test("output positions cover coalesced data and replay retains only bounded, filtered history", async () => {
+  let offset = 0;
+  let output = "";
+  setSessionEventSink((event) => {
+    if (event.kind !== "output") return;
+    offset += event.data.length;
+    expect(event.offset).toBe(offset);
+    output += event.data;
+  });
+  const params = { sessionId: "bounded-replay", cols: 80, rows: 24 };
+  expect(attachSession(params).outputOffset).toBe(0);
+  const executable = process.execPath.replaceAll("'", "'\\''");
+  const command = process.platform === "win32" ? `"${process.execPath}"` : `'${executable}'`;
+  writePtyInput(
+    params.sessionId,
+    `${command} -e "process.stdout.write('x'.repeat(220000)+String.fromCharCode(27)+'[6nREPLAY_END')"\r`,
+  );
+  await waitFor(() => output.includes("xREPLAY_END"));
+  const attached = attachSession(params);
+  expect(attached.outputOffset).toBeGreaterThanOrEqual(220000);
+  expect(attached.outputOffset).toBeGreaterThanOrEqual(offset);
+  expect(attached.replay.length).toBeLessThanOrEqual(200000);
+  expect(attached.replay).toContain("REPLAY_END");
+  expect(attached.replay).not.toContain("\x1b[6n");
+});
+
 test("rapid kill and reattach keeps the replacement alive", async () => {
   const events: SessionEvent[] = [];
   setSessionEventSink((event) => events.push(event));

@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, posix, relative, resolve } from "node:path";
 import type { BunRequestHandlers } from "../shared/rpc-schema";
 import { getAvailableShells } from "./shells";
 import { listProjectFiles } from "./files";
@@ -79,28 +79,48 @@ export function createApiHandlers(): RequestHandlers {
     readGitStatus: async ({ cwd }) => {
       const root = resolve(cwd || process.cwd());
       try {
-        const result = await execFileAsync(
-          "git",
-          [
-            "-C",
-            root,
-            "-c",
-            "status.relativePaths=true",
-            "status",
-            "--short",
-            "--branch",
-            "--untracked-files=all",
-            "--",
-            ".",
-          ],
-          {
-            windowsHide: true,
-            maxBuffer: 20 * 1024 * 1024,
-          },
-        );
-        return result.stdout as string;
+        const [result, prefixResult] = await Promise.all([
+          execFileAsync(
+            "git",
+            [
+              "-C",
+              root,
+              "-c",
+              "status.relativePaths=true",
+              "status",
+              "--short",
+              "--branch",
+              "-z",
+              "--untracked-files=all",
+              "--",
+              ".",
+            ],
+            {
+              windowsHide: true,
+              maxBuffer: 20 * 1024 * 1024,
+            },
+          ),
+          execFileAsync("git", ["-C", root, "rev-parse", "--show-prefix"], { windowsHide: true }),
+        ]);
+        // NUL-delimited status uses repository-root paths even with status.relativePaths.
+        const prefix = (prefixResult.stdout as string).replace(/\r?\n$/, "");
+        let sourcePath = false;
+        return (result.stdout as string)
+          .split("\0")
+          .map((entry) => {
+            if (!entry) return entry;
+            // Rename source paths occupy the field after the status entry.
+            if (sourcePath) {
+              sourcePath = false;
+              return posix.relative(prefix, entry);
+            }
+            if (entry.startsWith("##")) return entry;
+            sourcePath = /[RC]/.test(entry.slice(0, 2));
+            return entry.slice(0, 3) + posix.relative(prefix, entry.slice(3));
+          })
+          .join("\0");
       } catch {
-        return "";
+        throw new Error("Git unavailable");
       }
     },
 

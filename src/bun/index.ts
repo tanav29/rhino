@@ -89,7 +89,7 @@ const rpc = BrowserView.defineRPC<AppRPC>({
 setSessionEventSink((event) => {
   switch (event.kind) {
     case "output":
-      rpc.send.ptyOutput({ sessionId: event.sessionId, data: event.data });
+      rpc.send.ptyOutput({ sessionId: event.sessionId, data: event.data, offset: event.offset });
       break;
     case "title":
       rpc.send.ptyTitle({ sessionId: event.sessionId, title: event.title });
