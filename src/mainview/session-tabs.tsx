@@ -5,7 +5,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useEffect, useRef } from "react";
 import { Plus, X, Terminal, ChevronDown, PanelRight, Settings, PanelLeft } from "lucide-react";
 import { AgentIcon } from "./agent-icon";
 import { MachineSelector } from "./machine-selector";
@@ -51,22 +50,6 @@ export function SessionTabs({
   sidebarCollapsed,
   onSidebarToggle,
 }: SessionTabsProps) {
-  const tabsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const tabs = tabsRef.current;
-    if (!tabs) return;
-    const revealActive = () =>
-      tabs.querySelector('[aria-pressed="true"]')?.parentElement?.scrollIntoView({
-        block: "nearest",
-        inline: "nearest",
-      });
-    revealActive();
-    const observer = new ResizeObserver(revealActive);
-    observer.observe(tabs);
-    return () => observer.disconnect();
-  }, [activeId, sessions, shells]);
-
   return (
     <div className="flex h-10 shrink-0 items-center px-1.5">
       <div className="flex h-full shrink-0 items-center mr-1">
@@ -83,10 +66,9 @@ export function SessionTabs({
         </button>
       </div>
       <div
-        ref={tabsRef}
         role="group"
         aria-label="Terminals"
-        className="flex h-full min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex h-full min-w-0 items-center gap-1 overflow-hidden"
       >
         {sessions.map((session) => {
           const active = session.id === activeId;
@@ -99,7 +81,7 @@ export function SessionTabs({
           return (
             <div
               key={session.id}
-              className={`group relative flex h-7 shrink-0 items-center rounded-full border text-xs select-none ${
+              className={`group @container/tab relative flex h-7 w-48 min-w-0 items-center overflow-hidden rounded-full border text-xs select-none ${
                 active
                   ? "border-(--chrome-border) bg-[color-mix(in_srgb,var(--foreground)_8%,var(--sidebar))] text-foreground"
                   : "border-transparent bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -111,10 +93,10 @@ export function SessionTabs({
                 aria-label={agent ? `${agent}: ${title}` : undefined}
                 title={session.cwd ? `${session.title} — ${session.cwd}` : session.title}
                 aria-pressed={active}
-                className="flex h-full min-w-0 items-center gap-1.5 px-2 text-left"
+                className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2 text-left"
               >
-                {agent ? <AgentIcon name={agent} /> : <Terminal size={14} />}
-                <span className="max-w-40 truncate text-xs">{title}</span>
+                {agent ? <AgentIcon name={agent} /> : <Terminal size={14} className="shrink-0" />}
+                <span className="truncate text-xs">{title}</span>
               </button>
               <button
                 type="button"
@@ -124,10 +106,10 @@ export function SessionTabs({
                   e.stopPropagation();
                   onClose(session.id);
                 }}
-                className={`mr-1 flex size-6 shrink-0 items-center justify-center rounded-full ${
+                className={`mr-1 size-6 shrink-0 items-center justify-center rounded-full ${
                   active
-                    ? "text-muted-foreground hover:text-foreground"
-                    : "text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100 group-focus-within:opacity-100"
+                    ? "flex text-muted-foreground hover:text-foreground"
+                    : "hidden text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100 group-focus-within:opacity-100 @[5rem]/tab:flex"
                 }`}
               >
                 <X size={11} strokeWidth={2.2} />
