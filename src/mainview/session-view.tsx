@@ -3,8 +3,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Terminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { ImageAddon } from "@xterm/addon-image";
-import { SearchAddon } from "@xterm/addon-search";
-import { TerminalFind } from "./terminal-find";
 import type { SessionTab } from "./session-tabs";
 import {
   desktopRpc,
@@ -44,14 +42,11 @@ export function SessionView({
   const [runtime, setRuntime] = useState<{
     terminal: Terminal;
     fit: FitAddon;
-    search: SearchAddon;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exited, setExited] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [findOpen, setFindOpen] = useState(false);
   const [linkError, setLinkError] = useState("");
-  const findInputRef = useRef<HTMLInputElement>(null);
   const replayWritten = useRef(false);
   const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const onTitleRef = useRef(onTitle);
@@ -68,7 +63,6 @@ export function SessionView({
       allowProposedApi: true,
     });
     const fit = new FitAddon();
-    const search = new SearchAddon();
     const observer = new ResizeObserver(() => fitTerminal());
     const fitTerminal = () => {
       if (!disposed && container.clientWidth > 0 && container.clientHeight > 0) fit.fit();
@@ -77,7 +71,6 @@ export function SessionView({
     try {
       terminal.loadAddon(fit);
       terminal.loadAddon(new ImageAddon());
-      terminal.loadAddon(search);
       terminal.onData((data) => rpc.send.ptyInput({ sessionId: session.id, data }));
       terminal.onResize(({ cols, rows }) => {
         pendingSizeRef.current = { cols, rows };
@@ -88,7 +81,7 @@ export function SessionView({
       fitTerminal();
       observer.observe(container);
       void document.fonts.ready.then(fitTerminal);
-      setRuntime({ terminal, fit, search });
+      setRuntime({ terminal, fit });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to initialize terminal");
     }
@@ -109,44 +102,8 @@ export function SessionView({
 
   useLayoutEffect(() => {
     if (!ready || !visible || !active) return;
-    if (findOpen) {
-      findInputRef.current?.focus();
-      findInputRef.current?.select();
-    } else {
-      runtime?.terminal.focus();
-    }
-  }, [active, findOpen, runtime, ready, visible]);
-
-  useEffect(() => {
-    if (!ready || !visible || !active) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.isComposing ||
-        (event.target instanceof Element && event.target.closest('[role="dialog"], [role="menu"]'))
-      )
-        return;
-      if (
-        event.ctrlKey &&
-        event.altKey &&
-        !event.metaKey &&
-        !event.shiftKey &&
-        event.key.toLowerCase() === "f"
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        setFindOpen(true);
-        findInputRef.current?.focus();
-        findInputRef.current?.select();
-      } else if (findOpen && event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        setFindOpen(false);
-      }
-    };
-    // Capture shortcuts before the terminal turns them into PTY input.
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [active, findOpen, ready, visible]);
+    runtime?.terminal.focus();
+  }, [active, runtime, ready, visible]);
 
   useLayoutEffect(() => {
     if (!visible || !ready) return;
@@ -304,7 +261,10 @@ export function SessionView({
   }, [fontSize, lineHeight, cursorBlink, runtime, visible]);
 
   return (
-    <div className="relative box-border h-full min-h-0 bg-background">
+    <div
+      className="relative box-border h-full min-h-0 bg-(--term-bg) [--term-bg:var(--background)]"
+      style={{ "--term-bg": themeStyle["--term-bg"] ?? "var(--background)" } as React.CSSProperties}
+    >
       {!ready && !error && (
         <div role="status" className="p-4 font-mono text-xs text-muted-foreground">
           Starting terminal…
@@ -312,16 +272,9 @@ export function SessionView({
       )}
       <div
         ref={containerRef}
-        className="h-full min-h-0 isolate bg-(--term-bg) [color-scheme:dark] [--term-bg:var(--background)] [--term-fg:#abb2bf] [--term-cursor:var(--primary)] [--term-selection-bg:var(--selection)] [--term-color-0:#282c34] [--term-color-1:#e06c75] [--term-color-2:#98c379] [--term-color-3:#e5c07b] [--term-color-4:#61afef] [--term-color-5:#c678dd] [--term-color-6:#56b6c2] [--term-color-7:#abb2bf] [--term-color-8:#636d83] [--term-color-9:#ea858b] [--term-color-10:#aad581] [--term-color-11:#ffd885] [--term-color-12:#85c1ff] [--term-color-13:#d398eb] [--term-color-14:#6ed5de] [--term-color-15:#fafafa] [&>.xterm]:h-full [&>.xterm]:p-2"
+        className="h-full min-h-0 isolate [color-scheme:dark] [--term-fg:#abb2bf] [--term-cursor:var(--primary)] [--term-selection-bg:var(--selection)] [--term-color-0:#282c34] [--term-color-1:#e06c75] [--term-color-2:#98c379] [--term-color-3:#e5c07b] [--term-color-4:#61afef] [--term-color-5:#c678dd] [--term-color-6:#56b6c2] [--term-color-7:#abb2bf] [--term-color-8:#636d83] [--term-color-9:#ea858b] [--term-color-10:#aad581] [--term-color-11:#ffd885] [--term-color-12:#85c1ff] [--term-color-13:#d398eb] [--term-color-14:#6ed5de] [--term-color-15:#fafafa] [&>.xterm]:h-full [&>.xterm]:p-2 [&_.xterm-viewport]:bg-(--term-bg)"
         style={themeStyle as React.CSSProperties}
       />
-      {findOpen && runtime && (
-        <TerminalFind
-          searchAddon={runtime.search}
-          inputRef={findInputRef}
-          onClose={() => setFindOpen(false)}
-        />
-      )}
       {linkError && (
         <div
           role="alert"
