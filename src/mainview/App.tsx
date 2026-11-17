@@ -221,9 +221,13 @@ export default function App() {
         selectSession(sessions[next].id);
         return;
       }
-      if (mod && event.key.toLowerCase() === "t") {
+      const key = event.key.toLowerCase();
+      if (mod && !event.altKey && !event.shiftKey && (key === "t" || key === "w")) {
         event.preventDefault();
-        addSession();
+        event.stopPropagation();
+        if (key === "t") addSession();
+        else closeSession(activeSessionId);
+        return;
       }
       if (mod && event.key.toLowerCase() === "d") {
         event.preventDefault();
@@ -239,11 +243,13 @@ export default function App() {
         if (target) selectProject(target.id);
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    // Handle app shortcuts before xterm consumes key events in the focused terminal.
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [
     activeSessionId,
     addSession,
+    closeSession,
     projects,
     sessions,
     split,

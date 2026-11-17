@@ -324,6 +324,7 @@ export function SettingsDialog({
             <dl className="mt-4 divide-y divide-border text-xs">
               {[
                 ["New terminal", "Ctrl+T"],
+                ["Close terminal", "Ctrl+W"],
                 ["New group", "Ctrl+N"],
                 ["Split right", "Ctrl+D"],
                 ["Split down", "Ctrl+Shift+D"],
