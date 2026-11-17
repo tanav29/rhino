@@ -39,6 +39,29 @@ test("closing the last terminal creates a working replacement", () => {
   expect(state.panes[0].sessionId).toBe(state.activeSessionId);
 });
 
+test("title changes preserve unrelated projects and duplicate titles do not notify subscribers", () => {
+  const store = useWorkspaceStore.getState();
+  const original = store.projects[0];
+  store.saveGroup(null, "Other", "#ffffff");
+  const before = useWorkspaceStore.getState();
+  const updates = mock(() => {});
+  const unsubscribe = useWorkspaceStore.subscribe(updates);
+  try {
+    before.updateTitle(before.activeSessionId, "New title");
+    const after = useWorkspaceStore.getState();
+    expect(after.projects[0]).toBe(original);
+    expect(after.projects[1]).not.toBe(before.projects[1]);
+    expect(after.projects[1].sessions[0].title).toBe("New title");
+    expect(updates).toHaveBeenCalledTimes(1);
+    after.updateTitle(after.activeSessionId, "New title");
+    after.updateTitle("closed-session", "Late title");
+    expect(useWorkspaceStore.getState()).toBe(after);
+    expect(updates).toHaveBeenCalledTimes(1);
+  } finally {
+    unsubscribe();
+  }
+});
+
 test("new tabs, splits and replacement terminals do not inherit a project directory", () => {
   for (const action of ["tab", "split", "replace"] as const) {
     const store = useWorkspaceStore.getState();

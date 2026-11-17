@@ -20,6 +20,7 @@ interface PtySession {
   cwd: string;
   remote: boolean;
   outputBuffer: string;
+  outputOffset: number;
   pendingOutput: string[];
   flushTimer: ReturnType<typeof setTimeout> | null;
   finished: boolean;
@@ -31,7 +32,7 @@ const FLUSH_INTERVAL_MS = 8;
 const ESC = String.fromCharCode(27);
 
 export type SessionEvent =
-  | { kind: "output"; sessionId: string; data: string }
+  | { kind: "output"; sessionId: string; data: string; offset?: number }
   | { kind: "title"; sessionId: string; title: string }
   | { kind: "cwd"; sessionId: string; cwd: string | null }
   | { kind: "commandFinished"; sessionId: string; durationMs: number; exitCode: number | null }
@@ -116,8 +117,9 @@ function flushPending(id: string, session: PtySession) {
   if (!session.pendingOutput.length) return;
   const data = session.pendingOutput.join("");
   session.pendingOutput.length = 0;
+  session.outputBuffer = (session.outputBuffer + data).slice(-MAX_OUTPUT_BUFFER);
   // Coalesced chunks keep the RPC bridge comfortable at high output rates.
-  emit({ kind: "output", sessionId: id, data });
+  emit({ kind: "output", sessionId: id, data, offset: session.outputOffset });
 }
 
 function scheduleFlush(id: string, session: PtySession) {
@@ -133,7 +135,10 @@ function finishSession(id: string, session: PtySession) {
     session.flushTimer = null;
   }
   const tail = session.decoder.decode();
-  if (tail) session.pendingOutput.push(tail);
+  if (tail) {
+    session.pendingOutput.push(tail);
+    session.outputOffset += tail.length;
+  }
   flushPending(id, session);
   try {
     session.terminal.close();
@@ -157,7 +162,10 @@ export function attachSession({
     return {
       title: existing.title,
       cwd: sessionDirectory(existing),
-      replay: stripReplayControlSequences(existing.outputBuffer),
+      replay: stripReplayControlSequences(
+        (existing.outputBuffer + existing.pendingOutput.join("")).slice(-MAX_OUTPUT_BUFFER),
+      ),
+      outputOffset: existing.outputOffset,
     };
   }
 
@@ -183,9 +191,7 @@ export function attachSession({
         // Streaming decode handles multibyte sequences split across chunks.
         const text = session.decoder.decode(chunk, { stream: true });
         if (!text) return;
-        session.outputBuffer = stripReplayControlSequences(
-          (session.outputBuffer + text).slice(-MAX_OUTPUT_BUFFER),
-        );
+        session.outputOffset += text.length;
         session.pendingOutput.push(text);
         scheduleFlush(sessionId, session);
         const previousDirectory = session.metadata.workingDirectory;
@@ -227,6 +233,7 @@ export function attachSession({
     cwd: safeCwd ?? process.cwd(),
     remote: Boolean(shellValue?.startsWith("ssh:") || /(?:^|[\\/])wsl(?:\.exe)?$/i.test(shell)),
     outputBuffer: "",
+    outputOffset: 0,
     pendingOutput: [],
     flushTimer: null,
     finished: false,
@@ -240,7 +247,7 @@ export function attachSession({
     }, FLUSH_INTERVAL_MS * 4);
   });
 
-  return { title: session.title, cwd: sessionDirectory(session), replay: "" };
+  return { title: session.title, cwd: sessionDirectory(session), replay: "", outputOffset: 0 };
 }
 
 export function writePtyInput(sessionId: string, data: string) {

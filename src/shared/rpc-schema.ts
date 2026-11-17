@@ -68,6 +68,8 @@ export interface AttachSessionResult {
   cwd: string | null;
   /** Scrollback replay so re-attaching restores terminal history. */
   replay: string;
+  /** UTF-16 output position covered by replay, before replay filtering. */
+  outputOffset?: number;
 }
 
 export interface BackendStatus {
@@ -146,7 +148,7 @@ export type AppRPC = {
   webview: RPCSchema<{
     requests: {};
     messages: {
-      ptyOutput: { sessionId: string; data: string };
+      ptyOutput: { sessionId: string; data: string; offset?: number };
       ptyTitle: { sessionId: string; title: string };
       ptyCwd: { sessionId: string; cwd: string | null };
       ptyExit: { sessionId: string };

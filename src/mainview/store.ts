@@ -277,12 +277,23 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     })),
 
   updateTitle: (id, title) =>
-    set((s) => ({
-      projects: s.projects.map((p) => ({
-        ...p,
-        sessions: p.sessions.map((sess) => (sess.id === id ? { ...sess, title } : sess)),
-      })),
-    })),
+    set((s) => {
+      const project = s.projects.find((p) => p.sessions.some((session) => session.id === id));
+      if (!project || project.sessions.find((session) => session.id === id)?.title === title)
+        return s;
+      return {
+        projects: s.projects.map((p) =>
+          p === project
+            ? {
+                ...p,
+                sessions: p.sessions.map((session) =>
+                  session.id === id ? { ...session, title } : session,
+                ),
+              }
+            : p,
+        ),
+      };
+    }),
 
   closeSession: (id) => {
     const { projects, activeProjectId } = get();

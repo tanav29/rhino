@@ -69,7 +69,7 @@ export function SessionTabs({
 
   return (
     <div className="flex h-10 shrink-0 items-center px-1.5">
-      <div className="flex h-full shrink-0 items-center">
+      <div className="flex h-full shrink-0 items-center mr-1">
         <button
           type="button"
           aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}

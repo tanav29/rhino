@@ -6,6 +6,7 @@ import { createBackendHandlers } from "../src/bun/backend-handlers";
 import { createBackendController } from "../src/bun/backend-controller";
 import { generatePin, startBackendServer } from "../src/bun/backend-server";
 import { attachSession, killAllSessions, type SessionEvent } from "../src/bun/sessions";
+import { createTerminalOutputWriter } from "../src/mainview/terminal-output";
 import {
   connectBackendSocket,
   normalizeBackendUrl,
@@ -122,6 +123,68 @@ test("authenticated client controls a real PTY, reattaches with scrollback, and 
   await waitFor(() =>
     events.some((event) => event.kind === "exit" && event.sessionId === params.sessionId),
   );
+});
+
+test("delayed network attachment restores history before live output without duplication", async () => {
+  let delay = false;
+  let captured = false;
+  let release!: () => void;
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const url = start({
+    ...createBackendHandlers(),
+    attachSession: async (params) => {
+      const snapshot = attachSession(params);
+      if (delay) {
+        captured = true;
+        await barrier;
+      }
+      return snapshot;
+    },
+  });
+  let original = "";
+  const first = await connect(url, (event) => {
+    if (event.kind === "output") original += event.data;
+  });
+  const params = { sessionId: "delayed-replay", cols: 80, rows: 24 };
+  const windows = process.platform === "win32";
+  const marker = windows ? "HISTORY_Windows_NT" : "HISTORY_OK";
+  const liveMarker = windows ? "LIVE_Windows_NT" : "LIVE_OK";
+  await first.request.attachSession(params);
+  first.send.ptyInput({
+    sessionId: params.sessionId,
+    data: windows ? "echo HISTORY_%OS%\r" : "printf 'HISTORY_%s\\n' OK\n",
+  });
+  await waitFor(() => original.includes(marker));
+  let written = "";
+  let live = "";
+  const writer = createTerminalOutputWriter((data) => {
+    written += data;
+  });
+  const second = await connect(url, (event) => {
+    if (event.kind !== "output") return;
+    live += event.data;
+    writer.output(event);
+  });
+  delay = true;
+  const attaching = second.request.attachSession(params);
+  try {
+    await waitFor(() => captured);
+    first.send.ptyInput({
+      sessionId: params.sessionId,
+      data: windows ? "echo LIVE_%OS%\r" : "printf 'LIVE_%s\\n' OK\n",
+    });
+    await waitFor(() => live.includes(liveMarker));
+    expect(written).toBe("");
+  } finally {
+    release();
+  }
+  const attached = await attaching;
+  writer.attach(attached.replay, attached.outputOffset);
+  expect(written.split(marker)).toHaveLength(2);
+  expect(written.split(liveMarker)).toHaveLength(2);
+  expect(written.indexOf(marker)).toBeLessThan(written.indexOf(liveMarker));
 });
 
 test("network clients cannot manage sharing or send malformed PTY requests", async () => {

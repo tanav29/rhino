@@ -5,7 +5,7 @@ import type { SessionEvent } from "../bun/sessions";
 import { createBackendConnections } from "./backend-connections";
 
 type Listener<T> = (payload: T) => void;
-const outputListeners = new Map<string, Set<Listener<string>>>();
+const outputListeners = new Map<string, Set<Listener<{ data: string; offset?: number }>>>();
 const titleListeners = new Map<string, Set<Listener<string>>>();
 const cwdListeners = new Map<string, Set<Listener<string | null>>>();
 const exitListeners = new Map<string, Set<Listener<undefined>>>();
@@ -26,7 +26,7 @@ function notify<T>(map: Map<string, Set<Listener<T>>>, sessionId: string, payloa
   for (const fn of map.get(sessionId) ?? []) fn(payload);
 }
 function dispatch(event: SessionEvent) {
-  if (event.kind === "output") notify(outputListeners, event.sessionId, event.data);
+  if (event.kind === "output") notify(outputListeners, event.sessionId, event);
   if (event.kind === "title") notify(titleListeners, event.sessionId, event.title);
   if (event.kind === "cwd") notify(cwdListeners, event.sessionId, event.cwd);
   if (event.kind === "exit") notify(exitListeners, event.sessionId, undefined);
@@ -39,8 +39,8 @@ const native = Electroview.defineRPC<AppRPC>({
   handlers: {
     requests: {},
     messages: {
-      ptyOutput: ({ sessionId, data }) => {
-        if (isLocalActive()) dispatch({ kind: "output", sessionId, data });
+      ptyOutput: ({ sessionId, data, offset }) => {
+        if (isLocalActive()) dispatch({ kind: "output", sessionId, data, offset });
       },
       ptyTitle: ({ sessionId, title }) => {
         if (isLocalActive()) dispatch({ kind: "title", sessionId, title });
@@ -102,7 +102,10 @@ export const rpc: RpcClient = {
   }),
 };
 
-export function subscribePtyOutput(sessionId: string, fn: Listener<string>) {
+export function subscribePtyOutput(
+  sessionId: string,
+  fn: Listener<{ data: string; offset?: number }>,
+) {
   return subscribe(outputListeners, sessionId, fn);
 }
 export function subscribePtyTitle(sessionId: string, fn: Listener<string>) {

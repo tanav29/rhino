@@ -1,8 +1,8 @@
 import { useWorkspaceStore } from "./store";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Terminal, useTerminal } from "@wterm/react";
-import { GhosttyCore } from "@wterm/ghostty";
-import { TerminalFind } from "./terminal-find";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Terminal, type ITheme } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { ImageAddon } from "@xterm/addon-image";
 import type { SessionTab } from "./session-tabs";
 import {
   desktopRpc,
@@ -14,15 +14,15 @@ import {
   subscribePtyCwd,
 } from "./rpc";
 import { installTerminalInteractions } from "./terminal-interactions";
+import { createTerminalOutputWriter } from "./terminal-output";
 
-export function SessionView({
+export const SessionView = memo(function SessionView({
   session,
   onTitle,
   onCwd,
   active = true,
   visible = true,
   fontSize = 13,
-  lineHeight = 1.38,
   cursorBlink = false,
 }: {
   session: SessionTab;
@@ -38,36 +38,70 @@ export function SessionView({
     s.terminalThemes.find((item) => item.id === s.selectedThemeId),
   );
   const [rpc] = useState(getBackendClient);
-  const { ref, write, focus } = useTerminal();
-  const [core, setCore] = useState<GhosttyCore | null>(null);
-  const [ready, setReady] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [runtime, setRuntime] = useState<{
+    terminal: Terminal;
+    fit: FitAddon;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exited, setExited] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [findOpen, setFindOpen] = useState(false);
   const [linkError, setLinkError] = useState("");
-  const findInputRef = useRef<HTMLInputElement>(null);
   const replayWritten = useRef(false);
   const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const onTitleRef = useRef(onTitle);
   const onCwdRef = useRef(onCwd);
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  const ready = runtime !== null;
 
   useEffect(() => {
-    let cancelled = false;
-    // Keep a useful local history while preserving Ghostty's complete VT support.
-    setError(null);
-    void GhosttyCore.load({ scrollbackLimit: 8 * 1024 * 1024 })
-      .then((loadedCore) => {
-        if (!cancelled) setCore(loadedCore);
-      })
-      .catch((cause) => {
-        if (!cancelled)
-          setError(cause instanceof Error ? cause.message : "Unable to load terminal");
-      });
-    return () => {
-      cancelled = true;
+    const container = containerRef.current;
+    if (!container) return;
+    let disposed = false;
+    const terminal = new Terminal({
+      fontFamily: '"BlexMono Nerd Font", monospace',
+      scrollback: 10_000,
+      allowProposedApi: true,
+    });
+    const fit = new FitAddon();
+    const observer = new ResizeObserver(() => fitTerminal());
+    const fitTerminal = () => {
+      if (
+        !disposed &&
+        visibleRef.current &&
+        container.clientWidth > 0 &&
+        container.clientHeight > 0
+      )
+        fit.fit();
     };
-  }, [attempt]);
+    setError(null);
+    try {
+      terminal.loadAddon(fit);
+      terminal.loadAddon(new ImageAddon());
+      terminal.onData((data) => rpc.send.ptyInput({ sessionId: session.id, data }));
+      terminal.onResize(({ cols, rows }) => {
+        pendingSizeRef.current = { cols, rows };
+        rpc.send.ptyResize({ sessionId: session.id, cols, rows });
+      });
+      terminal.onTitleChange((title) => onTitleRef.current(session.id, title));
+      terminal.open(container);
+      fitTerminal();
+      observer.observe(container);
+      void document.fonts.ready.then(fitTerminal);
+      setRuntime({ terminal, fit });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to initialize terminal");
+    }
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      terminal.dispose();
+      setRuntime(null);
+      pendingSizeRef.current = null;
+      replayWritten.current = false;
+    };
+  }, [attempt, rpc, session.id]);
 
   useEffect(() => {
     onTitleRef.current = onTitle;
@@ -76,54 +110,17 @@ export function SessionView({
 
   useLayoutEffect(() => {
     if (!ready || !visible || !active) return;
-    if (findOpen) {
-      findInputRef.current?.focus();
-      findInputRef.current?.select();
-    } else {
-      focus();
-    }
-  }, [active, findOpen, focus, ready, visible]);
-
-  useEffect(() => {
-    if (!ready || !visible || !active) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.isComposing ||
-        (event.target instanceof Element && event.target.closest('[role="dialog"], [role="menu"]'))
-      )
-        return;
-      if (
-        event.ctrlKey &&
-        event.altKey &&
-        !event.metaKey &&
-        !event.shiftKey &&
-        event.key.toLowerCase() === "f"
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        setFindOpen(true);
-        findInputRef.current?.focus();
-        findInputRef.current?.select();
-      } else if (findOpen && event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        setFindOpen(false);
-      }
-    };
-    // Capture shortcuts before wterm turns them into PTY input.
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [active, findOpen, ready, visible]);
+    runtime?.terminal.focus();
+  }, [active, runtime, ready, visible]);
 
   useLayoutEffect(() => {
     if (!visible || !ready) return;
-    const el = ref.current?.instance?.element as HTMLElement | undefined;
-    if (!el) return;
-    void el.offsetHeight;
-  }, [visible, ready, ref]);
+    runtime?.fit.fit();
+    runtime?.terminal.refresh(0, runtime.terminal.rows - 1);
+  }, [visible, ready, runtime]);
 
   useEffect(() => {
-    const terminal = ref.current?.instance;
+    const terminal = runtime?.terminal;
     if (!ready || !terminal) return;
     return installTerminalInteractions(terminal, (target) => {
       setLinkError("");
@@ -139,22 +136,40 @@ export function SessionView({
         setLinkError("File links require a local desktop session");
       }
     });
-  }, [ready, ref, session.id]);
+  }, [ready, runtime, session.id]);
 
   useEffect(() => {
-    if (!core || !ready) return;
+    if (!runtime) return;
+    const { terminal } = runtime;
 
     let disposed = false;
     let receivedCwd = false;
+    let receivedTitle = false;
+    const output = createTerminalOutputWriter((data) => terminal.write(data));
     setExited(false);
     setError(null);
 
+    // Subscribe before sending the request; replay may overlap buffered live output.
+    const unsubOutput = subscribePtyOutput(session.id, (chunk) => {
+      if (!disposed) output.output(chunk);
+    });
+    const unsubTitle = subscribePtyTitle(session.id, (title) => {
+      if (disposed) return;
+      receivedTitle = true;
+      onTitleRef.current(session.id, title);
+    });
+    const unsubCwd = subscribePtyCwd(session.id, (cwd) => {
+      if (disposed) return;
+      receivedCwd = true;
+      onCwdRef.current(session.id, cwd);
+    });
+    const unsubExit = subscribePtyExit(session.id, () => {
+      if (!disposed) setExited(true);
+    });
+
     void (async () => {
       try {
-        const instance = ref.current?.instance;
-        const size =
-          pendingSizeRef.current ??
-          (instance ? { cols: instance.cols, rows: instance.rows } : { cols: 80, rows: 24 });
+        const size = pendingSizeRef.current ?? { cols: terminal.cols, rows: terminal.rows };
         const attached = await rpc.request.attachSession({
           sessionId: session.id,
           shell: session.shell || undefined,
@@ -165,35 +180,19 @@ export function SessionView({
         });
         if (disposed) return;
         if (!receivedCwd) onCwdRef.current(session.id, attached.cwd);
-        if (attached.title) onTitleRef.current(session.id, attached.title);
-        if (attached.replay && !replayWritten.current) {
-          replayWritten.current = true;
-          write(attached.replay);
-        }
+        if (!receivedTitle && attached.title) onTitleRef.current(session.id, attached.title);
+        output.attach(replayWritten.current ? "" : attached.replay, attached.outputOffset);
+        replayWritten.current = true;
         const latestSize = pendingSizeRef.current;
         if (latestSize) rpc.send.ptyResize({ sessionId: session.id, ...latestSize });
         pendingSizeRef.current = null;
       } catch (cause) {
-        if (!disposed) setError(cause instanceof Error ? cause.message : "Unable to start shell");
+        if (!disposed) {
+          output.attach("");
+          setError(cause instanceof Error ? cause.message : "Unable to start shell");
+        }
       }
     })();
-
-    // Subscriptions are registered synchronously so no output is missed
-    // while the attach request is in flight.
-    const unsubOutput = subscribePtyOutput(session.id, (data) => {
-      if (!disposed) write(data);
-    });
-    const unsubTitle = subscribePtyTitle(session.id, (title) =>
-      onTitleRef.current(session.id, title),
-    );
-    const unsubCwd = subscribePtyCwd(session.id, (cwd) => {
-      if (disposed) return;
-      receivedCwd = true;
-      onCwdRef.current(session.id, cwd);
-    });
-    const unsubExit = subscribePtyExit(session.id, () => {
-      if (!disposed) setExited(true);
-    });
 
     return () => {
       disposed = true;
@@ -202,7 +201,7 @@ export function SessionView({
       unsubCwd();
       unsubExit();
     };
-  }, [core, ready, ref, rpc, session.cwd, session.id, session.shell, write]);
+  }, [runtime, rpc, session.cwd, session.id, session.shell]);
 
   const ansiNames = [
     "Black",
@@ -221,7 +220,7 @@ export function SessionView({
     "BrightMagenta",
     "BrightCyan",
     "BrightWhite",
-  ];
+  ] as const;
   const themeStyle: Record<string, string> = {};
   if (theme) {
     for (const [key, variable] of [
@@ -237,100 +236,57 @@ export function SessionView({
     }
   }
   useLayoutEffect(() => {
-    const terminal = ref.current?.instance;
-    const element = terminal?.element as HTMLElement | undefined;
+    const terminal = runtime?.terminal;
+    const element = containerRef.current;
     if (!ready || !terminal || !element) return;
     const css = getComputedStyle(element);
-    const rgb = (variable: string) => {
+    const color = (variable: string) => {
       const probe = document.createElement("span");
       probe.style.color = css.getPropertyValue(variable).trim();
       element.appendChild(probe);
-      const values = getComputedStyle(probe).color.match(/\d+/g)?.map(Number) ?? [0, 0, 0];
+      const value = getComputedStyle(probe).color;
       probe.remove();
-      return (values[0] << 16) | (values[1] << 8) | values[2];
+      return value;
     };
-    terminal.setThemeColors({
-      foreground: rgb("--term-fg"),
-      background: rgb("--term-bg"),
-      cursor: rgb("--term-cursor"),
-      palette: Array.from({ length: 16 }, (_, i) => rgb(`--term-color-${i}`)),
+    const colors: ITheme = {
+      foreground: color("--term-fg"),
+      background: color("--term-bg"),
+      cursor: color("--term-cursor"),
+      selectionBackground: color("--term-selection-bg"),
+      selectionInactiveBackground: color("--term-selection-bg"),
+    };
+    ansiNames.forEach((name, index) => {
+      const key = (name[0].toLowerCase() + name.slice(1)) as Uncapitalize<
+        (typeof ansiNames)[number]
+      >;
+      colors[key] = color(`--term-color-${index}`);
     });
-  }, [theme, ready, ref]);
+    terminal.options.theme = colors;
+  }, [theme, ready, runtime]);
 
-  const rowHeight = Math.round(fontSize * lineHeight);
-
-  // wterm's ResizeObserver only recomputes the grid when the container's box
-  // changes size. A font-size / line-height change keeps the box identical, so
-  // the cell metrics (and thus cols/rows and the PTY geometry) go stale. Re-fit
-  // manually: measure a probe cell, derive cols/rows, and resize — resize()
-  // fires onResize below, which propagates the new size to the PTY.
   useLayoutEffect(() => {
-    if (!ready) return;
-    const wt = ref.current?.instance;
-    const el = wt?.element as HTMLElement | undefined;
-    if (!wt || !el) return;
-    const grid = (el.querySelector(".term-grid") as HTMLElement | null) ?? el;
-    const probe = document.createElement("div");
-    probe.className = "term-row";
-    probe.style.cssText = "visibility:hidden;position:absolute;";
-    const span = document.createElement("span");
-    span.textContent = "W";
-    probe.appendChild(span);
-    grid.appendChild(probe);
-    const charWidth = span.getBoundingClientRect().width;
-    probe.remove();
-    if (charWidth <= 0) return;
-    const cs = getComputedStyle(el);
-    const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
-    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
-    const cols = Math.max(1, Math.floor((el.clientWidth - padX) / charWidth));
-    const rows = Math.max(1, Math.floor((el.clientHeight - padY) / rowHeight));
-    if (cols !== wt.cols || rows !== wt.rows) wt.resize(cols, rows);
-  }, [fontSize, rowHeight, ready, ref]);
+    if (!runtime) return;
+    runtime.terminal.options.fontSize = fontSize;
+    runtime.terminal.options.lineHeight = 1.0;
+    runtime.terminal.options.cursorBlink = cursorBlink;
+    if (visible) runtime.fit.fit();
+  }, [fontSize, cursorBlink, runtime, visible]);
 
   return (
-    <div className="relative box-border h-full min-h-0 bg-background">
-      {!core && !error && (
+    <div
+      className="relative box-border h-full min-h-0 bg-(--term-bg) [--term-bg:var(--background)]"
+      style={{ "--term-bg": themeStyle["--term-bg"] ?? "var(--background)" } as React.CSSProperties}
+    >
+      {!ready && !error && (
         <div role="status" className="p-4 font-mono text-xs text-muted-foreground">
           Starting terminal…
         </div>
       )}
-      {core && (
-        <Terminal
-          ref={ref}
-          core={core}
-          autoResize
-          className="h-full min-h-0 isolate rounded-none bg-(--term-bg) p-0 [color-scheme:dark] [--term-bg:var(--background)] [--term-fg:#abb2bf] [--term-cursor:var(--primary)] [--term-selection-bg:var(--selection)] [--term-color-0:#282c34] [--term-color-1:#e06c75] [--term-color-2:#98c379] [--term-color-3:#e5c07b] [--term-color-4:#61afef] [--term-color-5:#c678dd] [--term-color-6:#56b6c2] [--term-color-7:#abb2bf] [--term-color-8:#636d83] [--term-color-9:#ea858b] [--term-color-10:#aad581] [--term-color-11:#ffd885] [--term-color-12:#85c1ff] [--term-color-13:#d398eb] [--term-color-14:#6ed5de] [--term-color-15:#fafafa] [--term-font-family:'BlexMono_Nerd_Font',_monospace] [&[data-link-hover]_.term-row]:cursor-pointer [&[data-link-hover]_.term-row_*]:cursor-pointer"
-          style={
-            {
-              ...themeStyle,
-              padding: "8px",
-              "--term-font-size": `${fontSize}px`,
-              "--term-line-height": `${lineHeight}`,
-              "--term-row-height": `${rowHeight}px`,
-            } as React.CSSProperties
-          }
-          cursorBlink={cursorBlink}
-          renderingPaused={!visible}
-          onData={(data) => rpc.send.ptyInput({ sessionId: session.id, data })}
-          onResize={(cols, rows) => {
-            pendingSizeRef.current = { cols, rows };
-            rpc.send.ptyResize({ sessionId: session.id, cols, rows });
-          }}
-          onReady={() => setReady(true)}
-          onError={(cause) =>
-            setError(cause instanceof Error ? cause.message : "Unable to initialize terminal")
-          }
-          onTitle={(title) => onTitleRef.current(session.id, title)}
-        />
-      )}
-      {findOpen && ready && ref.current?.instance && (
-        <TerminalFind
-          terminal={ref.current.instance}
-          inputRef={findInputRef}
-          onClose={() => setFindOpen(false)}
-        />
-      )}
+      <div
+        ref={containerRef}
+        className="h-full min-h-0 isolate [color-scheme:dark] [--term-fg:#abb2bf] [--term-cursor:var(--primary)] [--term-selection-bg:var(--selection)] [--term-color-0:#282c34] [--term-color-1:#e06c75] [--term-color-2:#98c379] [--term-color-3:#e5c07b] [--term-color-4:#61afef] [--term-color-5:#c678dd] [--term-color-6:#56b6c2] [--term-color-7:#abb2bf] [--term-color-8:#636d83] [--term-color-9:#ea858b] [--term-color-10:#aad581] [--term-color-11:#ffd885] [--term-color-12:#85c1ff] [--term-color-13:#d398eb] [--term-color-14:#6ed5de] [--term-color-15:#fafafa] [&>.xterm]:h-full [&>.xterm]:p-2 [&_.xterm-viewport]:bg-(--term-bg)"
+        style={themeStyle as React.CSSProperties}
+      />
       {linkError && (
         <div
           role="alert"
@@ -360,8 +316,6 @@ export function SessionView({
             className="shrink-0 rounded border border-border px-3 py-1.5 text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
             onClick={() => {
               replayWritten.current = false;
-              setCore(null);
-              setReady(false);
               setExited(false);
               rpc.send.killSession({ sessionId: session.id });
               setAttempt((value) => value + 1);
@@ -373,4 +327,4 @@ export function SessionView({
       )}
     </div>
   );
-}
+});

@@ -154,11 +154,6 @@ export default defineConfig(({ command }) => ({
       ...electrobunViteAliases(resolve(projectRoot, ".hutch/devkit")),
     ],
   },
-  // Ghostty resolves its WASM relative to the package. Keeping it out of
-  // Vite's dependency pre-bundle preserves that URL in development.
-  optimizeDeps: {
-    exclude: ["@wterm/ghostty"],
-  },
   esbuild: {
     drop: command === "serve" ? [] : ["console", "debugger"],
     legalComments: "none",
@@ -187,4 +182,3 @@ export default defineConfig(({ command }) => ({
     strictPort: true,
   },
 }));
-
